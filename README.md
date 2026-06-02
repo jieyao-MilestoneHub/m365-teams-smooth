@@ -146,6 +146,12 @@ scripts/verify.sh  # trials + safety + MCP + quality gates (tenant checks report
 make check         # ruff + mypy + pytest
 ```
 
+**See the Change Court card without a tenant.** The Adaptive Card renders tenant-free two ways: run
+the clickable [Playground bot](m365/playground-bot/) (`make bot` + the Microsoft 365 Agents
+Playground), or `make cards` and open a file from
+[`m365/adaptive-cards/generated/`](m365/adaptive-cards/generated) in the
+[Adaptive Cards Designer](https://adaptivecards.io/designer).
+
 ## Configuration
 
 Set via environment variables (see `.env.example`):
@@ -165,6 +171,7 @@ Set via environment variables (see `.env.example`):
 The court engine is implemented and runs end-to-end **locally and credential-free**: the three
 trials pass (dry-run + verdict, with the reject-and-propose-a-safer-alternative behaviour), the
 MCP tools/resources are exposed over an OAuth2-protected server, and `scripts/verify.sh` is green
-apart from its *Pending tenant* section. Surfacing the agent in Microsoft 365 Copilot / Teams and
-real Microsoft Graph writes are wired but verified once a dev tenant is available. See
+apart from its *Pending tenant* section. The Change Court Adaptive Card renders and is clickable
+**without a tenant** via the [Playground bot](m365/playground-bot/); the remaining tenant work is the
+live Microsoft 365 Copilot / Teams sideload and real Microsoft Graph writes. See
 [`roadmap.md`](./roadmap.md) for the phased plan and [`verify.md`](./verify.md) for verification.

@@ -1,7 +1,7 @@
 # Developer entry points. Backend lives in backend/ and uses uv.
 # `make check` is the local pre-PR gate (lint + type-check + tests).
 
-.PHONY: help sync run lint type test check verify compose-up compose-down bot
+.PHONY: help sync run lint type test check demo cards verify compose-up compose-down bot
 
 help:
 	@echo "Targets:"
@@ -12,6 +12,7 @@ help:
 	@echo "  test         pytest"
 	@echo "  check        lint + type + test (local pre-PR gate)"
 	@echo "  demo         run the three trials end-to-end and print each Change Court"
+	@echo "  cards        export the Change Court Adaptive Card JSON (m365/adaptive-cards/generated)"
 	@echo "  migrate      apply database migrations (alembic upgrade head)"
 	@echo "  verify       run the end-to-end trial checklist (scripts/verify.sh)"
 	@echo "  compose-up   run the backend in Docker (fully mocked)"
@@ -36,6 +37,9 @@ check: lint type test
 
 demo:
 	cd backend && uv run python -m scripts.demo
+
+cards:
+	cd backend && uv run python -m scripts.export_cards
 
 migrate:
 	cd backend && uv run alembic upgrade head

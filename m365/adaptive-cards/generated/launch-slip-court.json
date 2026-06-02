@@ -1,0 +1,134 @@
+{
+  "type": "AdaptiveCard",
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "version": "1.5",
+  "body": [
+    {
+      "type": "TextBlock",
+      "text": "AI Change Court",
+      "wrap": true,
+      "weight": "Bolder"
+    },
+    {
+      "type": "TextBlock",
+      "text": "slip the launch from 2026-06-10 to 2026-06-17",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "Risk: HIGH",
+      "wrap": true,
+      "weight": "Bolder",
+      "color": "Attention"
+    },
+    {
+      "type": "TextBlock",
+      "text": "Impact evidence",
+      "wrap": true,
+      "weight": "Bolder"
+    },
+    {
+      "type": "TextBlock",
+      "text": "• [github] Milestone 'Launch' currently due 2026-06-10",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "• [outlook] Calendar events near the new date",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "• [planner] 2 planner task(s) must shift",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "• [teams] A pending announcement references the original date",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "• [knowledge] grounded governance facts",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "    ↳ Moving a launch milestone requires updating dependent schedules and pending communications. (Launch Playbook §3.2)",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "Proposed plan: Move the launch to 2026-06-17; update calendar, schedule, and announcement.",
+      "wrap": true,
+      "weight": "Bolder"
+    },
+    {
+      "type": "TextBlock",
+      "text": "• github.update_milestone_due",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "• outlook.create_event",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "• planner.shift_task_dates",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "• teams.update_announcement",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "Approvers required (all): eng_lead, comms",
+      "wrap": true
+    }
+  ],
+  "actions": [
+    {
+      "type": "Action.Submit",
+      "title": "approve",
+      "data": {
+        "tool": "cast_verdict",
+        "thread_id": "<thread-id>",
+        "verdict_type": "approve",
+        "selected_plan": "feasible"
+      }
+    },
+    {
+      "type": "Action.Submit",
+      "title": "approve_internal_only",
+      "data": {
+        "tool": "cast_verdict",
+        "thread_id": "<thread-id>",
+        "verdict_type": "approve_internal_only",
+        "selected_plan": "feasible"
+      }
+    },
+    {
+      "type": "Action.Submit",
+      "title": "request_revision",
+      "data": {
+        "tool": "cast_verdict",
+        "thread_id": "<thread-id>",
+        "verdict_type": "request_revision",
+        "selected_plan": "feasible"
+      }
+    },
+    {
+      "type": "Action.Submit",
+      "title": "reject",
+      "data": {
+        "tool": "cast_verdict",
+        "thread_id": "<thread-id>",
+        "verdict_type": "reject",
+        "selected_plan": "feasible"
+      }
+    }
+  ]
+}
