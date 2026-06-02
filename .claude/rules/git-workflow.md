@@ -4,13 +4,15 @@ This is a public open-source repository. The overriding constraint: **any review
 in ≤ 30 minutes, and every PR carries a single responsibility.** Optimize for reviewability over
 batching.
 
-## Current stage — direct to `main` (hard rule)
+## Current stage — PR-first (collaborating in parallel)
 
-While this is a solo, pre-collaboration repository, **committing and pushing directly to `main` is
-allowed and expected** — no pull request, review, or branch protection is required. Keep `main`
-green (builds, lints, tests pass) and never force-push or rewrite published history. The
-pull-request workflow below is the **target for when collaborators join**; adopt it (and branch
-protection) then, not before.
+Multiple machines/sessions now work in parallel, so the default is **one issue → one branch → one
+pull request that `Closes #<issue>`**. This keeps changes isolated and avoids cross-session
+conflicts. Pick work from the `ready` label and self-assign the issue to claim it.
+
+**Direct pushes to `main` are allowed only as an exception** — trivial or urgent fixes (typos, a
+broken build, a one-line hotfix). Everything substantive goes through a PR. `main` stays green and
+is currently unprotected (no enforced gate); never force-push or rewrite published history.
 
 ## Branching
 
@@ -21,17 +23,18 @@ protection) then, not before.
   - `docs/<scope>` — documentation only
   - `chore/<scope>` — tooling, deps, config
   - `refactor/<scope>` — behavior-preserving change
-- Branches are optional at the current stage. Never force-push or rewrite published history on a
-  shared branch. (Pushing directly to `main` is permitted now — see *Current stage* above.)
+- **Never push directly to `main` for substantive work** — use a branch + PR (see *Current stage*
+  above for the narrow exception). Never force-push or rewrite published history on a shared branch.
 
-## Pull requests (collaborative workflow — adopt when the team grows)
+## Pull requests
 
 - **One responsibility per PR.** A PR that touches the graph AND adds an adapter AND edits docs is
   too big — split it.
 - Target ≤ ~300 changed lines of substantive code (generated files/fixtures excluded). If larger,
   justify in the description or split.
 - Keep refactors separate from behavior changes — never mix.
-- A PR is mergeable only when CI is green and it has at least one approving review.
+- A PR is mergeable when CI is green. Request a review when another maintainer is available; while
+  solo you may self-merge a green PR.
 - **Squash-merge** into `main`; delete the branch after merge.
 
 ## PR description template

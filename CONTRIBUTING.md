@@ -26,6 +26,16 @@ to review and the trunk stays healthy.
 
 Never push directly to `main`; never force-push shared branches.
 
+## Working in parallel
+
+Work is tracked as GitHub issues across five phase milestones, labeled by `area:*` and by readiness
+(`ready` = no unmet dependencies, `blocked` = waiting on a dependency listed in the issue).
+
+- **Claim an issue** by assigning it to yourself before starting, so other sessions don't duplicate it.
+- Take issues from the **`ready`** label; each issue's *Dependencies* section links what must land first.
+- **One issue → one branch → one PR** that `Closes #<issue>`. Keep PRs small and single-responsibility.
+- Rebase on `main` before opening the PR.
+
 ## Commits
 
 Use [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `docs:`,
