@@ -12,6 +12,7 @@ from typing import Protocol
 from app.agent.policy_rules.models import RulePack
 from app.agent.state import CourtState, serialize
 from app.domain import (
+    Approver,
     Change,
     ChangeStatus,
     ImpactEvidence,
@@ -70,22 +71,45 @@ class QuorumResolver(Protocol):
     ) -> Quorum: ...
 
 
-class DefaultQuorumResolver:
-    """Selects verdict options by outcome. Approver derivation is added in #86."""
+def _select_options(pack: RulePack, *, unsafe: bool, level: RiskLevel) -> list[VerdictOption]:
+    """Pick verdict options by outcome: unsafe → alternative; high → internal; else default."""
+    options = pack.verdict_options
+    if unsafe and options.when_unsafe:
+        chosen = options.when_unsafe
+    elif level is RiskLevel.HIGH and options.when_high_risk_internal:
+        chosen = options.when_high_risk_internal
+    else:
+        chosen = options.default or [VerdictType.APPROVE, VerdictType.REJECT]
+    return [VerdictOption(type=t, label=t.value) for t in chosen]
 
-    def resolve(
-        self, pack: RulePack, tags: list[str], *, unsafe: bool, level: RiskLevel
-    ) -> Quorum:
-        options = pack.verdict_options
-        if unsafe and options.when_unsafe:
-            chosen = options.when_unsafe
-        elif level is RiskLevel.HIGH and options.when_high_risk_internal:
-            chosen = options.when_high_risk_internal
-        else:
-            chosen = options.default or [VerdictType.APPROVE, VerdictType.REJECT]
+
+class DefaultQuorumResolver:
+    """Selects verdict options by outcome, with no required approvers."""
+
+    def resolve(self, pack: RulePack, tags: list[str], *, unsafe: bool, level: RiskLevel) -> Quorum:
         return Quorum(
             required_approvers=[],
-            verdict_options=[VerdictOption(type=t, label=t.value) for t in chosen],
+            verdict_options=_select_options(pack, unsafe=unsafe, level=level),
+            policy=pack.quorum.policy,
+        )
+
+
+class RulePackQuorumResolver:
+    """Derives required approvers from the fired tags and selects verdict options by outcome."""
+
+    def resolve(self, pack: RulePack, tags: list[str], *, unsafe: bool, level: RiskLevel) -> Quorum:
+        approvers = [
+            Approver(
+                role=rule.role,
+                reason=f"required because {rule.when_tag} is present",
+                derived_from_tag=rule.when_tag,
+            )
+            for rule in pack.quorum.approvers
+            if rule.when_tag in tags
+        ]
+        return Quorum(
+            required_approvers=approvers,
+            verdict_options=_select_options(pack, unsafe=unsafe, level=level),
             policy=pack.quorum.policy,
         )
 
