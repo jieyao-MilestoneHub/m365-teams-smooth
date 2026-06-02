@@ -11,8 +11,9 @@ pull request that `Closes #<issue>`**. This keeps changes isolated and avoids cr
 conflicts. Pick work from the `ready` label and self-assign the issue to claim it.
 
 **Direct pushes to `main` are allowed only as an exception** — trivial or urgent fixes (typos, a
-broken build, a one-line hotfix). Everything substantive goes through a PR. `main` stays green and
-is currently unprotected (no enforced gate); never force-push or rewrite published history.
+broken build, a one-line hotfix). Everything substantive goes through a PR. `main` is protected:
+PRs require one approving review, with admin bypass allowed; while solo, an admin merges a green PR
+via bypass. Keep `main` green; never force-push or rewrite published history.
 
 ## Branching
 
@@ -33,8 +34,8 @@ is currently unprotected (no enforced gate); never force-push or rewrite publish
 - Target ≤ ~300 changed lines of substantive code (generated files/fixtures excluded). If larger,
   justify in the description or split.
 - Keep refactors separate from behavior changes — never mix.
-- A PR is mergeable when CI is green. Request a review when another maintainer is available; while
-  solo you may self-merge a green PR.
+- A PR is mergeable when CI is green and it has one approving review (branch protection). While
+  solo, an admin may merge a green PR via admin bypass.
 - **Squash-merge** into `main`; delete the branch after merge.
 
 ## PR description template
