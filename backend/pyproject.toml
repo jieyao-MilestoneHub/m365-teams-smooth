@@ -19,6 +19,7 @@ dependencies = [
     # KnowledgeBaseRetrievalClient lives in this preview. Only used when the real provider is configured.
     "azure-search-documents==12.1.0b1",
     "azure-identity>=1.17",
+    "openai>=1.40",
 ]
 
 [dependency-groups]

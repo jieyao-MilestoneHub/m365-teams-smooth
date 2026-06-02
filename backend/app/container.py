@@ -17,7 +17,10 @@ from app.adapters.integrations.real_github import RealGitHubAdapter
 from app.adapters.integrations.registry import build_registry
 from app.adapters.knowledge.fake_knowledge import FakeKnowledgeProvider
 from app.adapters.knowledge.foundry_iq import FoundryIqKnowledgeProvider
+from app.adapters.llm.azure_openai import AzureOpenAILLMProvider
+from app.adapters.llm.fake_llm import FakeLLMProvider
 from app.adapters.parsers.deterministic import DeterministicRequestParser
+from app.adapters.parsers.llm_backed import LlmRequestParser
 from app.adapters.persistence.checkpointer import SqliteCheckpointStore
 from app.adapters.persistence.db import init_db, make_engine, make_session_factory
 from app.adapters.persistence.repositories import SqlAuditRepository, SqlVerdictLedger
@@ -36,6 +39,7 @@ from app.agent.runner import CourtRunner
 from app.config import Settings
 from app.ports.integration import IntegrationAdapter
 from app.ports.knowledge import KnowledgePort
+from app.ports.llm import LLMProvider
 from app.ports.registry import IntegrationRegistry
 from app.ports.request_parser import RequestParser
 from app.services.court_service import CourtService
@@ -98,7 +102,28 @@ def build_court_service(
     store = SqliteCheckpointStore.from_db_url(settings.db_url)
     store.setup()
 
-    parser = request_parser if request_parser is not None else DeterministicRequestParser()
+    # Agentic parsing: real Azure OpenAI when configured, else the offline fake + deterministic.
+    # (The LLM-backed parser always falls back to deterministic, keeping trials reproducible.)
+    llm: LLMProvider = FakeLLMProvider()
+    llm_is_real = bool(
+        not settings.force_all_mock
+        and settings.azure_openai_endpoint
+        and settings.azure_openai_deployment
+    )
+    if llm_is_real:
+        llm = AzureOpenAILLMProvider(
+            endpoint=settings.azure_openai_endpoint,
+            deployment=settings.azure_openai_deployment,
+            api_version=settings.azure_openai_api_version,
+            api_key=settings.llm_api_key,
+        )
+
+    if request_parser is not None:
+        parser: RequestParser = request_parser
+    elif llm_is_real:
+        parser = LlmRequestParser(llm, registry, fallback=DeterministicRequestParser())
+    else:
+        parser = DeterministicRequestParser()
 
     graph = build_court_graph(
         intake=IntakeNode(parser, registry),
