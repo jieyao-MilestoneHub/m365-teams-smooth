@@ -15,7 +15,8 @@ needed. The submitting `run_mode` defaults to `dry_run` (effects predicted, audi
 - **Impact tags:** `schedule.milestone_move`, `schedule.calendar_conflict`, `schedule.planner_shift`,
   `comms.pending_announcement`.
 - **Risk / safety:** score 80 → **HIGH**, not unsafe.
-- **Plan (feasible):** `github.update_milestone_due` (→ 2026-06-17), `planner.shift_task_dates`
+- **Plan (feasible):** spans four systems — `github.update_milestone_due` (→ 2026-06-17),
+  `outlook.create_event` (a launch-review event on the new date), `planner.shift_task_dates`
   (+7 days), `teams.update_announcement`.
 - **Approvers:** `eng_lead`, `comms`.
 - **Verdict options:** approve · approve_internal_only · request_revision · reject.

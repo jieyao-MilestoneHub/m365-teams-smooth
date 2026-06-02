@@ -29,6 +29,7 @@ GOLDEN: dict[str, dict[str, object]] = {
         "verdict_options": {"approve", "approve_internal_only", "request_revision", "reject"},
         "plan_capabilities": {
             "github.update_milestone_due",
+            "outlook.create_event",
             "planner.shift_task_dates",
             "teams.update_announcement",
         },
