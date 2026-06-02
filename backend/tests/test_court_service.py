@@ -58,7 +58,7 @@ def test_submit_pauses_for_verdict_then_cast_completes_idempotently() -> None:
 
 def test_low_risk_change_auto_completes() -> None:
     # No rule packs -> no governing pack -> no approval required -> auto-resumed to DONE.
-    service = build_court_service(_settings())
+    service = build_court_service(_settings(), packs=[])
     summary = service.submit_change("slip the launch from 2026-06-10 to 2026-06-17")
     assert summary.status == ChangeStatus.DONE.value
 
