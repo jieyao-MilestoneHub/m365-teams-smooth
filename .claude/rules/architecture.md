@@ -14,7 +14,7 @@ Microsoft 365 Copilot Chat / Teams
         ▼
   FastAPI process (backend/)
      ├─ mcp/        MCP server: tools + resources + OAuth2 resource server (primary surface)
-     ├─ api/        minimal REST: health + audit/trial inspection
+     ├─ api/        minimal REST: health only (audit/trial inspection is an MCP resource)
      ├─ services/   single business layer (REST + MCP both delegate here — no duplication)
      ├─ agent/      LangGraph court: intake → impact → options → policy+quorum → [verdict] → execute → audit
      ├─ ports/      abstract interfaces (DIP boundary)
