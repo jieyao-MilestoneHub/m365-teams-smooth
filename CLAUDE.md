@@ -111,8 +111,10 @@ Entra) are mocks returning realistic data, so the system runs fully locally.
 
 ## Git / PR workflow
 
-- Trunk is `main` and stays green. Work on short-lived `feat|fix|docs|chore|refactor/<scope>`
-  branches; never push directly to `main`.
+- Trunk is `main` and stays green. **At the current solo stage, commit and push directly to `main`**
+  (no PR or branch protection required); never force-push or rewrite published history. The
+  `feat|fix|docs|chore|refactor/<scope>` branch + PR workflow in `git-workflow.md` is the target for
+  when collaborators join.
 - **One responsibility per PR, ≤ ~300 substantive lines.** Keep refactors separate from behavior
   changes. Follow `roadmap.md` slicing: one adapter / one node / one router per PR.
 - Conventional commits (`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`), imperative mood.

@@ -4,6 +4,14 @@ This is a public open-source repository. The overriding constraint: **any review
 in ≤ 30 minutes, and every PR carries a single responsibility.** Optimize for reviewability over
 batching.
 
+## Current stage — direct to `main` (hard rule)
+
+While this is a solo, pre-collaboration repository, **committing and pushing directly to `main` is
+allowed and expected** — no pull request, review, or branch protection is required. Keep `main`
+green (builds, lints, tests pass) and never force-push or rewrite published history. The
+pull-request workflow below is the **target for when collaborators join**; adopt it (and branch
+protection) then, not before.
+
 ## Branching
 
 - Trunk is **`main`**. It is always green (builds, lints, tests pass).
@@ -13,9 +21,10 @@ batching.
   - `docs/<scope>` — documentation only
   - `chore/<scope>` — tooling, deps, config
   - `refactor/<scope>` — behavior-preserving change
-- **Never push directly to the default branch.** Never force-push shared branches.
+- Branches are optional at the current stage. Never force-push or rewrite published history on a
+  shared branch. (Pushing directly to `main` is permitted now — see *Current stage* above.)
 
-## Pull requests
+## Pull requests (collaborative workflow — adopt when the team grows)
 
 - **One responsibility per PR.** A PR that touches the graph AND adds an adapter AND edits docs is
   too big — split it.
