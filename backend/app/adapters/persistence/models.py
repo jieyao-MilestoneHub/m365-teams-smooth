@@ -1,0 +1,37 @@
+"""SQLAlchemy ORM rows.
+
+Audit records store the full domain object as a JSON payload (with a few columns for querying);
+the audit log is append-only. The verdict ledger enforces exactly-once verdicts via its composite
+primary key ``(thread_id, idempotency_key)``.
+"""
+
+from __future__ import annotations
+
+from sqlalchemy import JSON, String
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+
+class Base(DeclarativeBase):
+    """Declarative base for all ORM rows."""
+
+
+class AuditRecordRow(Base):
+    """One append-only audit record. ``payload`` is the serialized domain AuditRecord."""
+
+    __tablename__ = "audit_records"
+
+    audit_id: Mapped[str] = mapped_column(String, primary_key=True)
+    change_id: Mapped[str] = mapped_column(String, index=True)
+    thread_id: Mapped[str] = mapped_column(String, index=True)
+    created_at: Mapped[str] = mapped_column(String)
+    payload: Mapped[dict[str, object]] = mapped_column(JSON)
+
+
+class VerdictClaimRow(Base):
+    """A claimed verdict. The composite PK makes a second claim of the same key a conflict."""
+
+    __tablename__ = "verdict_claims"
+
+    thread_id: Mapped[str] = mapped_column(String, primary_key=True)
+    idempotency_key: Mapped[str] = mapped_column(String, primary_key=True)
+    audit_id: Mapped[str | None] = mapped_column(String, nullable=True)
