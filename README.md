@@ -58,6 +58,26 @@ verdict buttons. Approving resumes the run and executes; the audit trail records
 
 ## Architecture
 
+```mermaid
+flowchart TB
+  Copilot["Microsoft 365 Copilot Chat / Teams"] --> DA["Declarative Agent (m365/)"]
+  DA -- "MCP + OAuth 2.0" --> MCP["MCP server: tools + resources"]
+  subgraph Backend["FastAPI service (backend/)"]
+    MCP --> SVC["Services — single business layer"]
+    REST["REST: /api/health"] --> SVC
+    SVC --> AGENT["LangGraph court: intake → impact → options → policy+quorum → verdict → execute → audit"]
+    AGENT --> PORTS["Ports — dependency-inversion boundary"]
+    PORTS --> ADAPTERS["Adapters"]
+  end
+  ADAPTERS --> GH["GitHub (real)"]
+  ADAPTERS --> MOCKS["Outlook · Planner · SharePoint · Teams · CRM · Entra (mock)"]
+  PORTS --> KNOW["KnowledgePort → Azure AI Foundry (Foundry IQ)"]
+  AGENT --> CARD["Change Court Adaptive Card"]
+  SVC --> DB[("SQLite → Postgres")]
+```
+
+The same shape in text:
+
 ```
 Microsoft 365 Copilot Chat / Teams
   └─ Declarative Agent (m365/)              the chat entry point
@@ -70,6 +90,7 @@ Microsoft 365 Copilot Chat / Teams
      ├─ Agent           LangGraph court: intake → impact → options → policy+quorum → [verdict] → execute → audit
      ├─ Ports           abstract interfaces (the dependency-inversion boundary)
      └─ Adapters        GitHub (real) + Outlook/Planner/SharePoint/Teams/CRM/Entra (mock)
+  Knowledge grounding   KnowledgePort → Azure AI Foundry (Foundry IQ); offline fake locally
   SQLite (local) → Postgres (later)
 ```
 
@@ -108,13 +129,20 @@ scripts/     developer/demo scripts (verify.sh, seed data)
 
 ```bash
 cd backend
-uv sync                 # or: poetry install
+uv sync
 cp ../.env.example ../.env
-uvicorn app.main:app --reload
+
+uv run uvicorn app.main:app --reload    # REST health only (http://localhost:8000/api/health)
+uv run uvicorn app.asgi:app --reload    # REST + the OAuth2-protected MCP server at /mcp
 ```
 
-Then the API health check is at http://localhost:8000/api/health, and the MCP server is mounted on
-the same app for the declarative agent to call.
+Run the demo and the verification gate (both credential-free, fully mocked):
+
+```bash
+make demo          # run the three trials end-to-end and print each Change Court
+scripts/verify.sh  # trials + safety + MCP + quality gates (tenant checks report PENDING)
+make check         # ruff + mypy + pytest
+```
 
 ## Configuration
 
@@ -124,12 +152,17 @@ Set via environment variables (see `.env.example`):
 - `INTEGRATION_MODE` — per-system `real` or `mock` selection (default: GitHub `real`, others `mock`).
 - `FORCE_ALL_MOCK=true` — run every integration as a mock, with zero external credentials.
 - `DRY_RUN_DEFAULT` — whether new changes default to dry-run.
-- `GITHUB_TOKEN` — required only when the GitHub adapter runs in `real` mode.
+- `GITHUB_TOKEN` / `GITHUB_REPO` — required only when the GitHub adapter runs in `real` mode
+  (point `GITHUB_REPO` at a throwaway `owner/name`).
 - `OAUTH_*` — MCP OAuth2 settings; a local dev issuer is used when no tenant is configured.
 
 **Never commit secrets.** Use environment variables or a secret store.
 
 ## Status
 
-This project is under active development. See [`roadmap.md`](./roadmap.md) for the phased plan and
-[`verify.md`](./verify.md) for the end-to-end verification of the three trials.
+The court engine is implemented and runs end-to-end **locally and credential-free**: the three
+trials pass (dry-run + verdict, with the reject-and-propose-a-safer-alternative behaviour), the
+MCP tools/resources are exposed over an OAuth2-protected server, and `scripts/verify.sh` is green
+apart from its *Pending tenant* section. Surfacing the agent in Microsoft 365 Copilot / Teams and
+real Microsoft Graph writes are wired but verified once a dev tenant is available. See
+[`roadmap.md`](./roadmap.md) for the phased plan and [`verify.md`](./verify.md) for verification.
