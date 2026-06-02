@@ -31,7 +31,7 @@ SDK. This spec is the contract for the domain models (issue #61), the nodes, and
 ### Change & requested actions
 | Type | Fields | Notes |
 | --- | --- | --- |
-| `Change` | `change_id, raw_request, source, subject?, deadline?, requested_actions: list[RequestedAction], status: ChangeStatus, unsafe: bool` | Structured form of the request produced by `intake`. `unsafe` is set when a policy constraint is violated. |
+| `Change` | `change_id, raw_request, source, subject?, due_by?, requested_actions: list[RequestedAction], status: ChangeStatus, unsafe: bool` | Structured form of the request produced by `intake`. `due_by` is the requested target date; `unsafe` is set when a policy constraint is violated. |
 | `RequestedAction` | `system, capability_name, verb, params: dict` | One intended action parsed from the request, bound to a catalog capability by `(system, capability_name)`. |
 
 ### Capabilities
@@ -43,7 +43,7 @@ SDK. This spec is the contract for the domain models (issue #61), the nodes, and
 ### Impact evidence
 | Type | Fields | Notes |
 | --- | --- | --- |
-| `ImpactEvidence` | `items: list[EvidenceItem], tags: list[str]` | Produced by `impact`. `tags` are the machine-readable hooks policy/quorum match on (e.g. `security.review_after_deadline`). |
+| `ImpactEvidence` | `items: list[EvidenceItem], tags: list[str]` | Produced by `impact`. `tags` are the machine-readable hooks policy/quorum match on (e.g. `security.review_after_due_date`). |
 | `EvidenceItem` | `system, kind, summary, severity, data: dict, grounded: list[GroundedFact]` | One consequence found via a read capability. |
 | `GroundedFact` | `claim, source_id, citation` | A fact returned by the `KnowledgePort` (Foundry IQ later), with a citation. |
 
