@@ -18,14 +18,17 @@ from app.adapters.knowledge.fake_knowledge import FakeKnowledgeProvider
 from app.adapters.persistence.checkpointer import SqliteCheckpointStore
 from app.adapters.persistence.db import init_db, make_engine, make_session_factory
 from app.adapters.persistence.repositories import SqlAuditRepository, SqlVerdictLedger
+from app.agent.gatherers import GATHERERS
 from app.agent.graph import build_court_graph
 from app.agent.nodes.audit import AuditNode
 from app.agent.nodes.execute import ExecuteNode
 from app.agent.nodes.impact import Gatherer, ImpactNode
 from app.agent.nodes.intake import IntakeNode
 from app.agent.nodes.options import OptionsNode, Planner
-from app.agent.nodes.policy import PolicyNode
+from app.agent.nodes.policy import PolicyNode, RulePackQuorumResolver
+from app.agent.planners import PLANNERS
 from app.agent.policy_rules.models import RulePack
+from app.agent.policy_rules.packs import default_packs
 from app.agent.runner import CourtRunner
 from app.config import Settings
 from app.ports.integration import IntegrationAdapter
@@ -39,7 +42,15 @@ def build_court_service(
     planners: dict[str, Planner] | None = None,
     packs: list[RulePack] | None = None,
 ) -> CourtService:
-    """Wire the registry, providers, persistence, graph, and runner into a CourtService."""
+    """Wire the registry, providers, persistence, graph, and runner into a CourtService.
+
+    Gatherers, planners, and packs default to the three-trial configuration; pass explicit values
+    (including empty collections) to override — e.g. ``packs=[]`` for an approval-free court.
+    """
+    gatherers = gatherers if gatherers is not None else GATHERERS
+    planners = planners if planners is not None else PLANNERS
+    packs = packs if packs is not None else default_packs()
+
     candidates: dict[str, dict[str, IntegrationAdapter]] = {
         "github": {"mock": MockGitHubAdapter()},
         "outlook": {"mock": MockOutlookAdapter()},
@@ -63,9 +74,9 @@ def build_court_service(
 
     graph = build_court_graph(
         intake=IntakeNode(registry),
-        impact=ImpactNode(registry, knowledge, gatherers or {}),
-        options=OptionsNode(planners or {}),
-        policy=PolicyNode(packs or []),
+        impact=ImpactNode(registry, knowledge, gatherers),
+        options=OptionsNode(planners),
+        policy=PolicyNode(packs, RulePackQuorumResolver()),
         execute=ExecuteNode(registry),
         audit=AuditNode(audit_repo),
         checkpointer=store.saver(),
