@@ -93,7 +93,7 @@ class CourtService:
         idempotency_key: str | None = None,
         actor: str = "reviewer",
     ) -> CastResult:
-        """Claim and apply a verdict. A duplicate claim returns the recorded result, not a re-run."""
+        """Claim and apply a verdict; a duplicate claim returns the recorded result."""
         key = idempotency_key or f"{thread_id}:{verdict_type.value}:{selected_plan.value}"
         if not self._ledger.try_claim(thread_id, key):
             audit_id = self._ledger.result_for(thread_id, key)
