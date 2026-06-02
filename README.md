@@ -1,5 +1,7 @@
 # AI Change Court
 
+![CI](https://github.com/jieyao-MilestoneHub/m365-teams-smooth/actions/workflows/ci.yml/badge.svg)
+
 **Governed execution for risky enterprise decisions in Microsoft Teams.**
 
 Decisions happen in chat faster than governance can keep up — "delay the launch a week", "promise
