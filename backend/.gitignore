@@ -1,0 +1,11 @@
+# Python / uv
+.venv/
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Local data (SQLite db, checkpoints)
+data/
+*.db
