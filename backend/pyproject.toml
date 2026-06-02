@@ -12,6 +12,7 @@ dependencies = [
     # Pinned to the major to isolate the verdict-interrupt API; all graph calls live in agent/.
     "langgraph>=1.2,<2",
     "langgraph-checkpoint-sqlite>=3.1,<4",
+    "mcp>=1.2",
 ]
 
 [dependency-groups]
