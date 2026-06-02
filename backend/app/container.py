@@ -16,6 +16,7 @@ from app.adapters.integrations.mock_teams import MockTeamsAdapter
 from app.adapters.integrations.real_github import RealGitHubAdapter
 from app.adapters.integrations.registry import build_registry
 from app.adapters.knowledge.fake_knowledge import FakeKnowledgeProvider
+from app.adapters.knowledge.foundry_iq import FoundryIqKnowledgeProvider
 from app.adapters.persistence.checkpointer import SqliteCheckpointStore
 from app.adapters.persistence.db import init_db, make_engine, make_session_factory
 from app.adapters.persistence.repositories import SqlAuditRepository, SqlVerdictLedger
@@ -33,6 +34,7 @@ from app.agent.policy_rules.packs import default_packs
 from app.agent.runner import CourtRunner
 from app.config import Settings
 from app.ports.integration import IntegrationAdapter
+from app.ports.knowledge import KnowledgePort
 from app.ports.registry import IntegrationRegistry
 from app.services.court_service import CourtService
 
@@ -69,7 +71,20 @@ def build_court_service(
             "entra": {"mock": MockEntraAdapter()},
         }
         registry = build_registry(settings, candidates)
-    knowledge = FakeKnowledgeProvider()
+
+    # Knowledge grounding: real Foundry IQ when an endpoint is configured, else the offline fake
+    # (also forced under FORCE_ALL_MOCK), mirroring the real-vs-mock selection above.
+    knowledge: KnowledgePort = FakeKnowledgeProvider()
+    if (
+        not settings.force_all_mock
+        and settings.knowledge_search_endpoint
+        and settings.knowledge_base_name
+    ):
+        knowledge = FoundryIqKnowledgeProvider(
+            endpoint=settings.knowledge_search_endpoint,
+            knowledge_base_name=settings.knowledge_base_name,
+            knowledge_source_name=settings.knowledge_source_name,
+        )
 
     engine = make_engine(settings.db_url)
     init_db(engine)

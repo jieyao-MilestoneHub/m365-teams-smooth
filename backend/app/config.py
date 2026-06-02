@@ -36,6 +36,12 @@ class Settings(BaseSettings):
     llm_api_key: str = ""
     llm_model: str = ""
 
+    # --- Knowledge / Foundry IQ (empty endpoint -> offline fake provider) ---
+    # Keyless auth via DefaultAzureCredential (az login / managed identity); no key here.
+    knowledge_search_endpoint: str = ""
+    knowledge_base_name: str = ""
+    knowledge_source_name: str = ""
+
     # --- MCP OAuth2 resource server (empty -> local dev issuer) ---
     oauth_issuer: str = ""
     oauth_audience: str = ""
