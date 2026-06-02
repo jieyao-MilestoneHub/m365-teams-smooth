@@ -4,6 +4,23 @@ This roadmap turns a design review ([`enhance_point.md`](./enhance_point.md)) in
 phased plan. The engine is already complete and green locally; what follows are **enhancements that
 make the demo land**, not fixes. We implement them one small PR at a time.
 
+## Status — delivered (2026-06-03)
+
+**All phases E1–E5 are implemented and merged to a green `main`; this roadmap is complete.**
+
+| Phase | Outcome | PRs |
+| --- | --- | --- |
+| E1 — make the refusal unmissable | ✅ done | #167, #168 |
+| E2 — agentic natural-language parsing | ✅ done | #169, #170 |
+| E3 — four-system Launch Slip | ✅ done | #171 |
+| E4 — trust & truth (CI + truthful status) | ✅ done | #172 (bot CI: #174) |
+| E5 — tenant-free clickable card | ✅ done | #173 |
+
+Verified on `main`: backend **ruff 0 · mypy 0 · pytest green**; `scripts/verify.sh` = **13 passed /
+0 failed / 3 pending** (the 3 pending are tenant-gated). CI guards both `backend/` and
+`m365/playground-bot/`. The only work left for a full Teams demo is the tenant/Azure environment and
+the recording — **no engine code remains**.
+
 ## North star
 
 > **The agent stops an enterprise mistake before it happens, proposes a safer *executable*
@@ -26,8 +43,8 @@ the MCP tools/resources over an OAuth2 server (dev issuer + JWKS verifier), the 
 builder, the M365 manifests, the real GitHub adapter, and the real Foundry IQ knowledge provider.
 **124 tests pass · ruff 0 · mypy 0 · `scripts/verify.sh` = 13 passed / 0 failed / 3 pending (tenant).**
 
-> Note: `roadmap.md`'s phase badges still read `☐ todo` and contradict this state — **E4 corrects
-> them**. The single source of truth for status is this baseline and `scripts/verify.sh`.
+> Note: `roadmap.md`'s phase badges were corrected to match this state in **E4**. The single source
+> of truth for status is the Status table above and `scripts/verify.sh`.
 
 ## Guardrails (apply to every phase)
 
