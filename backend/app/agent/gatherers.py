@@ -25,7 +25,7 @@ def _read(
 def gather_launch(
     change: Change, registry: IntegrationRegistry, knowledge: KnowledgePort
 ) -> ImpactEvidence:
-    """Launch Slip: a milestone move ripples into the calendar, planner, and a pending announcement."""
+    """Launch Slip: a milestone move ripples into calendar, planner, and a pending announcement."""
     items: list[EvidenceItem] = []
     tags: list[str] = []
 
