@@ -1,7 +1,8 @@
 """Database engine and session factory, driven by ``DB_URL`` (SQLite now, Postgres later).
 
-Schema is created with ``Base.metadata.create_all`` for the SQLite-first local setup; Alembic
-migrations are tracked as a follow-up. The session factory is injected into the repositories.
+``init_db`` (``Base.metadata.create_all``) gives a zero-config local/test schema; versioned schema
+changes are managed by Alembic (``make migrate`` / ``alembic upgrade head``, same metadata). The
+session factory is injected into the repositories.
 """
 
 from __future__ import annotations
@@ -35,5 +36,5 @@ def make_session_factory(engine: Engine) -> sessionmaker[Session]:
 
 
 def init_db(engine: Engine) -> None:
-    """Create all tables if they do not exist (SQLite-first; Alembic is a follow-up)."""
+    """Create all tables if absent (zero-config local/test; Alembic for versioned schema)."""
     Base.metadata.create_all(engine)
