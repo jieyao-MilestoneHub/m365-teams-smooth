@@ -9,6 +9,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from app import __version__
+from app.api.health import router as health_router
 from app.config import Settings
 
 
@@ -17,6 +18,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or Settings()
     app = FastAPI(title="AI Change Court", version=__version__)
     app.state.settings = settings
+    app.include_router(health_router)
     return app
 
 
