@@ -32,6 +32,7 @@ from app.agent.policy_rules.packs import default_packs
 from app.agent.runner import CourtRunner
 from app.config import Settings
 from app.ports.integration import IntegrationAdapter
+from app.ports.registry import IntegrationRegistry
 from app.services.court_service import CourtService
 
 
@@ -41,26 +42,29 @@ def build_court_service(
     gatherers: dict[str, Gatherer] | None = None,
     planners: dict[str, Planner] | None = None,
     packs: list[RulePack] | None = None,
+    registry: IntegrationRegistry | None = None,
 ) -> CourtService:
     """Wire the registry, providers, persistence, graph, and runner into a CourtService.
 
     Gatherers, planners, and packs default to the three-trial configuration; pass explicit values
-    (including empty collections) to override — e.g. ``packs=[]`` for an approval-free court.
+    (including empty collections) to override — e.g. ``packs=[]`` for an approval-free court. A
+    ``registry`` override allows tests to inject adapters (e.g. with a failure injected).
     """
     gatherers = gatherers if gatherers is not None else GATHERERS
     planners = planners if planners is not None else PLANNERS
     packs = packs if packs is not None else default_packs()
 
-    candidates: dict[str, dict[str, IntegrationAdapter]] = {
-        "github": {"mock": MockGitHubAdapter()},
-        "outlook": {"mock": MockOutlookAdapter()},
-        "planner": {"mock": MockPlannerAdapter()},
-        "sharepoint": {"mock": MockSharePointAdapter()},
-        "teams": {"mock": MockTeamsAdapter()},
-        "crm": {"mock": MockCRMAdapter()},
-        "entra": {"mock": MockEntraAdapter()},
-    }
-    registry = build_registry(settings, candidates)
+    if registry is None:
+        candidates: dict[str, dict[str, IntegrationAdapter]] = {
+            "github": {"mock": MockGitHubAdapter()},
+            "outlook": {"mock": MockOutlookAdapter()},
+            "planner": {"mock": MockPlannerAdapter()},
+            "sharepoint": {"mock": MockSharePointAdapter()},
+            "teams": {"mock": MockTeamsAdapter()},
+            "crm": {"mock": MockCRMAdapter()},
+            "entra": {"mock": MockEntraAdapter()},
+        }
+        registry = build_registry(settings, candidates)
     knowledge = FakeKnowledgeProvider()
 
     engine = make_engine(settings.db_url)
