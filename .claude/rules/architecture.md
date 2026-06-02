@@ -1,8 +1,9 @@
 # Architecture — the standing engineering contract
 
-The system turns a team decision into a reviewable, approvable, auditable cross-system execution.
-Keep the layering and SOLID boundaries below intact; they are what make the project extensible and
-demo-able at once.
+The system turns a risky team decision into a reviewable, approvable, auditable cross-system
+execution — and, when the decision is unsafe, refuses it and proposes a safer alternative. Keep the
+layering and SOLID boundaries below intact; they are what make the project extensible and demo-able
+at once.
 
 ## Shape
 
@@ -12,14 +13,14 @@ Microsoft 365 Copilot Chat / Teams
         │ MCP + OAuth2
         ▼
   FastAPI process (backend/)
-     ├─ mcp/        MCP server: tools + resources + OAuth2 resource server
-     ├─ api/        REST routers for the Next.js dashboard
+     ├─ mcp/        MCP server: tools + resources + OAuth2 resource server (primary surface)
+     ├─ api/        minimal REST: health + audit/trial inspection
      ├─ services/   single business layer (REST + MCP both delegate here — no duplication)
-     ├─ agent/      LangGraph single-agent: plan → policy → [approval interrupt] → execute → audit
+     ├─ agent/      LangGraph court: intake → impact → options → policy+quorum → [verdict] → execute → audit
      ├─ ports/      abstract interfaces (DIP boundary)
      ├─ adapters/   integrations (real GitHub + mock others), persistence, llm, notifiers
      └─ domain/     pure models/enums/errors (no framework or SDK imports)
-  Next.js (frontend/) = audit + approval dashboard
+  Teams Adaptive Card = the primary UI (Change Court card). No web dashboard.
   SQLite (local) → Postgres (later), DB_URL-driven
 ```
 
@@ -27,36 +28,52 @@ Microsoft 365 Copilot Chat / Teams
 
 - **Dependency Inversion:** `agent/` and `services/` depend on `ports/` only — never on the GitHub
   SDK, SQLAlchemy, or an LLM client directly. Concrete implementations live in `adapters/`.
-- **One business layer:** REST routers and MCP tools are thin façades over `services/`. No business
-  logic in routers or tools.
+- **One business layer:** MCP tools and REST routers are thin façades over `services/`. No business
+  logic in routers or tools. The Adaptive Card renders data the services produce.
 - **Pure domain:** `domain/` imports nothing from FastAPI, LangGraph, or any adapter.
 
-## LangGraph single-agent
+## LangGraph single-agent "Change Court"
 
-- **State** (serializable, checkpointed): `thread_id, decision_id, raw_decision, source, run_mode,
-  plan, risk, approval, results, audit_id, errors`.
+A single, inspectable graph, presented as courtroom roles (Prosecutor = impact, Defender = options,
+Clerk = audit, Executor = execute). It is one agent today; the multi-agent path is a seam, not a
+rewrite (see below).
+
+- **State** (serializable, checkpointed): `thread_id, change_id, raw_request, source, run_mode,
+  change, impact, options, plan, risk, quorum, verdict, results, audit_id, errors`.
 - **Nodes** (single responsibility each):
-  - `plan` — LLM extracts an `ExecutionPlan`; every step validated against **registered adapter
-    capabilities** (no hallucinated actions).
-  - `policy` — deterministic risk scoring → `requires_approval`. Rules are data, not code.
-  - `execute` — registry → adapter per step; honors `run_mode` (DRY_RUN returns predicted effects,
-    no side effects).
-  - `audit` — append-only before/after snapshot + rollback hints.
-- **Approval = durable interrupt:** suspend at `interrupt()` / `interrupt_before=["execute"]`,
-  checkpointed by `thread_id`. The submitting request returns immediately; a later approval call
-  rehydrates from the checkpointer and resumes. **Never hold the graph in memory across the approval
-  gap.**
+  - `intake` — parse the request into a structured `Change`; **validate every requested action
+    against registered adapter capabilities** (hallucination guard — unsupported actions are blocked,
+    not planned).
+  - `impact` (Prosecutor) — gather second-order consequences via adapter **read** capabilities
+    (blockers, customer commitments, renewal value, schedule conflicts) → `ImpactEvidence`.
+  - `options` (Defender) — produce a feasible `ExecutionPlan`; when the request is unsafe, produce a
+    **safe alternative** (e.g. private preview instead of GA; least-privilege + expiry instead of
+    broad access).
+  - `policy + quorum` — deterministic risk scoring → `requires_approval`; derive the **required
+    approvers** (quorum) from impact tags and the available **verdict options**. Rules are data, not code.
+  - `execute` (Executor) — registry → adapter per step; honors `run_mode` (DRY_RUN returns predicted
+    effects, no side effects).
+  - `audit` (Clerk) — append-only before/after snapshot + rollback hints + the full trial record
+    (impact, options, approvers, verdict).
+- **Verdict = durable interrupt:** suspend at `interrupt()` / `interrupt_before=["execute"]`,
+  checkpointed by `thread_id`. The submitting request returns immediately; a later `cast_verdict`
+  call rehydrates from the checkpointer and resumes. **Never hold the graph in memory across the
+  verdict gap.** Casting the same verdict twice is idempotent — no double execution.
 - **Dry-run** is a first-class state field, not a separate code path.
 
 ## SOLID integration adapters
 
-- Port `IntegrationAdapter`: `capabilities() / validate() / execute(step, mode) / fetch_before() /
-  suggest_rollback()`.
+- Port `IntegrationAdapter`: `capabilities() / validate() / read(query) / execute(step, mode) /
+  fetch_before() / suggest_rollback()`. Capabilities are typed and split into **read** (evidence for
+  the impact node) and **write** (actions for execution).
 - `BaseIntegrationAdapter` template-methods the dry-run branch and error→`IntegrationError` mapping.
 - `IntegrationRegistry` selects **real vs mock per system from config** (`integration_mode`, plus a
   `FORCE_ALL_MOCK` flag to run with zero external credentials).
 - **Open/Closed:** a new integration = one adapter module + one registration. No edits to graph,
   services, REST, or MCP.
+- **Scope discipline:** only the adapters the three trials require are built — GitHub (real) and mock
+  Outlook, Planner, SharePoint, Teams, CRM, Entra. Others (ServiceNow, a generic Graph adapter) are
+  backlog.
 
 ## Persistence
 
@@ -67,11 +84,11 @@ Microsoft 365 Copilot Chat / Teams
 
 ## Extensibility seams (do not paint over)
 
-- **Connected/multi-agent:** nodes are state-in/state-out; an executor sub-agent per system slots in
-  behind a `SubAgentRegistry` mirroring `IntegrationRegistry`.
+- **Connected/multi-agent:** nodes are state-in/state-out; the courtroom roles (Prosecutor, Defender,
+  Clerk, Executor) slot in behind a `SubAgentRegistry` mirroring `IntegrationRegistry`.
 - **More MCP tools / Adaptive Cards:** `mcp/tools.py` is a thin façade; card templates are data in
   `m365/adaptive-cards/`.
 - **Notifier port** for future approval channels (email, webhook) without graph changes.
 
-Record significant choices as ADRs under `docs/adr/` (e.g. the interrupt-vs-MCP-statelessness
+Record significant choices as ADRs under `docs/adr/` (e.g. the verdict-interrupt-vs-MCP-statelessness
 decision).

@@ -1,28 +1,60 @@
-# Command Center — Decision-to-Action Agent
+# AI Change Court
 
-Turn a team decision into a reviewable, approvable, auditable set of actions across the tools your
-team already uses.
+**Governed execution for risky enterprise decisions in Microsoft Teams.**
 
-Decisions get made in chat and meetings — "slip the launch one week", "escalate this customer",
-"grant the contractor two weeks of access" — and then nobody updates the issue tracker, the
-calendar, the ticketing system, or the permissions. Command Center reads the decision, proposes a
-cross-system **execution plan**, asks a human to approve it, executes it through real APIs, and
-keeps an **audit trail** with rollback suggestions.
+Decisions happen in chat faster than governance can keep up — "delay the launch a week", "promise
+this customer the feature by Friday", "give this vendor access until the campaign is done." Each one
+quietly mutates GitHub, calendars, CRM, SharePoint, support, and compliance. AI Change Court puts a
+risky decision **on trial** before it becomes action: it detects who and what the decision affects,
+simulates the consequences, decides which stakeholders must sign off, collects a verdict, and only
+then executes across systems — leaving an auditable trail.
 
-It is not a chatbot. It is an action layer: **plan → approve → execute → audit.**
+It is not a chatbot and not a workflow macro. It decides **whether a decision is even safe to
+execute**, and when it isn't, it says so and proposes a safer path.
 
-## How it works
+## The trial
 
-1. **Plan** — the agent reads the decision and produces a structured execution plan: which systems
-   change, what actions run, and the predicted effect of each step.
-2. **Policy** — each plan is risk-scored. Low-risk plans can run directly; anything sensitive
-   requires human approval.
-3. **Approve** — the plan is presented for review (as an Adaptive Card in chat, or in the
-   dashboard). A human approves, edits, or rejects.
-4. **Execute** — approved steps run through pluggable integration adapters.
-5. **Audit** — every step records a before/after snapshot and a rollback hint, append-only.
+Every request runs through a single, inspectable "court" pipeline:
 
-A **dry-run** mode shows exactly what *would* change without touching any external system.
+```
+intake → impact → options → policy + quorum → [verdict] → execute → audit
+```
+
+1. **Intake** — parse the request into a structured change; every requested action is validated
+   against a **capability registry**, so the agent cannot invent or perform unsupported actions.
+2. **Impact** — gather the second-order consequences across systems (open blockers, customer
+   commitments, renewal value, schedule conflicts) as evidence.
+3. **Options** — produce a feasible execution plan; when the request is unsafe, produce a **safe
+   alternative**.
+4. **Policy + quorum** — risk-score the change (rules are data), decide which stakeholders must
+   approve, and offer verdict options (approve · approve internal only · request revision · reject).
+5. **Verdict** — the run **suspends to a durable checkpoint** and waits; a cast verdict resumes it.
+6. **Execute** — approved steps run through pluggable adapters; a **dry-run** mode predicts effects
+   without touching any external system.
+7. **Audit** — every step records an append-only before/after snapshot with rollback hints.
+
+The pipeline is presented as courtroom roles — Prosecutor (impact), Defender (options), Clerk
+(audit), Executor (execution) — implemented today as one controllable agent.
+
+## What it looks like
+
+In Teams, a risky decision returns a **Change Court card**: the proposed change, the impact
+evidence, the stakeholders required to approve, the predicted effects with rollback hints, and the
+verdict buttons. Approving resumes the run and executes; the audit trail records the outcome.
+
+## Three trials
+
+- **Launch Slip Trial** — "slip the launch from June 10 to June 17." Updates a real GitHub milestone
+  plus mock calendar, planner, and announcement; flagged HIGH risk; an unsupported request such as
+  "delete the repo" is blocked by the capability registry; a simulated step failure surfaces a
+  partial result with a rollback hint instead of crashing.
+- **Customer Promise Trial** — "promise Customer A the SSO feature is GA by June 17." The court finds
+  open blockers, the customer's renewal value, and a security review scheduled *after* the promised
+  date, then **rejects the unsafe promise** and proposes a safe alternative (private preview on the
+  17th, GA after the review), drafting the customer reply and an escalation thread.
+- **Vendor Access Trial** — "give the vendor access until the campaign is done." The court flags the
+  ambiguous duration and the over-broad scope, and proposes **least-privilege** access (read-only to
+  one folder) with an **expiry and auto-revoke**, pending the right approvals.
 
 ## Architecture
 
@@ -33,32 +65,28 @@ Microsoft 365 Copilot Chat / Teams
         ▼
   FastAPI service (backend/)
      ├─ MCP server      tools + resources the chat agent calls (OAuth2-secured)
-     ├─ REST API        consumed by the dashboard
+     ├─ REST API        minimal: health + audit/trial inspection
      ├─ Services        single business layer shared by MCP and REST
-     ├─ Agent           LangGraph: plan → policy → [approval] → execute → audit
+     ├─ Agent           LangGraph court: intake → impact → options → policy+quorum → [verdict] → execute → audit
      ├─ Ports           abstract interfaces (the dependency-inversion boundary)
-     └─ Adapters        GitHub (real) + Outlook/Planner/CRM/ServiceNow/SharePoint/Entra (mock)
-  Next.js (frontend/)  audit + approval dashboard
+     └─ Adapters        GitHub (real) + Outlook/Planner/SharePoint/Teams/CRM/Entra (mock)
   SQLite (local) → Postgres (later)
 ```
 
 Design highlights:
 
-- **LangGraph single-agent** orchestration keeps the flow controllable and inspectable; the approval
-  step is a **durable interrupt** — the run suspends to a checkpoint and resumes when approved, so
-  nothing is held in memory across the wait.
-- **Ports & adapters (SOLID).** Integrations sit behind one `IntegrationAdapter` interface. GitHub
-  is a real adapter; the rest are mock adapters returning realistic data. Real-vs-mock is chosen by
-  configuration, so the whole system runs locally with no external credentials.
-- **One business layer.** The MCP tools (for the chat agent) and the REST API (for the dashboard)
-  both delegate to the same services — no duplicated logic.
-
-The first end-to-end scenario implemented is **Launch Change Commander**: a launch-date change that
-updates a GitHub milestone/issue and (via mock adapters) the calendar, planner, and announcements.
+- **Durable verdict interrupt.** The run suspends to a checkpoint at the verdict gate and resumes
+  when a verdict is cast, so nothing is held in memory across the wait.
+- **Ports & adapters (SOLID).** Integrations sit behind one `IntegrationAdapter` interface exposing
+  both **read** (evidence) and **write** (action) capabilities. GitHub is real; the rest are mocks
+  returning realistic data, chosen by configuration, so the whole system runs locally with no
+  external credentials.
+- **One business layer.** The MCP tools and the minimal REST API both delegate to the same services
+  — no duplicated logic. The Teams Adaptive Card is the primary surface.
 
 ## Tech stack
 
-- **Frontend:** Next.js (TypeScript)
+- **Entry point:** Microsoft 365 Copilot declarative agent + Adaptive Cards
 - **Backend:** FastAPI (Python 3.11+)
 - **Agent orchestration:** LangGraph
 - **Integration protocol:** Model Context Protocol (MCP) with OAuth 2.0
@@ -68,10 +96,9 @@ updates a GitHub milestone/issue and (via mock adapters) the calendar, planner, 
 
 ```
 backend/    FastAPI app: agent/, mcp/, api/, services/, ports/, adapters/, domain/
-frontend/   Next.js dashboard
 m365/        declarative agent manifest, plugin manifest, Adaptive Card templates
-docs/        architecture, ADRs, API contract, integration guide
-scripts/     developer/demo scripts (e.g. verify.sh, seed data)
+docs/        architecture, ADRs, API/contract, trials & test data
+scripts/     developer/demo scripts (verify.sh, seed data)
 ```
 
 ## Getting started (local)
@@ -80,20 +107,14 @@ scripts/     developer/demo scripts (e.g. verify.sh, seed data)
 > entry point is wired separately once a tenant is available.
 
 ```bash
-# Backend
 cd backend
 uv sync                 # or: poetry install
 cp ../.env.example ../.env
 uvicorn app.main:app --reload
-
-# Frontend
-cd ../frontend
-pnpm install
-pnpm dev
 ```
 
-Then open the dashboard (default http://localhost:3000) and the API health check
-(http://localhost:8000/api/health).
+Then the API health check is at http://localhost:8000/api/health, and the MCP server is mounted on
+the same app for the declarative agent to call.
 
 ## Configuration
 
@@ -102,7 +123,7 @@ Set via environment variables (see `.env.example`):
 - `DB_URL` — defaults to a local SQLite file.
 - `INTEGRATION_MODE` — per-system `real` or `mock` selection (default: GitHub `real`, others `mock`).
 - `FORCE_ALL_MOCK=true` — run every integration as a mock, with zero external credentials.
-- `DRY_RUN_DEFAULT` — whether new decisions default to dry-run.
+- `DRY_RUN_DEFAULT` — whether new changes default to dry-run.
 - `GITHUB_TOKEN` — required only when the GitHub adapter runs in `real` mode.
 - `OAUTH_*` — MCP OAuth2 settings; a local dev issuer is used when no tenant is configured.
 
@@ -110,5 +131,5 @@ Set via environment variables (see `.env.example`):
 
 ## Status
 
-This project is under active development. See [`roadmap.md`](./roadmap.md) for milestones and
-[`verify.md`](./verify.md) for the end-to-end verification checklist.
+This project is under active development. See [`roadmap.md`](./roadmap.md) for the phased plan and
+[`verify.md`](./verify.md) for the end-to-end verification of the three trials.
