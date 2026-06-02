@@ -13,6 +13,7 @@ from app.adapters.integrations.mock_outlook import MockOutlookAdapter
 from app.adapters.integrations.mock_planner import MockPlannerAdapter
 from app.adapters.integrations.mock_sharepoint import MockSharePointAdapter
 from app.adapters.integrations.mock_teams import MockTeamsAdapter
+from app.adapters.integrations.real_github import RealGitHubAdapter
 from app.adapters.integrations.registry import build_registry
 from app.adapters.knowledge.fake_knowledge import FakeKnowledgeProvider
 from app.adapters.persistence.checkpointer import SqliteCheckpointStore
@@ -55,8 +56,11 @@ def build_court_service(
     packs = packs if packs is not None else default_packs()
 
     if registry is None:
+        github: dict[str, IntegrationAdapter] = {"mock": MockGitHubAdapter()}
+        if settings.github_token and settings.github_repo:
+            github["real"] = RealGitHubAdapter(settings.github_token, settings.github_repo)
         candidates: dict[str, dict[str, IntegrationAdapter]] = {
-            "github": {"mock": MockGitHubAdapter()},
+            "github": github,
             "outlook": {"mock": MockOutlookAdapter()},
             "planner": {"mock": MockPlannerAdapter()},
             "sharepoint": {"mock": MockSharePointAdapter()},
