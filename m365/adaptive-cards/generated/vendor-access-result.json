@@ -22,7 +22,7 @@
     },
     {
       "type": "TextBlock",
-      "text": "Audit: 7e921020c47248b6a85044b1f51d03f1",
+      "text": "Audit: <audit-id>",
       "wrap": true
     },
     {

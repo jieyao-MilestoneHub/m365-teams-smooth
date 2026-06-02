@@ -73,9 +73,10 @@ def run() -> None:
         cast = service.cast_verdict(summary.thread_id, verdict_type, selected_plan=selected)
         trial = service.get_trial(summary.thread_id)
         assert trial is not None
+        # A placeholder audit id keeps the exported file reproducible (the real id is per-run).
         _write(
             _OUT_DIR / f"{slug}-result.json",
-            build_verdict_result_card(trial, status=cast.status, audit_id=cast.audit_id),
+            build_verdict_result_card(trial, status=cast.status, audit_id="<audit-id>"),
         )
 
 
