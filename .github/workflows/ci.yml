@@ -31,3 +31,26 @@ jobs:
         run: uv run mypy
       - name: Test (pytest)
         run: uv run pytest
+
+  # The tenant-free Playground bot (reuses the backend in-process); same lint/type/test gate.
+  bot:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: m365/playground-bot
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          # The bot deliberately does not commit a lockfile; key the cache on its manifest.
+          cache-dependency-glob: m365/playground-bot/pyproject.toml
+      - name: Install dependencies
+        run: uv sync
+      - name: Lint (ruff)
+        run: uv run ruff check
+      - name: Type-check (mypy)
+        run: uv run mypy
+      - name: Test (pytest)
+        run: uv run pytest
