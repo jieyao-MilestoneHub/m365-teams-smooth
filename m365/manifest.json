@@ -1,0 +1,35 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.19/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.19",
+  "version": "1.0.0",
+  "id": "${{TEAMS_APP_ID}}",
+  "developer": {
+    "name": "AI Change Court",
+    "websiteUrl": "https://change-court.local",
+    "privacyUrl": "https://change-court.local/privacy",
+    "termsOfUseUrl": "https://change-court.local/terms"
+  },
+  "name": {
+    "short": "AI Change Court",
+    "full": "AI Change Court — governed execution"
+  },
+  "description": {
+    "short": "Put a risky decision on trial before it becomes action.",
+    "full": "AI Change Court gathers cross-system impact evidence for a risky change, proposes a feasible plan or a safer alternative, resolves the required approvers, collects a verdict, executes, and records an append-only audit trail."
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "accentColor": "#2A6FB0",
+  "copilotAgents": {
+    "declarativeAgents": [
+      {
+        "id": "changeCourt",
+        "file": "declarative-agent.json"
+      }
+    ]
+  },
+  "permissions": ["identity", "messageTeamMembers"],
+  "validDomains": ["${{MCP_HOST_DOMAIN}}"]
+}
