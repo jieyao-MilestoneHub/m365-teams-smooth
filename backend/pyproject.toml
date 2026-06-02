@@ -15,6 +15,10 @@ dependencies = [
     "mcp>=1.2",
     "pyjwt>=2.8",
     "alembic>=1.13",
+    # Knowledge grounding (Foundry IQ over Azure AI Search). Beta pin: the agentic-retrieval
+    # KnowledgeBaseRetrievalClient lives in this preview. Only used when the real provider is configured.
+    "azure-search-documents==12.1.0b1",
+    "azure-identity>=1.17",
 ]
 
 [dependency-groups]
@@ -48,6 +52,11 @@ files = ["app", "tests"]
 # domain, ports, services, and nodes stay under full strict checking.
 [[tool.mypy.overrides]]
 module = ["langgraph.*", "langgraph_checkpoint_sqlite.*"]
+ignore_missing_imports = true
+
+# The Azure SDK ships only partial type information; relax its imports the same way.
+[[tool.mypy.overrides]]
+module = ["azure.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
