@@ -52,6 +52,7 @@ def test_every_plan_step_references_a_registered_capability() -> None:
     assert trial is not None and trial.options is not None
     expected = {
         "github.update_milestone_due",
+        "outlook.create_event",
         "planner.shift_task_dates",
         "teams.update_announcement",
     }

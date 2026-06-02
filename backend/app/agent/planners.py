@@ -36,7 +36,7 @@ def _evidence_field(impact: ImpactEvidence, kind: str, field: str) -> str | None
 
 
 def plan_launch(change: Change, impact: ImpactEvidence) -> ExecutionPlan:
-    """Feasible: move the milestone and ripple into planner and the announcement."""
+    """Feasible: move the milestone and ripple into calendar, planner, and the announcement."""
     new_due = change.due_by or "2026-06-17"
     old_due = _evidence_field(impact, "milestone", "due_on") or "2026-06-10"
     delta = (date.fromisoformat(new_due) - date.fromisoformat(old_due)).days
@@ -47,9 +47,15 @@ def plan_launch(change: Change, impact: ImpactEvidence) -> ExecutionPlan:
             "github.update_milestone_due",
             {"milestone": "Launch", "due_on": new_due},
         ),
-        _step("s2", "planner", "planner.shift_task_dates", {"delta_days": delta}),
         _step(
-            "s3",
+            "s2",
+            "outlook",
+            "outlook.create_event",
+            {"title": f"Launch review: moved to {new_due}", "start": new_due},
+        ),
+        _step("s3", "planner", "planner.shift_task_dates", {"delta_days": delta}),
+        _step(
+            "s4",
             "teams",
             "teams.update_announcement",
             {"channel": "launch", "message": f"Launch has moved to {new_due}."},
@@ -58,7 +64,7 @@ def plan_launch(change: Change, impact: ImpactEvidence) -> ExecutionPlan:
     return ExecutionPlan(
         kind=PlanKind.FEASIBLE,
         steps=steps,
-        rationale=f"Move the launch to {new_due}; update dependent schedule and announcement.",
+        rationale=f"Move the launch to {new_due}; update calendar, schedule, and announcement.",
     )
 
 

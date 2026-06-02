@@ -23,8 +23,14 @@ def test_launch_plan_is_feasible_and_ripples() -> None:
     )
     plan = plan_launch(Change(change_id="c1", raw_request="x", due_by="2026-06-17"), impact)
     assert plan.kind is PlanKind.FEASIBLE
-    caps = [s.capability.name for s in plan.steps]
-    assert "github.update_milestone_due" in caps
+    caps = {s.capability.name for s in plan.steps}
+    # the launch ripple spans four systems: GitHub, Outlook, Planner, Teams
+    assert caps == {
+        "github.update_milestone_due",
+        "outlook.create_event",
+        "planner.shift_task_dates",
+        "teams.update_announcement",
+    }
     shift = next(s for s in plan.steps if s.capability.name == "planner.shift_task_dates")
     assert shift.params["delta_days"] == 7  # 2026-06-10 -> 2026-06-17
 
