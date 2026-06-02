@@ -96,7 +96,7 @@ uv run pytest path/to/test.py::test_name   # single test
 ```
 
 There is no frontend. The Teams Adaptive Card is the only UI; audit/trial data is exposed via an MCP
-resource and a minimal REST endpoint.
+resource (REST is health-only).
 
 End-to-end checklist: `scripts/verify.sh` (verifies the three trials; currently stubbed).
 
