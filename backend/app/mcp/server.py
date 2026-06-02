@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from mcp.server.fastmcp import FastMCP
 
+from app.mcp.resources import register_resources
 from app.mcp.tools import register_tools
 from app.services.court_service import CourtService
 
@@ -15,11 +16,12 @@ MCP_PATH = "/mcp"
 
 
 def build_mcp_server(service: CourtService) -> FastMCP:
-    """Build the MCP server with the court tools registered against ``service``."""
+    """Build the MCP server with the court tools and resources registered against ``service``."""
     mcp = FastMCP(
         "AI Change Court",
         stateless_http=True,
         streamable_http_path="/",
     )
     register_tools(mcp, service)
+    register_resources(mcp, service)
     return mcp

@@ -87,5 +87,9 @@ def build_court_service(
     )
     runner = CourtRunner(graph)
     return CourtService(
-        runner, audit_repo, ledger, dry_run_default=settings.dry_run_default
+        runner,
+        audit_repo,
+        ledger,
+        registry=registry,
+        dry_run_default=settings.dry_run_default,
     )

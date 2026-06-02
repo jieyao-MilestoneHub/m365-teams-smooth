@@ -17,6 +17,8 @@ from pydantic import BaseModel
 from app.agent.runner import CourtRunner
 from app.agent.state import CourtState, initial_state
 from app.domain import (
+    AuditRecord,
+    Capability,
     Change,
     ExecutionPlan,
     ImpactEvidence,
@@ -29,6 +31,7 @@ from app.domain import (
     Verdict,
     VerdictType,
 )
+from app.ports.registry import IntegrationRegistry
 from app.ports.repository import AuditRepository, VerdictLedger
 from app.services.dto import CastResult, TrialSummary
 
@@ -49,14 +52,24 @@ class CourtService:
         audit_repo: AuditRepository,
         ledger: VerdictLedger,
         *,
+        registry: IntegrationRegistry | None = None,
         dry_run_default: bool = True,
         id_factory: Callable[[], str] = lambda: uuid4().hex,
     ) -> None:
         self._runner = runner
         self._audit = audit_repo
         self._ledger = ledger
+        self._registry = registry
         self._dry_run_default = dry_run_default
         self._id = id_factory
+
+    def capabilities(self) -> list[Capability]:
+        """The merged capability catalog the court can act on (empty if no registry is wired)."""
+        return self._registry.capabilities() if self._registry is not None else []
+
+    def get_audit(self, audit_id: str) -> AuditRecord | None:
+        """Fetch an append-only audit record by id."""
+        return self._audit.get(audit_id)
 
     def submit_change(
         self, raw_request: str, *, source: str = "api", run_mode: RunMode | None = None
