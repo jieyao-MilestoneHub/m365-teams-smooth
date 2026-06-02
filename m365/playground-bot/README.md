@@ -63,6 +63,21 @@ Other requests work too, e.g. `give the vendor access to Project X until the cam
 (ambiguous → least-privilege alternative) or `slip the launch from 2026-06-10 to 2026-06-17`
 (coordinated multi-system plan).
 
+## Capture the card visual (no tenant)
+
+The Agents Playground renders the **real** Change Court Adaptive Card, so it is the tenant-free way
+to get a Teams-style card screenshot or recording:
+
+1. `make bot`, then `npx @microsoft/teams-app-test-tool@latest start` (as above).
+2. Type `promise Customer A that SSO is GA by 2026-06-17` and screen-record: the card shows
+   **⛔ REJECTED as requested**, the decisive evidence with its citation, and the **safe
+   alternative**; clicking **Accept alternative** posts the **✅ Safe alternative executed** result.
+3. Repeat for the Vendor Access and Launch Slip requests for the full three-trial reel.
+
+Prefer a static preview? The exact card JSON is checked in under
+[`../adaptive-cards/generated/`](../adaptive-cards/generated) (regenerate with `make cards`) — paste
+any file into the [Adaptive Cards Designer](https://adaptivecards.io/designer) to render it.
+
 ## Configuration
 
 Environment variables (all optional):
@@ -88,6 +103,6 @@ fake-backed routing tests.
 
 ## Scope
 
-This bot is the tenant-free path. Installing the agent in a real Microsoft 365 tenant (Teams
-sideload, dev tunnel, live Microsoft Graph writes) is owned by the `m365/` manifests and the
-environment setup — out of scope here.
+This bot is the tenant-free path — enough to render and click the Change Court card and capture the
+visual (see above). Installing the agent in a real Microsoft 365 tenant (Teams sideload, dev tunnel,
+live Microsoft Graph writes) is owned by the `m365/` manifests and the environment setup.

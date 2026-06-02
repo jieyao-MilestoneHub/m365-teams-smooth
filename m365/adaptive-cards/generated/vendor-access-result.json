@@ -1,0 +1,59 @@
+{
+  "type": "AdaptiveCard",
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "version": "1.5",
+  "body": [
+    {
+      "type": "TextBlock",
+      "text": "✅ Safe alternative executed",
+      "wrap": true,
+      "weight": "Bolder",
+      "color": "Good"
+    },
+    {
+      "type": "TextBlock",
+      "text": "Refused the request as posed; ran the safer plan instead.",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "Status: done",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "Audit: 7e921020c47248b6a85044b1f51d03f1",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "• s1: dry_run (predicted)",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "    ↩ rollback: revoke the granted folder permission",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "• s2: dry_run (predicted)",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "    ↩ rollback: cancel the guest invite / scheduled revoke",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "• s3: dry_run (predicted)",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "    ↩ rollback: cancel the guest invite / scheduled revoke",
+      "wrap": true
+    }
+  ]
+}

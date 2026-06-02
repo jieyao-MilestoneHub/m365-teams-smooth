@@ -1,0 +1,155 @@
+{
+  "type": "AdaptiveCard",
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "version": "1.5",
+  "body": [
+    {
+      "type": "TextBlock",
+      "text": "AI Change Court",
+      "wrap": true,
+      "weight": "Bolder"
+    },
+    {
+      "type": "TextBlock",
+      "text": "promise Customer A that SSO is GA by 2026-06-17",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "Risk: HIGH",
+      "wrap": true,
+      "weight": "Bolder",
+      "color": "Attention"
+    },
+    {
+      "type": "TextBlock",
+      "text": "⛔ REJECTED as requested — proposing a safer alternative",
+      "wrap": true,
+      "weight": "Bolder",
+      "color": "Attention"
+    },
+    {
+      "type": "TextBlock",
+      "text": "Reject the GA promise: offer a private preview on 2026-06-17, with GA pending the security review on 2026-06-18.",
+      "wrap": true,
+      "color": "Attention"
+    },
+    {
+      "type": "TextBlock",
+      "text": "⚠ Decisive evidence",
+      "wrap": true,
+      "weight": "Bolder",
+      "color": "Attention"
+    },
+    {
+      "type": "TextBlock",
+      "text": "• [outlook] Security review on 2026-06-18 is after the promised 2026-06-17",
+      "wrap": true,
+      "weight": "Bolder"
+    },
+    {
+      "type": "TextBlock",
+      "text": "    ↳ A capability cannot be declared generally available before its security review completes. (GA Readiness Policy §2.1)",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "Impact evidence",
+      "wrap": true,
+      "weight": "Bolder"
+    },
+    {
+      "type": "TextBlock",
+      "text": "• [github] 2 open blocking issue(s)",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "• [crm] Renewal value 250000 due 2026-09-30",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "• [knowledge] grounded governance facts",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "    ↳ A capability cannot be declared generally available before its security review completes. (GA Readiness Policy §2.1)",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "    ↳ Commitments affecting an at-risk renewal require account-owner sign-off. (Commercial Commitments Policy §1.4)",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "Safe alternative: Reject the GA promise: offer a private preview on 2026-06-17, with GA pending the security review on 2026-06-18.",
+      "wrap": true,
+      "weight": "Bolder"
+    },
+    {
+      "type": "TextBlock",
+      "text": "• github.comment_issue",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "• outlook.create_event",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "• crm.add_note",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "• outlook.draft_email",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "• teams.create_escalation_thread",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "Approvers required (all): security_lead, account_owner",
+      "wrap": true
+    }
+  ],
+  "actions": [
+    {
+      "type": "Action.Submit",
+      "title": "accept_alternative",
+      "data": {
+        "tool": "cast_verdict",
+        "thread_id": "<thread-id>",
+        "verdict_type": "accept_alternative",
+        "selected_plan": "safe_alternative"
+      }
+    },
+    {
+      "type": "Action.Submit",
+      "title": "request_revision",
+      "data": {
+        "tool": "cast_verdict",
+        "thread_id": "<thread-id>",
+        "verdict_type": "request_revision",
+        "selected_plan": "safe_alternative"
+      }
+    },
+    {
+      "type": "Action.Submit",
+      "title": "reject",
+      "data": {
+        "tool": "cast_verdict",
+        "thread_id": "<thread-id>",
+        "verdict_type": "reject",
+        "selected_plan": "safe_alternative"
+      }
+    }
+  ]
+}
