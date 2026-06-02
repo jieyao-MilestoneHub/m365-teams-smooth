@@ -1,0 +1,39 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/copilot/plugin/v2.3/schema.json",
+  "schema_version": "v2.3",
+  "name_for_human": "AI Change Court",
+  "description_for_human": "Put a risky change on trial: impact evidence, a plan or a safer alternative, approvers, and an audit trail.",
+  "description_for_model": "Use to open and review a governed-execution trial for a risky enterprise change. submit_change opens a trial and returns the impact, risk, plan (or safe alternative), and required approvers; get_trial returns the full record; cast_verdict records a decision (use accept_alternative for the safe alternative); get_status returns the lifecycle state.",
+  "namespace": "changecourt",
+  "functions": [
+    {
+      "name": "submit_change",
+      "description": "Open a trial for a risky change; returns the trial summary (status, risk, plan, verdict options)."
+    },
+    {
+      "name": "get_status",
+      "description": "Return the current lifecycle status of a trial."
+    },
+    {
+      "name": "get_trial",
+      "description": "Return the full trial record: change, impact, options, risk, quorum, verdict, results."
+    },
+    {
+      "name": "cast_verdict",
+      "description": "Record a reviewer's verdict and resume the trial; idempotent per thread and key."
+    }
+  ],
+  "runtimes": [
+    {
+      "type": "McpServer",
+      "auth": {
+        "type": "OAuthPluginVault",
+        "reference_id": "${{OAUTH_CONNECTION_ID}}"
+      },
+      "spec": {
+        "url": "${{MCP_SERVER_URL}}"
+      },
+      "run_for_functions": ["submit_change", "get_status", "get_trial", "cast_verdict"]
+    }
+  ]
+}
