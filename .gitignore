@@ -1,0 +1,51 @@
+# --- Secrets / local config ---
+.env
+.env.*
+!.env.example
+.claude/settings.local.json
+
+# Internal engineering guidance kept out of the public repo
+.claude/rules/competition.md
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# --- Node / Next.js ---
+node_modules/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+.pnpm-store/
+
+# --- Local data / databases ---
+data/
+*.sqlite
+*.sqlite3
+*.db
+
+# --- Logs ---
+*.log
+logs/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.shared.json
