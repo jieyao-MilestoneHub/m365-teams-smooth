@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.adapters.knowledge.fake_knowledge import FakeKnowledgeProvider
+from app.adapters.parsers.deterministic import DeterministicRequestParser
 from app.adapters.persistence.checkpointer import SqliteCheckpointStore
 from app.agent.graph import build_court_graph
 from app.agent.nodes.audit import AuditNode
@@ -62,7 +63,7 @@ def _build(audit_repo: InMemoryAuditRepository, store: SqliteCheckpointStore) ->
     registry = build_mock_registry()
     knowledge = FakeKnowledgeProvider()
     return build_court_graph(
-        intake=IntakeNode(registry),
+        intake=IntakeNode(DeterministicRequestParser(), registry),
         impact=ImpactNode(registry, knowledge, {"launch": _launch_gatherer}),
         options=OptionsNode({}),
         policy=PolicyNode([_PACK]),

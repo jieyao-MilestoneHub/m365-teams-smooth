@@ -1,85 +1,29 @@
-"""Intake node: parse the request into a structured Change and run the hallucination guard.
+"""Intake node: turn the request into a structured Change and run the hallucination guard.
 
-Parsing is deterministic so the trials are reproducible. The guard validates every requested action
-against the registered capabilities; an unsupported action (e.g. "delete the repo") is rejected — it
-is recorded as an error and excluded from the change, so it is neither planned nor executed.
+Parsing is delegated to a ``RequestParser`` (deterministic by default; LLM-backed when configured),
+so intake stays focused on the guard: it validates every requested action against the registered
+capabilities; an unsupported action (e.g. "delete the repo") is rejected — recorded as an error and
+excluded from the change, so it is neither planned nor executed.
 """
 
 from __future__ import annotations
 
-import re
-
 from app.agent.state import CourtState, serialize
-from app.domain import Change, ChangeStatus, RequestedAction
+from app.domain import ChangeStatus, RequestedAction
 from app.domain.errors import CapabilityNotFoundError
 from app.ports.registry import IntegrationRegistry
-
-_ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
-
-
-def _has(text: str, *words: str) -> bool:
-    return any(re.search(rf"\b{re.escape(w)}\b", text) for w in words)
-
-
-def parse_request(raw: str, *, change_id: str) -> Change:
-    """Deterministically parse a request into a structured Change for one of the three trials."""
-    text = raw.lower()
-    dates = _ISO_DATE.findall(raw)
-    due_by = dates[-1] if dates else None
-    actions: list[RequestedAction] = []
-    subject: str | None = None
-
-    if _has(text, "vendor", "guest") or ("access" in text and "project" in text):
-        subject = "project-access"
-        actions.append(
-            RequestedAction(
-                system="sharepoint",
-                capability_name="sharepoint.grant_folder_permission",
-                verb="grant",
-                # Deliberately broad and undated — options narrows this to least-privilege.
-                params={"path": "/ProjectX", "principal": "vendor@example.com", "role": "write"},
-            )
-        )
-    elif _has(text, "promise", "ga") or "generally available" in text:
-        # A commitment, not a single capability; options produces the safe alternative.
-        subject = "sso-ga"
-    elif _has(text, "launch", "milestone", "slip"):
-        subject = "launch"
-        actions.append(
-            RequestedAction(
-                system="github",
-                capability_name="github.update_milestone_due",
-                verb="update",
-                params={"milestone": "Launch", "due_on": due_by},
-            )
-        )
-        if _has(text, "delete") and _has(text, "repo", "repository"):
-            actions.append(
-                RequestedAction(
-                    system="github",
-                    capability_name="github.delete_repo",  # unregistered — the guard rejects this
-                    verb="delete",
-                    params={"repo": "launch"},
-                )
-            )
-
-    return Change(
-        change_id=change_id,
-        raw_request=raw,
-        subject=subject,
-        due_by=due_by,
-        requested_actions=actions,
-    )
+from app.ports.request_parser import RequestParser
 
 
 class IntakeNode:
-    """Parses the request and rejects any action without a registered capability."""
+    """Parses the request (via the injected parser) and rejects unregistered actions."""
 
-    def __init__(self, registry: IntegrationRegistry) -> None:
+    def __init__(self, parser: RequestParser, registry: IntegrationRegistry) -> None:
+        self._parser = parser
         self._registry = registry
 
     def __call__(self, state: CourtState) -> CourtState:
-        change = parse_request(state["raw_request"], change_id=state["change_id"])
+        change = self._parser.parse(state["raw_request"], change_id=state["change_id"])
         requested = list(change.requested_actions)
         kept: list[RequestedAction] = []
         errors = list(state.get("errors", []))

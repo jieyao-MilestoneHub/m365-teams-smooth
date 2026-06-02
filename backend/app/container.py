@@ -17,6 +17,7 @@ from app.adapters.integrations.real_github import RealGitHubAdapter
 from app.adapters.integrations.registry import build_registry
 from app.adapters.knowledge.fake_knowledge import FakeKnowledgeProvider
 from app.adapters.knowledge.foundry_iq import FoundryIqKnowledgeProvider
+from app.adapters.parsers.deterministic import DeterministicRequestParser
 from app.adapters.persistence.checkpointer import SqliteCheckpointStore
 from app.adapters.persistence.db import init_db, make_engine, make_session_factory
 from app.adapters.persistence.repositories import SqlAuditRepository, SqlVerdictLedger
@@ -36,6 +37,7 @@ from app.config import Settings
 from app.ports.integration import IntegrationAdapter
 from app.ports.knowledge import KnowledgePort
 from app.ports.registry import IntegrationRegistry
+from app.ports.request_parser import RequestParser
 from app.services.court_service import CourtService
 
 
@@ -46,6 +48,7 @@ def build_court_service(
     planners: dict[str, Planner] | None = None,
     packs: list[RulePack] | None = None,
     registry: IntegrationRegistry | None = None,
+    request_parser: RequestParser | None = None,
 ) -> CourtService:
     """Wire the registry, providers, persistence, graph, and runner into a CourtService.
 
@@ -95,8 +98,10 @@ def build_court_service(
     store = SqliteCheckpointStore.from_db_url(settings.db_url)
     store.setup()
 
+    parser = request_parser if request_parser is not None else DeterministicRequestParser()
+
     graph = build_court_graph(
-        intake=IntakeNode(registry),
+        intake=IntakeNode(parser, registry),
         impact=ImpactNode(registry, knowledge, gatherers),
         options=OptionsNode(planners),
         policy=PolicyNode(packs, RulePackQuorumResolver()),
