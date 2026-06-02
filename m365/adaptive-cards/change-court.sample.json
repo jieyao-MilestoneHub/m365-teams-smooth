@@ -23,9 +23,34 @@
     },
     {
       "type": "TextBlock",
-      "text": "⚠ Unsafe as requested — a safer alternative is proposed. Reject the GA promise: offer a private preview on 2026-06-17, with GA pending the security review on 2026-06-18.",
+      "text": "⛔ REJECTED as requested — proposing a safer alternative",
+      "wrap": true,
+      "weight": "Bolder",
+      "color": "Attention"
+    },
+    {
+      "type": "TextBlock",
+      "text": "Reject the GA promise: offer a private preview on 2026-06-17, with GA pending the security review on 2026-06-18.",
       "wrap": true,
       "color": "Attention"
+    },
+    {
+      "type": "TextBlock",
+      "text": "⚠ Decisive evidence",
+      "wrap": true,
+      "weight": "Bolder",
+      "color": "Attention"
+    },
+    {
+      "type": "TextBlock",
+      "text": "• [outlook] Security review on 2026-06-18 is after the promised 2026-06-17",
+      "wrap": true,
+      "weight": "Bolder"
+    },
+    {
+      "type": "TextBlock",
+      "text": "    ↳ A capability cannot be declared generally available before its security review completes. (GA Readiness Policy §2.1)",
+      "wrap": true
     },
     {
       "type": "TextBlock",
@@ -41,16 +66,6 @@
     {
       "type": "TextBlock",
       "text": "• [crm] Renewal value 250000 due 2026-09-30",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
-      "text": "• [outlook] Security review on 2026-06-18 is after the promised 2026-06-17",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
-      "text": "    ↳ A capability cannot be declared generally available before its security review completes. (GA Readiness Policy §2.1)",
       "wrap": true
     },
     {
