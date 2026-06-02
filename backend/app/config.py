@@ -32,9 +32,14 @@ class Settings(BaseSettings):
     # Target repository for the real GitHub adapter, as "owner/name" (a throwaway test repo).
     github_repo: str = ""
 
-    # --- LLM provider (empty -> offline fake provider) ---
+    # --- LLM provider (empty -> offline fake provider + deterministic parser) ---
     llm_api_key: str = ""
     llm_model: str = ""
+    # Azure OpenAI for agentic request parsing. Endpoint + deployment enable the LLM-backed parser;
+    # auth is keyless (DefaultAzureCredential) unless llm_api_key is set.
+    azure_openai_endpoint: str = ""
+    azure_openai_deployment: str = ""
+    azure_openai_api_version: str = "2024-10-21"
 
     # --- Knowledge / Foundry IQ (empty endpoint -> offline fake provider) ---
     # Keyless auth via DefaultAzureCredential (az login / managed identity); no key here.
