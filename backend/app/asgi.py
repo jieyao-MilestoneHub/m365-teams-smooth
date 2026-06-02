@@ -12,14 +12,21 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.api.deps import get_court_service
+from app.config import Settings
 from app.main import create_app
+from app.mcp.security import build_auth_settings, build_token_verifier
 from app.mcp.server import MCP_PATH, build_mcp_server
 from app.services.court_service import CourtService
 
 
 def create_full_app(service: CourtService | None = None) -> FastAPI:
-    """Build the REST app and mount the MCP server, running its session manager via the lifespan."""
-    mcp = build_mcp_server(service or get_court_service())
+    """Build the REST app and mount the OAuth2-protected MCP server, run via the lifespan."""
+    settings = Settings()
+    mcp = build_mcp_server(
+        service or get_court_service(),
+        token_verifier=build_token_verifier(settings),
+        auth_settings=build_auth_settings(settings),
+    )
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
