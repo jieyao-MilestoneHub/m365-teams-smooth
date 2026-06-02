@@ -1,0 +1,13 @@
+# Local container run of the backend, fully mocked (zero external credentials).
+# `docker compose up --build` then GET http://localhost:8000/api/health.
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      # Run every integration as a mock so the court runs with no secrets.
+      FORCE_ALL_MOCK: "true"
+      DRY_RUN_DEFAULT: "true"
