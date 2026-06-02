@@ -139,7 +139,7 @@ uv run uvicorn app.asgi:app --reload    # REST + the OAuth2-protected MCP server
 Run the demo and the verification gate (both credential-free, fully mocked):
 
 ```bash
-make demo          # run the three trials end-to-end and print each Change Court
+make demo          # three trials end-to-end; opens on the Customer Promise refusal
 scripts/verify.sh  # trials + safety + MCP + quality gates (tenant checks report PENDING)
 make check         # ruff + mypy + pytest
 ```

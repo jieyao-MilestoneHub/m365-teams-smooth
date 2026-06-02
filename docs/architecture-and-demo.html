@@ -196,9 +196,10 @@
   <h2>四、DEMO 方式</h2>
 
   <h3>4.1 本地 Demo（免租戶、免任何憑證）</h3>
-  <p>整套以 <code>FORCE_ALL_MOCK</code> 在本機跑完三大審判：</p>
+  <p>整套以 <code>FORCE_ALL_MOCK</code> 在本機跑完三大審判，<strong>以 Customer Promise 的「拒絕」開場</strong>
+     （Customer Promise → Vendor Access → Launch Slip）：</p>
   <pre>cd backend &amp;&amp; uv sync                 <span class="c"># 安裝相依</span>
-make demo                              <span class="c"># 跑三大審判，逐一印出 Change Court</span>
+make demo                              <span class="c"># 三大審判；以拒絕不安全承諾開場</span>
 scripts/verify.sh                      <span class="c"># 全閘門驗證（下方輸出）</span></pre>
   <p><code>make demo</code> 的「Customer Promise」段落（節錄，展示差異化的拒絕＋安全替代）：</p>
   <pre>=== Customer Promise ===
