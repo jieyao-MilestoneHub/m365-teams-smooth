@@ -1,7 +1,7 @@
 """Golden fixtures: the expected court output for each of the three trials, in one table.
 
 A single parametrized regression over the fully-wired court. If a trial's risk, safety, plan,
-verdict options, or quorum drifts from these golden values, this fails — the demo contract is pinned.
+verdict options, or quorum drifts from these golden values, this fails.
 """
 
 from __future__ import annotations
