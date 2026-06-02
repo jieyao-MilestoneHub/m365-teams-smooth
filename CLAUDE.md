@@ -4,18 +4,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this project is
 
-A decision-to-action agent. It reads a team decision ("slip the launch a week", "grant the
-contractor two weeks of access"), produces a reviewable **cross-system execution plan**, runs it
-only after human approval, and keeps an **append-only audit trail** with rollback hints. It is not a
-chatbot — it is an action layer: **plan → policy → approve → execute → audit**.
+**AI Change Court** — governed execution for risky enterprise decisions in Microsoft Teams. It puts a
+risky decision *on trial* before it becomes action: parse the request, gather cross-system **impact
+evidence**, generate a feasible plan (or a **safe alternative** when the request is unsafe), resolve
+which stakeholders must approve (**quorum**), collect a **verdict**, then execute and keep an
+**append-only audit trail**. The differentiator is that it can **refuse an unsafe decision and
+propose a safer one**. It is not a chatbot and not a workflow macro.
+
+The court pipeline: **intake → impact → options → policy+quorum → [verdict] → execute → audit**.
 
 ## Current status — read first
 
-The repository is **documentation and scaffold only**. There is no `backend/` or `frontend/` code
-yet (no `pyproject.toml`, `package.json`, or source files). The commands and module paths below are
-the *intended* shape and only become runnable once the M0 scaffold lands. Implementation order and
-PR slicing live in `roadmap.md` (milestones M0–M8). Build along that slicing — do not scaffold the
-whole tree at once.
+The repository is **documentation and scaffold only**. There is no `backend/` code yet (no
+`pyproject.toml` or source files), and there is **no frontend** — the Teams Adaptive Card is the only
+UI. The commands and module paths below are the *intended* shape and only become runnable once the
+Phase 1 skeleton lands. Implementation order and PR slicing live in `roadmap.md` (Phases 1–5) and in
+GitHub issues (labeled `ready`/`blocked`, `area:*`). Build along that slicing — do not scaffold the
+whole tree at once. **Stay convergent:** every change must serve one of the three trials (Launch
+Slip, Customer Promise, Vendor Access); see `verify.md`.
 
 ## Source of truth: `.claude/rules/`
 
@@ -41,30 +47,35 @@ M365 Copilot Chat / Teams
         ▼
   FastAPI (backend/)
      mcp/  api/  services/  agent/  ports/  adapters/  domain/
-  Next.js dashboard (frontend/)
+  Teams Adaptive Card = the only UI (no web dashboard)
   SQLite now → Postgres later (DB_URL-driven)
 ```
 
 - **Dependency inversion.** `agent/` and `services/` depend on `ports/` *only* — never on an
   integration SDK, SQLAlchemy, or an LLM client directly. Concrete implementations live in
   `adapters/`.
-- **One business layer.** REST routers (`api/`) and MCP tools (`mcp/`) are thin façades over
-  `services/`. No business logic in routers or tools — no duplication between the two surfaces.
+- **One business layer.** MCP tools (`mcp/`) and the minimal REST API (`api/`) are thin façades over
+  `services/`. No business logic in routers or tools — no duplication.
 - **Pure domain.** `domain/` imports nothing from FastAPI, LangGraph, or any adapter.
-- **LangGraph single-agent.** Nodes `plan → policy → execute → audit`, each state-in/state-out:
-  - `plan` — LLM extracts a plan; every step validated against **registered adapter capabilities**
-    (never trust raw LLM output — constrain it to capability schemas).
-  - `policy` — deterministic risk scoring → `requires_approval`; rules are data, not code.
+- **LangGraph single-agent "Change Court."** Nodes `intake → impact → options → policy+quorum →
+  execute → audit`, each state-in/state-out, presented as roles (Prosecutor=impact, Defender=options,
+  Clerk=audit, Executor=execute):
+  - `intake` — parse into a structured `Change`; validate every requested action against **registered
+    capabilities** (hallucination guard — unsupported actions blocked, not planned).
+  - `impact` — gather second-order consequences via adapter **read** capabilities → evidence.
+  - `options` — feasible plan, or a **safe alternative** when the request is unsafe.
+  - `policy+quorum` — deterministic risk → `requires_approval` + required approvers + verdict options;
+    rules are data, not code.
   - `execute` — registry → adapter per step; honors `run_mode`.
-  - `audit` — append-only before/after snapshot + rollback hints.
-- **Approval is a durable interrupt** (`interrupt_before=["execute"]`), checkpointed by `thread_id`.
-  The submit request returns immediately; a later approval call rehydrates from the checkpointer and
-  resumes. **Never hold the graph in memory across the approval gap.**
+  - `audit` — append-only before/after + rollback hints + trial record.
+- **Verdict is a durable interrupt** (`interrupt_before=["execute"]`), checkpointed by `thread_id`.
+  Submit returns immediately; `cast_verdict` rehydrates and resumes. **Never hold the graph in memory
+  across the verdict gap.** Casting the same verdict twice is idempotent.
 - **Dry-run is a first-class state field**, not a separate code path. `DRY_RUN` returns predicted
   effects with no side effects.
 - **Open/Closed adapters.** A new integration = one adapter module implementing `IntegrationAdapter`
-  + one `IntegrationRegistry` registration. No edits to the graph, services, REST, or MCP. Real-vs-
-  mock is chosen per system from config.
+  (read + write capabilities) + one `IntegrationRegistry` registration. No edits to the graph,
+  services, REST, or MCP. Real-vs-mock is chosen per system from config.
 - **Audit is append-only** — never updated. Rollback hints are advisory data, never auto-executed.
 
 When you make a significant design choice (e.g. the interrupt-vs-statelessness decision), record it
@@ -84,17 +95,10 @@ uv run pytest                      # tests
 uv run pytest path/to/test.py::test_name   # single test
 ```
 
-Frontend (Next.js, TypeScript, `pnpm`):
+There is no frontend. The Teams Adaptive Card is the only UI; audit/trial data is exposed via an MCP
+resource and a minimal REST endpoint.
 
-```bash
-cd frontend
-pnpm install
-pnpm dev
-pnpm lint
-pnpm build
-```
-
-End-to-end checklist: `scripts/verify.sh` (currently stubbed against M0–M7).
+End-to-end checklist: `scripts/verify.sh` (verifies the three trials; currently stubbed).
 
 ## Configuration & run modes
 
@@ -106,8 +110,9 @@ Env-driven via `config.py` (pydantic-settings) — see `.env.example`. Architect
 - `DB_URL` — SQLite locally, Postgres later.
 - `GITHUB_TOKEN` — only when the GitHub adapter runs in `real` mode. `OAUTH_*` — MCP OAuth2 settings.
 
-GitHub is the one real adapter; the rest (Outlook, Planner, Graph, CRM, ServiceNow, SharePoint,
-Entra) are mocks returning realistic data, so the system runs fully locally.
+GitHub is the one real adapter; the rest (Outlook, Planner, SharePoint, Teams, CRM, Entra) are mocks
+returning realistic data, so the system runs fully locally. Only the adapters the three trials need
+are built — no ServiceNow / generic Graph adapter.
 
 ## Git / PR workflow
 
@@ -123,5 +128,5 @@ Entra) are mocks returning realistic data, so the system runs fully locally.
 - CI today: `.github/workflows/security.yml` (gitleaks secret scan) + weekly Dependabot. No secrets
   in the repo — use env vars.
 
-The first end-to-end scenario is **Launch Change Commander**: a launch-date change updating a GitHub
-milestone/issue plus mock calendar, planner, and announcements.
+The demo spine is **three trials** — Launch Slip, Customer Promise (reject unsafe promise + safe
+alternative), and Vendor Access (ambiguous → least-privilege + auto-revoke). See `verify.md`.
