@@ -12,6 +12,7 @@ help:
 	@echo "  test         pytest"
 	@echo "  check        lint + type + test (local pre-PR gate)"
 	@echo "  demo         run the three trials end-to-end and print each Change Court"
+	@echo "  migrate      apply database migrations (alembic upgrade head)"
 	@echo "  verify       run the end-to-end trial checklist (scripts/verify.sh)"
 	@echo "  compose-up   run the backend in Docker (fully mocked)"
 
@@ -34,6 +35,9 @@ check: lint type test
 
 demo:
 	cd backend && uv run python -m scripts.demo
+
+migrate:
+	cd backend && uv run alembic upgrade head
 
 verify:
 	scripts/verify.sh
