@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     force_all_mock: bool = False
     # Required only when the GitHub adapter runs in real mode.
     github_token: str = ""
+    # Target repository for the real GitHub adapter, as "owner/name" (a throwaway test repo).
+    github_repo: str = ""
 
     # --- LLM provider (empty -> offline fake provider) ---
     llm_api_key: str = ""
