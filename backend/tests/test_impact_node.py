@@ -1,0 +1,61 @@
+"""The impact node runs the subject's gatherer and grounds evidence with cited facts."""
+
+from __future__ import annotations
+
+from app.adapters.integrations.registry import ConfigIntegrationRegistry
+from app.adapters.knowledge.fake_knowledge import FakeKnowledgeProvider
+from app.agent.nodes.impact import ImpactNode
+from app.agent.state import CourtState, initial_state, serialize
+from app.domain import (
+    Change,
+    EvidenceItem,
+    ImpactEvidence,
+    RunMode,
+)
+from app.ports.knowledge import KnowledgePort
+from app.ports.registry import IntegrationRegistry
+
+
+def _launch_gatherer(
+    change: Change, registry: IntegrationRegistry, knowledge: KnowledgePort
+) -> ImpactEvidence:
+    return ImpactEvidence(
+        items=[EvidenceItem(system="github", kind="milestone", summary="milestone moves")],
+        tags=["schedule.milestone_move"],
+    )
+
+
+def _state_with_change(change: Change) -> CourtState:
+    state = initial_state(
+        thread_id="t1",
+        change_id=change.change_id,
+        raw_request=change.raw_request,
+        source="test",
+        run_mode=RunMode.DRY_RUN,
+    )
+    state["change"] = serialize(change)
+    return state
+
+
+def test_impact_runs_subject_gatherer_and_grounds(
+    mock_registry: ConfigIntegrationRegistry, knowledge: FakeKnowledgeProvider
+) -> None:
+    node = ImpactNode(mock_registry, knowledge, {"launch": _launch_gatherer})
+    change = Change(change_id="c1", raw_request="slip the launch milestone", subject="launch")
+
+    result = node(_state_with_change(change))
+    evidence = ImpactEvidence.model_validate(result["impact"])
+
+    assert "schedule.milestone_move" in evidence.tags
+    grounding = [i for i in evidence.items if i.kind == "grounding"]
+    assert grounding and grounding[0].grounded  # cited facts attached
+
+
+def test_impact_without_gatherer_still_grounds(
+    mock_registry: ConfigIntegrationRegistry, knowledge: FakeKnowledgeProvider
+) -> None:
+    node = ImpactNode(mock_registry, knowledge, {})
+    change = Change(change_id="c1", raw_request="promise SSO is GA", subject="sso-ga")
+    result = node(_state_with_change(change))
+    evidence = ImpactEvidence.model_validate(result["impact"])
+    assert any(i.kind == "grounding" for i in evidence.items)
