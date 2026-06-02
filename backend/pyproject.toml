@@ -9,6 +9,9 @@ dependencies = [
     "pydantic>=2.7",
     "pydantic-settings>=2.3",
     "sqlalchemy>=2.0",
+    # Pinned to the major to isolate the verdict-interrupt API; all graph calls live in agent/.
+    "langgraph>=1.2,<2",
+    "langgraph-checkpoint-sqlite>=3.1,<4",
 ]
 
 [dependency-groups]
@@ -36,6 +39,12 @@ select = ["E", "F", "I", "UP", "B"]
 python_version = "3.11"
 strict = true
 files = ["app", "tests"]
+
+# The graph engine's public types are partial; confine the relaxation to its imports so the
+# domain, ports, services, and nodes stay under full strict checking.
+[[tool.mypy.overrides]]
+module = ["langgraph.*", "langgraph_checkpoint_sqlite.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
