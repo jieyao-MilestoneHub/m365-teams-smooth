@@ -11,6 +11,7 @@ help:
 	@echo "  type         mypy"
 	@echo "  test         pytest"
 	@echo "  check        lint + type + test (local pre-PR gate)"
+	@echo "  demo         run the three trials end-to-end and print each Change Court"
 	@echo "  verify       run the end-to-end trial checklist (scripts/verify.sh)"
 	@echo "  compose-up   run the backend in Docker (fully mocked)"
 
@@ -30,6 +31,9 @@ test:
 	cd backend && uv run pytest
 
 check: lint type test
+
+demo:
+	cd backend && uv run python -m scripts.demo
 
 verify:
 	scripts/verify.sh
