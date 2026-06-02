@@ -6,6 +6,8 @@ are injected here; they are empty until Phase 3 fills them, at which point only 
 
 from __future__ import annotations
 
+from datetime import date
+
 from app.adapters.integrations.mock_crm import MockCRMAdapter
 from app.adapters.integrations.mock_entra import MockEntraAdapter
 from app.adapters.integrations.mock_github import MockGitHubAdapter
@@ -118,12 +120,16 @@ def build_court_service(
             api_key=settings.llm_api_key,
         )
 
+    # Anchor year-less natural dates ("June 17") to the current year at the composition root.
+    today = date.today().isoformat()
     if request_parser is not None:
         parser: RequestParser = request_parser
     elif llm_is_real:
-        parser = LlmRequestParser(llm, registry, fallback=DeterministicRequestParser())
+        parser = LlmRequestParser(
+            llm, registry, fallback=DeterministicRequestParser(today=today), today=today
+        )
     else:
-        parser = DeterministicRequestParser()
+        parser = DeterministicRequestParser(today=today)
 
     graph = build_court_graph(
         intake=IntakeNode(parser, registry),

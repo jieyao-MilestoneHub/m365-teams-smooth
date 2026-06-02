@@ -61,3 +61,58 @@ def test_unrecognized_request_has_no_subject() -> None:
     change = _PARSER.parse("what's the weather like?", change_id="c1")
     assert change.subject is None
     assert change.requested_actions == []
+
+
+# Harder, real-world phrasings (not the canonical ISO sentences) must still route correctly, and
+# absolute natural dates ("June 17", "6/17") must be parsed, not defaulted. ``today`` anchors the
+# year of year-less dates. Purely relative dates ("one week later") are left to the LLM parser.
+_NL_PARSER = DeterministicRequestParser(today="2026-06-01")
+
+
+@pytest.mark.parametrize(
+    ("raw", "due_by"),
+    [
+        ("Can we tell Customer A SSO will be ready by June 17?", "2026-06-17"),
+        ("Customer A needs SSO for renewal; can we commit GA on 6/17?", "2026-06-17"),
+        ("Promise Customer A production SSO by June 17.", "2026-06-17"),
+    ],
+)
+def test_customer_promise_natural_phrasings(raw: str, due_by: str) -> None:
+    change = _NL_PARSER.parse(raw, change_id="c1")
+    assert change.subject == "sso-ga"
+    assert change.due_by == due_by
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "Let the agency into Project X until the campaign wraps.",
+        "Give external vendor temporary access to launch assets.",
+        "Add vendor to Project X folder for now.",
+    ],
+)
+def test_vendor_access_natural_phrasings(raw: str) -> None:
+    change = _NL_PARSER.parse(raw, change_id="c1")
+    assert change.subject == "project-access"
+    assert change.requested_actions[0].capability_name == "sharepoint.grant_folder_permission"
+
+
+@pytest.mark.parametrize(
+    ("raw", "due_by"),
+    [
+        ("Move launch one week later.", None),  # relative — the LLM parser resolves these
+        ("Push Q3 launch from June 10 to June 17.", "2026-06-17"),
+        ("Delay the go-live by seven days.", None),  # relative — the LLM parser resolves these
+    ],
+)
+def test_launch_slip_natural_phrasings(raw: str, due_by: str | None) -> None:
+    change = _NL_PARSER.parse(raw, change_id="c1")
+    assert change.subject == "launch"
+    assert change.due_by == due_by
+
+
+def test_natural_date_is_parsed_not_defaulted() -> None:
+    # A non-demo date proves the date is genuinely parsed, not silently defaulted to 2026-06-17.
+    change = _NL_PARSER.parse("promise the customer SSO is GA by August 1", change_id="c1")
+    assert change.subject == "sso-ga"
+    assert change.due_by == "2026-08-01"
