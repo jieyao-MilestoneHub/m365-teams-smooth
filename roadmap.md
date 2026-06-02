@@ -30,7 +30,7 @@ into small, reviewable PRs.
    ambiguous duration and over-broad scope and proposes **least-privilege** access (read-only to one
    folder) with an **expiry and auto-revoke**, pending the right approvals.
 
-## Phase 1 — Walking skeleton ☐
+## Phase 1 — Walking skeleton ☑
 
 - **Goal:** a runnable, layered backend shell that boots and is green in CI.
 - **Definition of done:** `uvicorn app.main:app` boots; `GET /api/health` returns healthy; the
@@ -40,7 +40,7 @@ into small, reviewable PRs.
   `docker-compose.yml`, docs stubs). No frontend.
 - **Owner:** TBD · **Entry:** current state.
 
-## Phase 2 — Court engine (dry-run, fully mocked) ☐
+## Phase 2 — Court engine (dry-run, fully mocked) ☑
 
 - **Goal:** the court pipeline runs end-to-end in dry-run with zero external credentials.
 - **Definition of done:** a submitted change flows `intake → impact → options → policy+quorum →
@@ -54,7 +54,7 @@ into small, reviewable PRs.
   mock adapters the trials need; persistence (db, repositories, SQLite checkpointer).
 - **Owner:** TBD · **Entry:** Phase 1.
 
-## Phase 3 — Trials & governance intelligence ☐
+## Phase 3 — Trials & governance intelligence ☑
 
 - **Goal:** the differentiators — the court detects impact, proposes safe alternatives, resolves
   quorum, and wires the three trials.
@@ -65,7 +65,7 @@ into small, reviewable PRs.
   verdict-option derivation, policy rule packs; the three trial flows; golden fixtures + guard tests.
 - **Owner:** TBD · **Entry:** Phase 2.
 
-## Phase 4 — Real execution + secured MCP ☐
+## Phase 4 — Real execution + secured MCP ☑
 
 - **Goal:** the court is callable by an external agent over an OAuth2-secured MCP server and performs
   at least one real cross-system change.
@@ -78,8 +78,12 @@ into small, reviewable PRs.
   security.
 - **Owner:** TBD · **Entry:** Phase 3.
 
-## Phase 5 — Teams surface & demo package ☐
+## Phase 5 — Teams surface & demo package ◐
 
+- **Status:** the local scope (manifests, Adaptive Cards, demo seed scripts, docs) is complete and
+  `scripts/verify.sh` is green; the **Microsoft 365 tenant sideload — live chat in Copilot/Teams and
+  real Microsoft Graph writes — is the only remaining blocker**, tracked as the *Pending tenant*
+  section of [`verify.md`](./verify.md).
 - **Goal:** package the three-trial demo and wire the chat entry point (live-chat verification deferred
   until a Microsoft 365 dev tenant is available).
 - **Definition of done:** a declarative agent manifest + plugin manifest pointing at the MCP server;
