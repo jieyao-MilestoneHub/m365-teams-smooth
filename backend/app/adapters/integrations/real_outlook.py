@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from app.adapters.integrations.base import BaseIntegrationAdapter
 from app.adapters.integrations.graph import GraphClient
+from app.adapters.integrations.retry import RetryPolicy
 from app.domain import (
     Capability,
     CapabilityKind,
@@ -27,7 +28,10 @@ _SYSTEM = "outlook"
 class RealOutlookAdapter(BaseIntegrationAdapter):
     """Reads a configured user's Outlook calendar via Graph; writes stay dry-run only."""
 
-    def __init__(self, graph: GraphClient, calendar_upn: str) -> None:
+    def __init__(
+        self, graph: GraphClient, calendar_upn: str, *, retry: RetryPolicy | None = None
+    ) -> None:
+        super().__init__(retry=retry)
         self._graph = graph
         self._upn = calendar_upn
 

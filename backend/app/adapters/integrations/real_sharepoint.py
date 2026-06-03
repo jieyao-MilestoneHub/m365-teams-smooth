@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from app.adapters.integrations.base import BaseIntegrationAdapter
 from app.adapters.integrations.graph import GraphClient
+from app.adapters.integrations.retry import RetryPolicy
 from app.domain import (
     Capability,
     CapabilityKind,
@@ -29,7 +30,10 @@ _CUSTOMER_DATA_MARKER = "customerdata"
 class RealSharePointAdapter(BaseIntegrationAdapter):
     """Reads a configured site's document library via Graph; the grant stays dry-run only."""
 
-    def __init__(self, graph: GraphClient, site_id: str) -> None:
+    def __init__(
+        self, graph: GraphClient, site_id: str, *, retry: RetryPolicy | None = None
+    ) -> None:
+        super().__init__(retry=retry)
         self._graph = graph
         self._site_id = site_id
         self._drive_ids: dict[str, str] = {}
