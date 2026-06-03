@@ -14,6 +14,8 @@ import sys
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from app.observability.context import current_context
+
 if TYPE_CHECKING:
     from app.config import Settings
 
@@ -46,8 +48,8 @@ class JsonFormatter(logging.Formatter):
         return moment.isoformat(timespec="milliseconds")
 
     def context_fields(self) -> dict[str, object]:
-        """Correlation fields merged into every record; populated once contextvars land (#184)."""
-        return {}
+        """Correlation fields (request_id/thread_id/change_id) merged into every record."""
+        return dict(current_context())
 
 
 def _extra_fields(record: logging.LogRecord) -> dict[str, object]:

@@ -15,6 +15,7 @@ from app import __version__
 from app.api.health import router as health_router
 from app.config import Settings
 from app.observability import configure_logging
+from app.observability.middleware import RequestIdMiddleware
 
 Lifespan = Callable[[FastAPI], AbstractAsyncContextManager[None]]
 
@@ -29,6 +30,7 @@ def create_app(settings: Settings | None = None, *, lifespan: Lifespan | None = 
     configure_logging(settings)
     app = FastAPI(title="AI Change Court", version=__version__, lifespan=lifespan)
     app.state.settings = settings
+    app.add_middleware(RequestIdMiddleware)
     app.include_router(health_router)
     return app
 
