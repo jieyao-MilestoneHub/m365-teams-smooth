@@ -9,6 +9,7 @@ text generator — the structured contract lives here, not in the port.
 from __future__ import annotations
 
 import json
+import logging
 
 from pydantic import BaseModel, Field
 
@@ -16,6 +17,8 @@ from app.domain import Change, RequestedAction
 from app.ports.llm import LLMProvider
 from app.ports.registry import IntegrationRegistry
 from app.ports.request_parser import RequestParser
+
+logger = logging.getLogger(__name__)
 
 _SUBJECTS = {
     "launch": "moving or slipping a launch / milestone / release date",
@@ -69,10 +72,14 @@ class LlmRequestParser(RequestParser):
         try:
             text = self._llm.complete(raw, system=self._prompt())
             result = _LlmParse.model_validate(_extract_json(text))
-        except Exception:  # noqa: BLE001 — never raise; an unsure LLM falls back to deterministic
+        except Exception as exc:  # noqa: BLE001 — never raise; an unsure LLM falls back
+            logger.warning(
+                "parser.llm_fallback", extra={"reason": "parse_error", "error": str(exc)}
+            )
             return self._fallback.parse(raw, change_id=change_id)
 
         if result.subject not in _SUBJECTS:
+            logger.warning("parser.llm_fallback", extra={"reason": "unknown_subject"})
             return self._fallback.parse(raw, change_id=change_id)
 
         return Change(

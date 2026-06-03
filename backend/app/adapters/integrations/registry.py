@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import logging
+
 from app.config import Settings
 from app.domain import Capability
 from app.ports.integration import IntegrationAdapter
 from app.ports.registry import IntegrationRegistry
+
+logger = logging.getLogger(__name__)
 
 
 class ConfigIntegrationRegistry(IntegrationRegistry):
@@ -36,9 +40,18 @@ def select_adapters(
     modes = settings.integration_modes()
     chosen: list[IntegrationAdapter] = []
     for system, by_mode in candidates.items():
-        mode = "mock" if settings.force_all_mock else modes.get(system, "mock")
-        adapter = by_mode.get(mode) or by_mode.get("mock")
+        requested = "mock" if settings.force_all_mock else modes.get(system, "mock")
+        adapter = by_mode.get(requested)
+        selected_mode = requested
+        if adapter is None:
+            adapter = by_mode.get("mock")
+            selected_mode = "mock"
+            if requested != "mock":
+                logger.warning(
+                    "adapter.fallback", extra={"system": system, "requested": requested}
+                )
         if adapter is not None:
+            logger.info("adapter.selected", extra={"system": system, "mode": selected_mode})
             chosen.append(adapter)
     return chosen
 

@@ -8,6 +8,7 @@ need no approval are auto-resumed so they complete without a human verdict.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from typing import TypeVar
 from uuid import uuid4
@@ -34,6 +35,8 @@ from app.domain import (
 from app.ports.registry import IntegrationRegistry
 from app.ports.repository import AuditRepository, VerdictLedger
 from app.services.dto import CastResult, TrialSummary
+
+logger = logging.getLogger(__name__)
 
 _M = TypeVar("_M", bound=BaseModel)
 
@@ -77,15 +80,25 @@ class CourtService:
         """Start a trial. It runs to the verdict gate; low-risk changes auto-complete."""
         mode = run_mode or (RunMode.DRY_RUN if self._dry_run_default else RunMode.LIVE)
         thread_id = self._id()
+        change_id = self._id()
         state = self._runner.start(
             thread_id,
             initial_state(
                 thread_id=thread_id,
-                change_id=self._id(),
+                change_id=change_id,
                 raw_request=raw_request,
                 source=source,
                 run_mode=mode,
             ),
+        )
+        logger.info(
+            "trial.submitted",
+            extra={
+                "thread_id": thread_id,
+                "change_id": change_id,
+                "source": source,
+                "run_mode": mode.value,
+            },
         )
 
         risk = _model(state, "risk", RiskResult)
@@ -111,6 +124,10 @@ class CourtService:
         if not self._ledger.try_claim(thread_id, key):
             audit_id = self._ledger.result_for(thread_id, key)
             status = str(self._runner.state(thread_id).get("status", ""))
+            logger.info(
+                "verdict.duplicate",
+                extra={"thread_id": thread_id, "idempotency_key": key, "audit_id": audit_id},
+            )
             return CastResult(
                 thread_id=thread_id, status=status, audit_id=audit_id, idempotent=True
             )
@@ -126,6 +143,16 @@ class CourtService:
         audit_id = state.get("audit_id")
         if isinstance(audit_id, str):
             self._ledger.mark_completed(thread_id, key, audit_id)
+        logger.info(
+            "verdict.cast",
+            extra={
+                "thread_id": thread_id,
+                "verdict_type": verdict_type.value,
+                "selected_plan": selected_plan.value,
+                "status": str(state.get("status", "")),
+                "audit_id": audit_id if isinstance(audit_id, str) else None,
+            },
+        )
         return CastResult(
             thread_id=thread_id,
             status=str(state.get("status", "")),

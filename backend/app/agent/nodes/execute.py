@@ -7,6 +7,8 @@ the adapter as a FAILED result (with a rollback hint) and recorded, so the run n
 
 from __future__ import annotations
 
+import logging
+
 from app.agent.state import CourtState, serialize
 from app.domain import (
     ChangeStatus,
@@ -18,6 +20,8 @@ from app.domain import (
     VerdictType,
 )
 from app.ports.registry import IntegrationRegistry
+
+logger = logging.getLogger(__name__)
 
 _APPROVING = {
     VerdictType.APPROVE,
@@ -49,6 +53,11 @@ class ExecuteNode:
         for step in plan.steps:
             adapter = self._registry.get(step.capability.system)
             if adapter is None:
+                logger.warning(
+                    "step.failed",
+                    extra={"step_id": step.step_id, "system": step.capability.system,
+                           "error": "no adapter"},
+                )
                 results.append(
                     StepResult(
                         step_id=step.step_id,
@@ -60,7 +69,14 @@ class ExecuteNode:
             result = adapter.execute(step, run_mode)
             results.append(result)
             if result.status is StepStatus.FAILED and result.error:
+                logger.warning(
+                    "step.failed", extra={"step_id": result.step_id, "error": result.error}
+                )
                 errors.append(f"step {result.step_id} failed: {result.error}")
+            else:
+                logger.info(
+                    "step.ok", extra={"step_id": result.step_id, "status": result.status.value}
+                )
 
         had_failure = any(r.status is StepStatus.FAILED for r in results)
         status = ChangeStatus.FAILED if had_failure else ChangeStatus.DONE
