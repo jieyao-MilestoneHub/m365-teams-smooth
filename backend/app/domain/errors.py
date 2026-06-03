@@ -31,5 +31,13 @@ class VerdictConflictError(ChangeCourtError):
     """A verdict conflicts with a previously recorded one for the same trial."""
 
 
+class SeparationOfDutiesError(ChangeCourtError):
+    """The verdict caster is the requester; separation of duties forbids self-approval."""
+
+
+class UnauthorizedApproverError(ChangeCourtError):
+    """The caster holds none of the roles the trial's quorum requires."""
+
+
 class GraphTimeoutError(ChangeCourtError):
     """A graph run exceeded its wall-clock budget; the checkpoint is left intact and resumable."""

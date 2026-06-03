@@ -1,5 +1,14 @@
 """Pure domain layer: models, enums, and errors. Imports no framework or SDK."""
 
+from app.domain.approval import (
+    ApprovalDecision,
+    ApprovalEvent,
+    AuthDecision,
+    QuorumDecision,
+    QuorumState,
+    authorize_caster,
+    evaluate_quorum,
+)
 from app.domain.audit import AuditRecord, BeforeAfter, TrialRecord
 from app.domain.capability import Capability, CapabilityRef
 from app.domain.change import Change, RequestedAction
@@ -21,14 +30,18 @@ from app.domain.plan import (
     RollbackHint,
     StepResult,
 )
+from app.domain.principal import Principal
 from app.domain.quorum import Approver, Quorum, VerdictOption
 from app.domain.risk import RiskFactor, RiskResult
 from app.domain.verdict import Verdict
 
 __all__ = [
+    "ApprovalDecision",
+    "ApprovalEvent",
     "Approver",
     "AuditRecord",
     "ApproverRole",
+    "AuthDecision",
     "BeforeAfter",
     "Capability",
     "CapabilityKind",
@@ -42,7 +55,10 @@ __all__ = [
     "ImpactEvidence",
     "PlanKind",
     "PredictedEffect",
+    "Principal",
     "Quorum",
+    "QuorumDecision",
+    "QuorumState",
     "RequestedAction",
     "RiskFactor",
     "RiskLevel",
@@ -55,4 +71,6 @@ __all__ = [
     "Verdict",
     "VerdictOption",
     "VerdictType",
+    "authorize_caster",
+    "evaluate_quorum",
 ]

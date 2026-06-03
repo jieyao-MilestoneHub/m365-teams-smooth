@@ -25,9 +25,13 @@ class ChangeStatus(StrEnum):
 
     INTAKE = "intake"
     EVALUATING = "evaluating"
+    AWAITING_REQUESTER_REVIEW = "awaiting_requester_review"  # proposal built; requester reviews
     AWAITING_VERDICT = "awaiting_verdict"
+    AWAITING_APPROVAL = "awaiting_approval"  # sent on; an authorized approver must decide
     EXECUTING = "executing"
     DONE = "done"
+    REJECTED = "rejected"  # an approver rejected (with a note)
+    WITHDRAWN = "withdrawn"  # the requester gave up before approval
     BLOCKED = "blocked"
     FAILED = "failed"
 
