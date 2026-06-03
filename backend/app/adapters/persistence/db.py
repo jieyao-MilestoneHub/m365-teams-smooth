@@ -12,6 +12,7 @@ from collections.abc import Callable
 
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from app.adapters.persistence.models import Base
 
@@ -27,6 +28,10 @@ def make_engine(db_url: str) -> Engine:
         if directory:
             os.makedirs(directory, exist_ok=True)
     connect_args = {"check_same_thread": False} if db_url.startswith("sqlite") else {}
+    if ":memory:" in db_url:
+        # One shared connection so the in-memory schema is visible across threads — e.g. when the
+        # graph wall-clock guard runs in a worker thread (mirrors the checkpointer's connection).
+        return create_engine(db_url, connect_args=connect_args, poolclass=StaticPool)
     return create_engine(db_url, connect_args=connect_args)
 
 
