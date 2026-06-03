@@ -4,6 +4,14 @@
 !.env.example
 .claude/settings.local.json
 
+# --- Terraform (state can contain secrets; never commit it or local tfvars) ---
+infra/.terraform/
+infra/.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+infra/terraform.tfvars
+crash.log
+
 # Internal engineering guidance kept out of the public repo
 .claude/rules/competition.md
 

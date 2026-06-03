@@ -1,0 +1,13 @@
+# Copy to terraform.tfvars and fill in. Never commit terraform.tfvars (it is gitignored).
+
+subscription_id = "00000000-0000-0000-0000-000000000000"
+tenant_id       = "00000000-0000-0000-0000-000000000000" # the dedicated M365 dev tenant
+location        = "eastus"
+
+# Optional overrides:
+# name             = "changecourt"   # base name / DNS label
+# min_replicas     = 0               # 1 for a warm demo (no cold start), at higher idle cost
+# force_all_mock   = true            # keep mocks for a reliable demo
+# integration_mode = "github:real"   # used only when force_all_mock = false
+# github_token     = ""              # only for the real GitHub adapter
+# github_repo      = ""              # owner/name
