@@ -29,3 +29,7 @@ class IntegrationError(ChangeCourtError):
 
 class VerdictConflictError(ChangeCourtError):
     """A verdict conflicts with a previously recorded one for the same trial."""
+
+
+class GraphTimeoutError(ChangeCourtError):
+    """A graph run exceeded its wall-clock budget; the checkpoint is left intact and resumable."""

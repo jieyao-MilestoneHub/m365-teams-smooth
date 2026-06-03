@@ -38,10 +38,12 @@ class FoundryIqKnowledgeProvider(KnowledgePort):
         endpoint: str,
         knowledge_base_name: str,
         knowledge_source_name: str,
+        timeout: float | None = None,
         credential: TokenCredential | None = None,
         client: KnowledgeBaseRetrievalClient | None = None,
     ) -> None:
         self._knowledge_source_name = knowledge_source_name
+        self._timeout = timeout
         self._client = client or KnowledgeBaseRetrievalClient(
             endpoint=endpoint,
             knowledge_base_name=knowledge_base_name,
@@ -66,7 +68,11 @@ class FoundryIqKnowledgeProvider(KnowledgePort):
             include_activity=False,
             retrieval_reasoning_effort=KnowledgeRetrievalLowReasoningEffort(),
         )
-        result = self._client.retrieve(retrieval_request=request)
+        # Bound the outbound search call; azure-core honors a per-operation timeout kwarg.
+        if self._timeout is not None:
+            result = self._client.retrieve(retrieval_request=request, timeout=self._timeout)
+        else:
+            result = self._client.retrieve(retrieval_request=request)
         references = result.references or []
 
         facts: list[GroundedFact] = []

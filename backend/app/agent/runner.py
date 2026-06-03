@@ -8,17 +8,20 @@ through the checkpoint keyed by ``thread_id``, so a fresh runner can resume a ru
 
 from __future__ import annotations
 
+import concurrent.futures
 from typing import Any, cast
 
 from app.agent.state import CourtState, serialize
 from app.domain import Verdict
+from app.domain.errors import GraphTimeoutError
 
 
 class CourtRunner:
     """Drives the court graph across the durable verdict interrupt."""
 
-    def __init__(self, graph: Any) -> None:
+    def __init__(self, graph: Any, *, timeout_seconds: float | None = None) -> None:
         self._graph = graph
+        self._timeout_seconds = timeout_seconds
 
     @staticmethod
     def _config(thread_id: str) -> dict[str, Any]:
@@ -27,7 +30,7 @@ class CourtRunner:
     def start(self, thread_id: str, state: CourtState) -> CourtState:
         """Run intake → … → policy; the graph suspends before execute and persists a checkpoint."""
         config = self._config(thread_id)
-        self._graph.invoke(state, config)
+        self._invoke(state, config, thread_id)
         return self.state(thread_id)
 
     def resume(self, thread_id: str, verdict: Verdict) -> CourtState:
@@ -41,8 +44,33 @@ class CourtRunner:
             config,
             {"verdict": serialize(verdict), "selected_plan": verdict.selected_plan.value},
         )
-        self._graph.invoke(None, config)
+        self._invoke(None, config, thread_id)
         return self.state(thread_id)
+
+    def _invoke(
+        self, input_state: CourtState | None, config: dict[str, Any], thread_id: str
+    ) -> None:
+        """Run the graph, guarded by an optional wall-clock budget.
+
+        With no budget the graph runs inline (current behavior). With one, it runs in a worker
+        thread joined with a timeout — the only cross-platform way to bound a synchronous run
+        (Windows has no SIGALRM). On expiry a typed ``GraphTimeoutError`` is raised; the
+        checkpointer has already persisted each completed node, so the checkpoint stays intact and
+        resumable, while the abandoned worker finishes in the background.
+        """
+        if self._timeout_seconds is None:
+            self._graph.invoke(input_state, config)
+            return
+        pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        future = pool.submit(self._graph.invoke, input_state, config)
+        try:
+            future.result(timeout=self._timeout_seconds)
+        except concurrent.futures.TimeoutError as exc:
+            raise GraphTimeoutError(
+                f"graph run for thread '{thread_id}' exceeded {self._timeout_seconds}s"
+            ) from exc
+        finally:
+            pool.shutdown(wait=False)
 
     def state(self, thread_id: str) -> CourtState:
         """The current checkpointed state for a thread."""

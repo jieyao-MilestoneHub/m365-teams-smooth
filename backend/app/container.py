@@ -128,6 +128,7 @@ def build_court_service(
             endpoint=settings.knowledge_search_endpoint,
             knowledge_base_name=settings.knowledge_base_name,
             knowledge_source_name=settings.knowledge_source_name,
+            timeout=settings.http_timeout_seconds,
         )
 
     engine = make_engine(settings.db_url)
@@ -153,6 +154,7 @@ def build_court_service(
             deployment=settings.azure_openai_deployment,
             api_version=settings.azure_openai_api_version,
             api_key=settings.llm_api_key,
+            timeout=settings.llm_timeout_seconds,
         )
 
     # Anchor year-less natural dates ("June 17") to the current year at the composition root.
@@ -175,7 +177,7 @@ def build_court_service(
         audit=AuditNode(audit_repo),
         checkpointer=store.saver(),
     )
-    runner = CourtRunner(graph)
+    runner = CourtRunner(graph, timeout_seconds=settings.graph_timeout_seconds)
     return CourtService(
         runner,
         audit_repo,

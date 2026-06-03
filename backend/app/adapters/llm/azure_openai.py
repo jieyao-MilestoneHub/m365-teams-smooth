@@ -28,6 +28,7 @@ class AzureOpenAILLMProvider(LLMProvider):
         deployment: str,
         api_version: str,
         api_key: str = "",
+        timeout: float | None = None,
         client: Any | None = None,
     ) -> None:
         self._deployment = deployment
@@ -35,7 +36,10 @@ class AzureOpenAILLMProvider(LLMProvider):
             self._client: Any = client
         elif api_key:
             self._client = AzureOpenAI(
-                azure_endpoint=endpoint, api_version=api_version, api_key=api_key
+                azure_endpoint=endpoint,
+                api_version=api_version,
+                api_key=api_key,
+                timeout=timeout,
             )
         else:
             token_provider = get_bearer_token_provider(DefaultAzureCredential(), _SCOPE)
@@ -43,6 +47,7 @@ class AzureOpenAILLMProvider(LLMProvider):
                 azure_endpoint=endpoint,
                 api_version=api_version,
                 azure_ad_token_provider=token_provider,
+                timeout=timeout,
             )
 
     def complete(self, prompt: str, *, system: str | None = None) -> str:
