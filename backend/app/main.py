@@ -12,6 +12,7 @@ from contextlib import AbstractAsyncContextManager
 from fastapi import FastAPI
 
 from app import __version__
+from app.api.errors import register_exception_handlers
 from app.api.health import router as health_router
 from app.config import Settings
 from app.observability import configure_logging
@@ -32,6 +33,7 @@ def create_app(settings: Settings | None = None, *, lifespan: Lifespan | None = 
     app.state.settings = settings
     app.add_middleware(RequestIdMiddleware)
     app.include_router(health_router)
+    register_exception_handlers(app)
     return app
 
 

@@ -30,6 +30,15 @@ async def test_all_court_tools_registered(mcp: Any) -> None:
     assert {"submit_change", "get_status", "get_trial", "cast_verdict"} <= names
 
 
+async def test_get_trial_unknown_surfaces_typed_error(mcp: Any) -> None:
+    from mcp.server.fastmcp.exceptions import ToolError
+
+    with pytest.raises(ToolError) as excinfo:
+        await _call(mcp, "get_trial", {"thread_id": "does-not-exist"})
+    # The shared not_found mapping reaches the tool surface.
+    assert "not_found" in str(excinfo.value)
+
+
 async def test_submit_then_cast_via_tools(mcp: Any) -> None:
     summary = await _call(
         mcp, "submit_change", {"raw_request": "promise Customer A SSO is GA by 2026-06-17"}
