@@ -19,6 +19,7 @@ from mcp.types import ErrorData
 from app.api.errors import classify, current_request_id, error_body, mcp_code
 from app.domain import PlanKind, RunMode, VerdictType
 from app.domain.errors import ChangeCourtError, NotFoundError
+from app.mcp import correlate
 from app.services.court_service import CourtService
 
 logger = logging.getLogger(__name__)
@@ -56,6 +57,7 @@ def register_tools(mcp: FastMCP, service: CourtService) -> None:
     """Register the court tools on the MCP server."""
 
     @mcp.tool()
+    @correlate
     @_translate_errors
     def submit_change(
         raw_request: str, source: str = "mcp", run_mode: str = "dry_run"
@@ -65,12 +67,14 @@ def register_tools(mcp: FastMCP, service: CourtService) -> None:
         return summary.model_dump(mode="json")
 
     @mcp.tool()
+    @correlate
     @_translate_errors
     def get_status(thread_id: str) -> dict[str, object]:
         """Return the current lifecycle status of a trial."""
         return {"thread_id": thread_id, "status": service.get_status(thread_id)}
 
     @mcp.tool()
+    @correlate
     @_translate_errors
     def get_trial(thread_id: str) -> dict[str, object]:
         """Return the full trial record (change, impact, options, risk, quorum, verdict)."""
@@ -80,6 +84,7 @@ def register_tools(mcp: FastMCP, service: CourtService) -> None:
         return trial.model_dump(mode="json")
 
     @mcp.tool()
+    @correlate
     @_translate_errors
     def cast_verdict(
         thread_id: str,
