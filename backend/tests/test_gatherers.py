@@ -2,9 +2,16 @@
 
 from __future__ import annotations
 
+from app.adapters.integrations.mock_github import MockGitHubAdapter
+from app.adapters.integrations.mock_outlook import MockOutlookAdapter
+from app.adapters.integrations.mock_planner import MockPlannerAdapter
+from app.adapters.integrations.mock_teams import MockTeamsAdapter
+from app.adapters.integrations.registry import ConfigIntegrationRegistry
 from app.adapters.knowledge.fake_knowledge import FakeKnowledgeProvider
 from app.agent.gatherers import gather_launch, gather_project_access, gather_sso_ga
 from app.domain import Change, RequestedAction
+from app.domain.errors import IntegrationError
+from app.ports.integration import IntegrationAdapter, ReadQuery, ReadResult
 from tests.conftest import build_mock_registry
 
 
@@ -14,6 +21,7 @@ def test_launch_gatherer_tags_all_ripple_effects() -> None:
         Change(change_id="c1", raw_request="slip", subject="launch", due_by="2026-06-17"),
         registry,
         FakeKnowledgeProvider(),
+        [],
     )
     assert set(evidence.tags) == {
         "schedule.milestone_move",
@@ -29,6 +37,7 @@ def test_sso_ga_gatherer_flags_review_after_due_date() -> None:
         Change(change_id="c1", raw_request="promise GA", subject="sso-ga", due_by="2026-06-17"),
         registry,
         FakeKnowledgeProvider(),
+        [],
     )
     assert "github.blocking_issues_open" in evidence.tags
     assert "crm.renewal_at_risk" in evidence.tags
@@ -52,7 +61,42 @@ def test_project_access_gatherer_flags_ambiguity_scope_and_data() -> None:
             )
         ],
     )
-    evidence = gather_project_access(change, registry, FakeKnowledgeProvider())
+    evidence = gather_project_access(change, registry, FakeKnowledgeProvider(), [])
     assert "access.ambiguous_duration" in evidence.tags  # no expiry in the request
     assert "access.overbroad_scope" in evidence.tags  # whole /ProjectX
     assert "data.customer_data_present" in evidence.tags  # /ProjectX holds customer data
+
+
+class _FailingGitHubAdapter(MockGitHubAdapter):
+    """A GitHub mock whose reads always raise, simulating an unavailable upstream."""
+
+    def _read(self, query: ReadQuery) -> ReadResult:
+        raise IntegrationError("github: upstream unavailable")
+
+
+def test_launch_gatherer_degrades_when_one_read_fails() -> None:
+    """A failing read is recorded and skipped; the other sources still produce evidence."""
+    adapters: list[IntegrationAdapter] = [
+        _FailingGitHubAdapter(),
+        MockOutlookAdapter(),
+        MockPlannerAdapter(),
+        MockTeamsAdapter(),
+    ]
+    registry = ConfigIntegrationRegistry(adapters)
+    errors: list[str] = []
+
+    evidence = gather_launch(
+        Change(change_id="c1", raw_request="slip", subject="launch", due_by="2026-06-17"),
+        registry,
+        FakeKnowledgeProvider(),
+        errors,
+    )
+
+    # The GitHub read failed, so its tag is absent — but the run did not crash.
+    assert "schedule.milestone_move" not in evidence.tags
+    # The remaining systems still gathered evidence.
+    assert "schedule.calendar_conflict" in evidence.tags
+    assert "schedule.planner_shift" in evidence.tags
+    assert "comms.pending_announcement" in evidence.tags
+    # The failure is recorded for the audit trail.
+    assert any("github.read_milestone" in e for e in errors)

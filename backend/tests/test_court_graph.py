@@ -54,7 +54,10 @@ _PACK = RulePack(
 
 
 def _launch_gatherer(
-    change: Change, registry: IntegrationRegistry, knowledge: KnowledgePort
+    change: Change,
+    registry: IntegrationRegistry,
+    knowledge: KnowledgePort,
+    errors: list[str],
 ) -> ImpactEvidence:
     return ImpactEvidence(tags=["schedule.milestone_move"])
 
