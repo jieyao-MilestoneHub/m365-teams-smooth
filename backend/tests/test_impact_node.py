@@ -17,12 +17,25 @@ from app.ports.registry import IntegrationRegistry
 
 
 def _launch_gatherer(
-    change: Change, registry: IntegrationRegistry, knowledge: KnowledgePort
+    change: Change,
+    registry: IntegrationRegistry,
+    knowledge: KnowledgePort,
+    errors: list[str],
 ) -> ImpactEvidence:
     return ImpactEvidence(
         items=[EvidenceItem(system="github", kind="milestone", summary="milestone moves")],
         tags=["schedule.milestone_move"],
     )
+
+
+def _failing_gatherer(
+    change: Change,
+    registry: IntegrationRegistry,
+    knowledge: KnowledgePort,
+    errors: list[str],
+) -> ImpactEvidence:
+    errors.append("impact read failed on github.read_milestone: upstream unavailable")
+    return ImpactEvidence()
 
 
 def _state_with_change(change: Change) -> CourtState:
@@ -59,3 +72,14 @@ def test_impact_without_gatherer_still_grounds(
     result = node(_state_with_change(change))
     evidence = ImpactEvidence.model_validate(result["impact"])
     assert any(i.kind == "grounding" for i in evidence.items)
+
+
+def test_impact_surfaces_gatherer_read_errors_in_state(
+    mock_registry: ConfigIntegrationRegistry, knowledge: FakeKnowledgeProvider
+) -> None:
+    node = ImpactNode(mock_registry, knowledge, {"launch": _failing_gatherer})
+    change = Change(change_id="c1", raw_request="slip the launch", subject="launch")
+    result = node(_state_with_change(change))
+    assert result["errors"] == [
+        "impact read failed on github.read_milestone: upstream unavailable"
+    ]

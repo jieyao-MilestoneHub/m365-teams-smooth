@@ -16,10 +16,18 @@ from app.ports.registry import IntegrationRegistry
 
 
 class Gatherer(Protocol):
-    """Produces evidence (items + tags) for one change subject via read capabilities."""
+    """Produces evidence (items + tags) for one change subject via read capabilities.
+
+    A failed read appends a message to ``errors`` and is skipped, so evidence degrades
+    gracefully rather than aborting the node.
+    """
 
     def __call__(
-        self, change: Change, registry: IntegrationRegistry, knowledge: KnowledgePort
+        self,
+        change: Change,
+        registry: IntegrationRegistry,
+        knowledge: KnowledgePort,
+        errors: list[str],
     ) -> ImpactEvidence: ...
 
 
@@ -46,10 +54,11 @@ class ImpactNode:
     def __call__(self, state: CourtState) -> CourtState:
         change = Change.model_validate(state["change"])
         evidence = ImpactEvidence()
+        errors = list(state.get("errors", []))
 
         gatherer = self._gatherers.get(change.subject or "")
         if gatherer is not None:
-            _merge(evidence, gatherer(change, self._registry, self._knowledge))
+            _merge(evidence, gatherer(change, self._registry, self._knowledge, errors))
 
         facts = self._knowledge.ground(change.raw_request)
         if facts:
@@ -62,4 +71,8 @@ class ImpactNode:
                 )
             )
 
-        return {"impact": serialize(evidence), "status": ChangeStatus.EVALUATING.value}
+        return {
+            "impact": serialize(evidence),
+            "status": ChangeStatus.EVALUATING.value,
+            "errors": errors,
+        }

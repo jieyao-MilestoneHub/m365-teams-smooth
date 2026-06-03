@@ -6,30 +6,49 @@ tags for one trial subject. They are registered in ``GATHERERS`` and injected in
 
 from __future__ import annotations
 
+import logging
+
 from app.agent.nodes.impact import Gatherer
 from app.domain import Change, EvidenceItem, ImpactEvidence
+from app.domain.errors import IntegrationError
 from app.ports.integration import ReadQuery
 from app.ports.knowledge import KnowledgePort
 from app.ports.registry import IntegrationRegistry
 
+logger = logging.getLogger(__name__)
+
 
 def _read(
-    registry: IntegrationRegistry, system: str, capability: str, **params: object
+    registry: IntegrationRegistry,
+    system: str,
+    capability: str,
+    errors: list[str],
+    **params: object,
 ) -> dict[str, object]:
     adapter = registry.get(system)
     if adapter is None:
         return {}
-    return adapter.read(ReadQuery(capability=capability, params=params)).data
+    try:
+        return adapter.read(ReadQuery(capability=capability, params=params)).data
+    except IntegrationError as exc:
+        # A failing read must not abort the impact node: log, record, and skip this source
+        # so the remaining evidence still gathers.
+        logger.warning("impact read failed on %s.%s: %s", system, capability, exc)
+        errors.append(f"impact read failed on {system}.{capability}: {exc}")
+        return {}
 
 
 def gather_launch(
-    change: Change, registry: IntegrationRegistry, knowledge: KnowledgePort
+    change: Change,
+    registry: IntegrationRegistry,
+    knowledge: KnowledgePort,
+    errors: list[str],
 ) -> ImpactEvidence:
     """Launch Slip: a milestone move ripples into calendar, planner, and a pending announcement."""
     items: list[EvidenceItem] = []
     tags: list[str] = []
 
-    milestone = _read(registry, "github", "github.read_milestone", milestone="Launch")
+    milestone = _read(registry, "github", "github.read_milestone", errors, milestone="Launch")
     if milestone:
         items.append(
             EvidenceItem(
@@ -41,7 +60,7 @@ def gather_launch(
         )
         tags.append("schedule.milestone_move")
 
-    events = _read(registry, "outlook", "outlook.read_events").get("events", [])
+    events = _read(registry, "outlook", "outlook.read_events", errors).get("events", [])
     if isinstance(events, list) and events:
         items.append(
             EvidenceItem(
@@ -53,7 +72,7 @@ def gather_launch(
         )
         tags.append("schedule.calendar_conflict")
 
-    tasks = _read(registry, "planner", "planner.read_tasks").get("tasks", [])
+    tasks = _read(registry, "planner", "planner.read_tasks", errors).get("tasks", [])
     if isinstance(tasks, list) and tasks:
         items.append(
             EvidenceItem(
@@ -65,7 +84,7 @@ def gather_launch(
         )
         tags.append("schedule.planner_shift")
 
-    announcement = _read(registry, "teams", "teams.read_announcement", channel="launch")
+    announcement = _read(registry, "teams", "teams.read_announcement", errors, channel="launch")
     if announcement.get("exists"):
         items.append(
             EvidenceItem(
@@ -81,13 +100,16 @@ def gather_launch(
 
 
 def gather_sso_ga(
-    change: Change, registry: IntegrationRegistry, knowledge: KnowledgePort
+    change: Change,
+    registry: IntegrationRegistry,
+    knowledge: KnowledgePort,
+    errors: list[str],
 ) -> ImpactEvidence:
     """Customer Promise: open blockers, renewal value, and a security review after the date."""
     items: list[EvidenceItem] = []
     tags: list[str] = []
 
-    blockers = _read(registry, "github", "github.read_blocking_issues").get("issues", [])
+    blockers = _read(registry, "github", "github.read_blocking_issues", errors).get("issues", [])
     if isinstance(blockers, list) and blockers:
         items.append(
             EvidenceItem(
@@ -99,7 +121,7 @@ def gather_sso_ga(
         )
         tags.append("github.blocking_issues_open")
 
-    account = _read(registry, "crm", "crm.read_account", account="Customer A")
+    account = _read(registry, "crm", "crm.read_account", errors, account="Customer A")
     renewal_value = account.get("renewal_value", 0)
     if isinstance(renewal_value, int) and renewal_value > 0:
         items.append(
@@ -112,7 +134,7 @@ def gather_sso_ga(
         )
         tags.append("crm.renewal_at_risk")
 
-    review = _read(registry, "outlook", "outlook.read_security_review", subject="SSO")
+    review = _read(registry, "outlook", "outlook.read_security_review", errors, subject="SSO")
     review_date = review.get("review_date")
     if isinstance(review_date, str) and change.due_by and review_date > change.due_by:
         items.append(
@@ -131,7 +153,10 @@ def gather_sso_ga(
 
 
 def gather_project_access(
-    change: Change, registry: IntegrationRegistry, knowledge: KnowledgePort
+    change: Change,
+    registry: IntegrationRegistry,
+    knowledge: KnowledgePort,
+    errors: list[str],
 ) -> ImpactEvidence:
     """Vendor Access: the request is undated and over-broad, and may touch customer data."""
     items: list[EvidenceItem] = []
@@ -160,7 +185,7 @@ def gather_project_access(
         )
         tags.append("access.overbroad_scope")
 
-    folder = _read(registry, "sharepoint", "sharepoint.read_folder", path=path)
+    folder = _read(registry, "sharepoint", "sharepoint.read_folder", errors, path=path)
     if folder.get("contains_customer_data"):
         items.append(
             EvidenceItem(
