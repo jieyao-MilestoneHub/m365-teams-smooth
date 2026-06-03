@@ -6,7 +6,8 @@ from app.config import Settings
 
 
 def test_observability_defaults_keep_credential_free_demo_unchanged() -> None:
-    settings = Settings(_env_file=None)
+    # _env_file=None isolates from any local backend/.env (runtime kwarg, absent from the stubs).
+    settings = Settings(_env_file=None)  # type: ignore[call-arg]
 
     assert settings.log_level == "INFO"
     assert settings.log_format == "json"
@@ -21,7 +22,7 @@ def test_observability_defaults_keep_credential_free_demo_unchanged() -> None:
 
 def test_observability_knobs_are_env_overridable() -> None:
     settings = Settings(
-        _env_file=None,
+        _env_file=None,  # type: ignore[call-arg]
         log_level="DEBUG",
         log_format="text",
         retry_max_attempts=5,
