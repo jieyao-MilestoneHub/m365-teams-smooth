@@ -11,6 +11,7 @@ import json
 from mcp.server.fastmcp import FastMCP
 
 from app.mcp import correlate
+from app.observability import metrics
 from app.services.court_service import CourtService
 
 
@@ -36,3 +37,9 @@ def register_resources(mcp: FastMCP, service: CourtService) -> None:
     def capabilities() -> str:
         """The merged read + write capability catalog the court can act on."""
         return json.dumps([c.model_dump(mode="json") for c in service.capabilities()])
+
+    @mcp.resource("court://metrics")
+    @correlate
+    def court_metrics() -> str:
+        """At-a-glance counters and timers; ``enabled: false`` when metrics are turned off."""
+        return json.dumps(metrics.snapshot())
