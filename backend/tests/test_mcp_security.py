@@ -56,3 +56,18 @@ def test_server_builds_with_auth_enabled() -> None:
 
 def test_dev_audience_constant() -> None:
     assert DEV_AUDIENCE  # sanity: a non-empty default audience exists
+
+
+def test_resource_url_defaults_to_localhost() -> None:
+    assert Settings().mcp_resource_url() == "http://localhost:8000/mcp"
+
+
+def test_resource_url_follows_public_base_url() -> None:
+    settings = Settings(public_base_url="https://change-court.example.com/")
+    assert settings.mcp_resource_url() == "https://change-court.example.com/mcp"
+
+
+def test_auth_settings_advertise_public_resource_url() -> None:
+    settings = Settings(public_base_url="https://change-court.example.com")
+    auth = build_auth_settings(settings)
+    assert str(auth.resource_server_url).rstrip("/") == "https://change-court.example.com/mcp"

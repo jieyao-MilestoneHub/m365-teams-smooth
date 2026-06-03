@@ -134,9 +134,13 @@ def build_token_verifier(settings: Settings) -> TokenVerifier:
 
 
 def build_auth_settings(settings: Settings) -> AuthSettings:
-    """Resource-server auth settings (issuer + required scopes), defaulting to the dev issuer."""
+    """Resource-server auth settings (issuer, public resource URL, required scopes).
+
+    Issuer and resource URL default to the local dev values; both follow configuration once
+    ``OAUTH_ISSUER`` / ``PUBLIC_BASE_URL`` point at a real tenant and public host.
+    """
     return AuthSettings(
         issuer_url=AnyHttpUrl(settings.oauth_issuer or DEV_ISSUER),
-        resource_server_url=AnyHttpUrl("http://localhost:8000/mcp"),
+        resource_server_url=AnyHttpUrl(settings.mcp_resource_url()),
         required_scopes=DEFAULT_SCOPES,
     )

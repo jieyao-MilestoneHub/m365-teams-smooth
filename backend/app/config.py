@@ -52,6 +52,20 @@ class Settings(BaseSettings):
     oauth_audience: str = ""
     oauth_jwks_url: str = ""
 
+    # --- Deployment ---
+    # Public HTTPS origin this backend is reachable at (e.g. https://change-court.example.com).
+    # The MCP resource-server URL is derived as "{public_base_url}/mcp"; empty -> localhost default.
+    public_base_url: str = ""
+
+    def mcp_resource_url(self) -> str:
+        """The MCP endpoint's externally reachable URL (``{public_base_url}/mcp``).
+
+        Falls back to the local dev origin when :attr:`public_base_url` is unset, so the resource
+        server advertises a correct address once deployed behind a public HTTPS host.
+        """
+        origin = self.public_base_url.rstrip("/") or "http://localhost:8000"
+        return f"{origin}/mcp"
+
     def integration_modes(self) -> dict[str, str]:
         """Parse ``integration_mode`` into a ``{system: mode}`` map.
 
