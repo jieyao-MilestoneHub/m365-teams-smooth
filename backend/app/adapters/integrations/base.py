@@ -10,7 +10,10 @@ crashes a run and never leaks an SDK exception upstream.
 from __future__ import annotations
 
 from abc import abstractmethod
+from collections.abc import Callable
+from typing import TypeVar
 
+from app.adapters.integrations.retry import RetryClass, RetryPolicy
 from app.domain import (
     Capability,
     ExecutionStep,
@@ -24,9 +27,18 @@ from app.domain import (
 from app.domain.errors import CapabilityNotFoundError, IntegrationError
 from app.ports.integration import IntegrationAdapter, ReadQuery, ReadResult
 
+T = TypeVar("T")
+
 
 class BaseIntegrationAdapter(IntegrationAdapter):
     """Template-method base for all integration adapters."""
+
+    # Adapters that do real I/O receive a config-driven policy; mocks keep this disabled default.
+    _retry: RetryPolicy = RetryPolicy.disabled()
+
+    def __init__(self, *, retry: RetryPolicy | None = None) -> None:
+        if retry is not None:
+            self._retry = retry
 
     def capabilities(self) -> list[Capability]:
         return self._capabilities()
@@ -46,19 +58,23 @@ class BaseIntegrationAdapter(IntegrationAdapter):
                 )
 
     def read(self, query: ReadQuery) -> ReadResult:
+        # Reads are idempotent — retry any transient error.
         try:
-            return self._read(query)
+            return self._with_retry(lambda: self._read(query), RetryClass.LIBERAL)
         except Exception as exc:  # noqa: BLE001 — boundary: never leak an SDK exception
             raise self._map_error(exc) from exc
 
     def execute(self, step: ExecutionStep, mode: RunMode) -> StepResult:
         try:
-            before = self._fetch_before(step)
+            before = self._with_retry(lambda: self._fetch_before(step), RetryClass.LIBERAL)
         except Exception as exc:  # noqa: BLE001
             return self._failed(step, self._map_error(exc), before=None)
         try:
             if mode is RunMode.DRY_RUN:
-                predicted = self._predict(step, before)
+                # A dry-run predicts only — no side effects, so retry liberally.
+                predicted = self._with_retry(
+                    lambda: self._predict(step, before), RetryClass.LIBERAL
+                )
                 return StepResult(
                     step_id=step.step_id,
                     status=StepStatus.DRY_RUN,
@@ -66,7 +82,8 @@ class BaseIntegrationAdapter(IntegrationAdapter):
                     predicted=predicted,
                     rollback=self._rollback(step, before),
                 )
-            after = self._apply(step)
+            # A LIVE write retries only as far as its idempotency allows.
+            after = self._with_retry(lambda: self._apply(step), self._retry_class_for(step))
             return StepResult(
                 step_id=step.step_id,
                 status=StepStatus.OK,
@@ -82,6 +99,37 @@ class BaseIntegrationAdapter(IntegrationAdapter):
 
     def suggest_rollback(self, step: ExecutionStep, before: dict[str, object]) -> RollbackHint:
         return self._rollback(step, before)
+
+    # --- retry -------------------------------------------------------------
+    def _with_retry(self, call: Callable[[], T], retry_class: RetryClass) -> T:
+        """Run ``call``, retrying transient failures per ``retry_class`` and the policy's backoff.
+
+        Runs before :meth:`_map_error` so the original SDK exception type stays visible to the
+        retry classifier.
+        """
+        attempt = 1
+        while True:
+            try:
+                return call()
+            except Exception as exc:  # noqa: BLE001 — classified, then retried or re-raised
+                if attempt >= self._retry.max_attempts or not self._retry.should_retry(
+                    exc, retry_class
+                ):
+                    raise
+                self._retry.metrics("integration.retries")
+                self._retry.sleep(self._retry.backoff(attempt))
+                attempt += 1
+
+    def _retry_class_for(self, step: ExecutionStep) -> RetryClass:
+        """The retry class for a LIVE write, inferred from the capability naming convention.
+
+        ``update_*`` is idempotent (retry liberally); ``create_*`` / ``comment_*`` are not, so they
+        retry only when the request provably never landed. Unknown writes take the safe default.
+        """
+        name = step.capability.name
+        if ".update_" in name:
+            return RetryClass.LIBERAL
+        return RetryClass.NEVER_LANDED
 
     # --- error containment -------------------------------------------------
     def _map_error(self, exc: Exception) -> IntegrationError:

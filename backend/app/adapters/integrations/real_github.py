@@ -10,6 +10,7 @@ from __future__ import annotations
 import httpx
 
 from app.adapters.integrations.base import BaseIntegrationAdapter
+from app.adapters.integrations.retry import RetryPolicy
 from app.domain import (
     Capability,
     CapabilityKind,
@@ -27,7 +28,15 @@ _API = "https://api.github.com"
 class RealGitHubAdapter(BaseIntegrationAdapter):
     """Talks to the GitHub REST API for one repository."""
 
-    def __init__(self, token: str, repo: str, *, client: httpx.Client | None = None) -> None:
+    def __init__(
+        self,
+        token: str,
+        repo: str,
+        *,
+        client: httpx.Client | None = None,
+        retry: RetryPolicy | None = None,
+    ) -> None:
+        super().__init__(retry=retry)
         self._repo = repo
         self._client = client or httpx.Client(
             base_url=_API,

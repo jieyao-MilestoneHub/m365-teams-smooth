@@ -20,6 +20,7 @@ from app.adapters.integrations.real_github import RealGitHubAdapter
 from app.adapters.integrations.real_outlook import RealOutlookAdapter
 from app.adapters.integrations.real_sharepoint import RealSharePointAdapter
 from app.adapters.integrations.registry import build_registry
+from app.adapters.integrations.retry import RetryPolicy
 from app.adapters.knowledge.fake_knowledge import FakeKnowledgeProvider
 from app.adapters.knowledge.foundry_iq import FoundryIqKnowledgeProvider
 from app.adapters.llm.azure_openai import AzureOpenAILLMProvider
@@ -69,10 +70,15 @@ def build_court_service(
     planners = planners if planners is not None else PLANNERS
     packs = packs if packs is not None else default_packs()
 
+    # Config-driven retry policy for the real-I/O adapters (mocks keep the disabled default).
+    retry = RetryPolicy.from_settings(settings)
+
     if registry is None:
         github: dict[str, IntegrationAdapter] = {"mock": MockGitHubAdapter()}
         if settings.github_token and settings.github_repo:
-            github["real"] = RealGitHubAdapter(settings.github_token, settings.github_repo)
+            github["real"] = RealGitHubAdapter(
+                settings.github_token, settings.github_repo, retry=retry
+            )
 
         # Read-only real evidence over Microsoft Graph (Outlook calendar, SharePoint folders).
         # One shared app-only client; a real adapter is offered only when its target is configured.
@@ -91,9 +97,13 @@ def build_court_service(
                 settings.graph_client_secret,
             )
             if settings.outlook_calendar_upn:
-                outlook["real"] = RealOutlookAdapter(graph, settings.outlook_calendar_upn)
+                outlook["real"] = RealOutlookAdapter(
+                    graph, settings.outlook_calendar_upn, retry=retry
+                )
             if settings.sharepoint_site_id:
-                sharepoint["real"] = RealSharePointAdapter(graph, settings.sharepoint_site_id)
+                sharepoint["real"] = RealSharePointAdapter(
+                    graph, settings.sharepoint_site_id, retry=retry
+                )
 
         candidates: dict[str, dict[str, IntegrationAdapter]] = {
             "github": github,
