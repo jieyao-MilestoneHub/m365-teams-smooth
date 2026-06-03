@@ -32,6 +32,16 @@ class Settings(BaseSettings):
     # Target repository for the real GitHub adapter, as "owner/name" (a throwaway test repo).
     github_repo: str = ""
 
+    # --- Microsoft Graph (read-only real evidence: Outlook calendar, SharePoint folders) ---
+    # App-only (client-credentials) auth; needs admin-consented Calendars.Read + Sites.Read.All.
+    graph_tenant_id: str = ""
+    graph_client_id: str = ""
+    graph_client_secret: str = ""
+    # The user whose calendar holds the security-review event (Customer Promise evidence).
+    outlook_calendar_upn: str = ""
+    # The SharePoint site whose default library holds the ProjectX folders (Vendor Access evidence).
+    sharepoint_site_id: str = ""
+
     # --- LLM provider (empty -> offline fake provider + deterministic parser) ---
     llm_api_key: str = ""
     llm_model: str = ""

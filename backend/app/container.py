@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from datetime import date
 
+from app.adapters.integrations.graph import GraphClient
 from app.adapters.integrations.mock_crm import MockCRMAdapter
 from app.adapters.integrations.mock_entra import MockEntraAdapter
 from app.adapters.integrations.mock_github import MockGitHubAdapter
@@ -16,6 +17,8 @@ from app.adapters.integrations.mock_planner import MockPlannerAdapter
 from app.adapters.integrations.mock_sharepoint import MockSharePointAdapter
 from app.adapters.integrations.mock_teams import MockTeamsAdapter
 from app.adapters.integrations.real_github import RealGitHubAdapter
+from app.adapters.integrations.real_outlook import RealOutlookAdapter
+from app.adapters.integrations.real_sharepoint import RealSharePointAdapter
 from app.adapters.integrations.registry import build_registry
 from app.adapters.knowledge.fake_knowledge import FakeKnowledgeProvider
 from app.adapters.knowledge.foundry_iq import FoundryIqKnowledgeProvider
@@ -70,11 +73,33 @@ def build_court_service(
         github: dict[str, IntegrationAdapter] = {"mock": MockGitHubAdapter()}
         if settings.github_token and settings.github_repo:
             github["real"] = RealGitHubAdapter(settings.github_token, settings.github_repo)
+
+        # Read-only real evidence over Microsoft Graph (Outlook calendar, SharePoint folders).
+        # One shared app-only client; a real adapter is offered only when its target is configured.
+        outlook: dict[str, IntegrationAdapter] = {"mock": MockOutlookAdapter()}
+        sharepoint: dict[str, IntegrationAdapter] = {"mock": MockSharePointAdapter()}
+        graph_ready = bool(
+            not settings.force_all_mock
+            and settings.graph_tenant_id
+            and settings.graph_client_id
+            and settings.graph_client_secret
+        )
+        if graph_ready:
+            graph = GraphClient(
+                settings.graph_tenant_id,
+                settings.graph_client_id,
+                settings.graph_client_secret,
+            )
+            if settings.outlook_calendar_upn:
+                outlook["real"] = RealOutlookAdapter(graph, settings.outlook_calendar_upn)
+            if settings.sharepoint_site_id:
+                sharepoint["real"] = RealSharePointAdapter(graph, settings.sharepoint_site_id)
+
         candidates: dict[str, dict[str, IntegrationAdapter]] = {
             "github": github,
-            "outlook": {"mock": MockOutlookAdapter()},
+            "outlook": outlook,
             "planner": {"mock": MockPlannerAdapter()},
-            "sharepoint": {"mock": MockSharePointAdapter()},
+            "sharepoint": sharepoint,
             "teams": {"mock": MockTeamsAdapter()},
             "crm": {"mock": MockCRMAdapter()},
             "entra": {"mock": MockEntraAdapter()},
