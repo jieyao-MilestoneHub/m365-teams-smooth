@@ -15,13 +15,19 @@ The court pipeline: **intake → impact → options → policy+quorum → [verdi
 
 ## Current status — read first
 
-The repository is **documentation and scaffold only**. There is no `backend/` code yet (no
-`pyproject.toml` or source files), and there is **no frontend** — the Teams Adaptive Card is the only
-UI. The commands and module paths below are the *intended* shape and only become runnable once the
-Phase 1 skeleton lands. Implementation order and PR slicing live in `roadmap.md` (Phases 1–5) and in
-GitHub issues (labeled `ready`/`blocked`, `area:*`). Build along that slicing — do not scaffold the
-whole tree at once. **Stay convergent:** every change must serve one of the three trials (Launch
-Slip, Customer Promise, Vendor Access); see `verify.md`.
+The backend engine is **implemented and runs end-to-end locally, credential-free**. `backend/` holds
+the full layered app (`agent/ mcp/ api/ services/ ports/ adapters/ domain/`), the LangGraph court
+pipeline, SQLAlchemy persistence, and a green test suite; the three trials pass under
+`scripts/verify.sh`. GitHub is the one real integration; the other six systems are mocks. There is
+**no frontend** — the Teams Adaptive Card is the only UI, rendered tenant-free via the Playground bot
+or the exported card JSON. The commands and module paths below are runnable today.
+
+What remains is **going live in a real tenant** (the *Pending tenant* items in `verify.md`): hosting
+the backend over public HTTPS, Entra ID OAuth2, sideloading the declarative agent, and — optionally —
+replacing the mocks with real Microsoft Graph adapters. See `docs/deploy.md`. Roadmap phases and PR
+slicing live in `roadmap.md` (Phases 1–5, plus enhancements) and in GitHub issues (labeled
+`ready`/`blocked`, `area:*`); keep PRs single-responsibility. **Stay convergent:** every change must
+serve one of the three trials (Launch Slip, Customer Promise, Vendor Access); see `verify.md`.
 
 ## Source of truth: `.claude/rules/`
 
@@ -81,7 +87,7 @@ M365 Copilot Chat / Teams
 When you make a significant design choice (e.g. the interrupt-vs-statelessness decision), record it
 as an ADR under `docs/adr/`.
 
-## Commands (intended — require the scaffold to exist)
+## Commands
 
 Backend (FastAPI, Python 3.11+, `uv`):
 
@@ -98,7 +104,9 @@ uv run pytest path/to/test.py::test_name   # single test
 There is no frontend. The Teams Adaptive Card is the only UI; audit/trial data is exposed via an MCP
 resource (REST is health-only).
 
-End-to-end checklist: `scripts/verify.sh` (verifies the three trials; currently stubbed).
+End-to-end checklist: `scripts/verify.sh` (verifies the three trials + safety/MCP/quality gates;
+tenant-dependent checks report PENDING). Package the M365 app with `make package` (see
+`docs/deploy.md`).
 
 ## Configuration & run modes
 
