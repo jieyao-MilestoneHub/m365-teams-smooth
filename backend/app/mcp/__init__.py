@@ -2,7 +2,7 @@
 
 The MCP server mounts as a separate ASGI sub-app, so the HTTP request-ID middleware does not cover
 it. :func:`correlate` binds a fresh ``request_id`` (and the ``thread_id`` a call carries) inside
-each tool/resource closure, giving MCP-originated trials the same correlated log stream as HTTP ones.
+each tool/resource closure, so MCP-originated trials emit the same correlated stream as HTTP ones.
 """
 
 from __future__ import annotations
