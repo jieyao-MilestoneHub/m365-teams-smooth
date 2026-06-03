@@ -62,6 +62,23 @@ class Settings(BaseSettings):
     oauth_audience: str = ""
     oauth_jwks_url: str = ""
 
+    # --- Observability ---
+    # Verbosity and output shape for the structured logger; "text" aids local-dev readability.
+    log_level: str = "INFO"
+    log_format: str = "json"  # "json" | "text"
+    # Default per-request wall-clock budget for adapters that lack an explicit one.
+    http_timeout_seconds: float = 10.0
+    # Closes the OpenAI no-timeout gap on the LLM-backed parser.
+    llm_timeout_seconds: float = 30.0
+    # Overall guard on a single graph run; on expiry the checkpoint is left resumable.
+    graph_timeout_seconds: float = 60.0
+    # Idempotency-aware retry policy for transient adapter failures (exponential backoff + jitter).
+    retry_max_attempts: int = 3
+    retry_backoff_base_seconds: float = 0.2
+    retry_backoff_max_seconds: float = 2.0
+    # Toggles collection/exposure of the in-process metrics registry.
+    metrics_enabled: bool = True
+
     # --- Deployment ---
     # Public HTTPS origin this backend is reachable at (e.g. https://change-court.example.com).
     # The MCP resource-server URL is derived as "{public_base_url}/mcp"; empty -> localhost default.
