@@ -35,3 +35,16 @@ class VerdictClaimRow(Base):
     thread_id: Mapped[str] = mapped_column(String, primary_key=True)
     idempotency_key: Mapped[str] = mapped_column(String, primary_key=True)
     audit_id: Mapped[str | None] = mapped_column(String, nullable=True)
+
+
+class ApprovalEventRow(Base):
+    """One append-only approval action (send/withdraw/approve/reject). ``payload`` is the event."""
+
+    __tablename__ = "approval_events"
+
+    event_id: Mapped[str] = mapped_column(String, primary_key=True)
+    thread_id: Mapped[str] = mapped_column(String, index=True)
+    actor_key: Mapped[str] = mapped_column(String, index=True)
+    decision: Mapped[str] = mapped_column(String)
+    created_at: Mapped[str] = mapped_column(String)
+    payload: Mapped[dict[str, object]] = mapped_column(JSON)

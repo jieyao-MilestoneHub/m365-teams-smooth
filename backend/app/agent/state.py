@@ -12,7 +12,7 @@ from typing import TypedDict
 
 from pydantic import BaseModel
 
-from app.domain import ChangeStatus, RunMode
+from app.domain import ChangeStatus, Principal, RunMode
 
 
 class CourtState(TypedDict, total=False):
@@ -22,6 +22,7 @@ class CourtState(TypedDict, total=False):
     change_id: str
     raw_request: str
     source: str
+    requester: dict[str, object]  # Principal (the authenticated opener)
     run_mode: str  # RunMode value
 
     change: dict[str, object]  # Change
@@ -50,9 +51,10 @@ def initial_state(
     raw_request: str,
     source: str,
     run_mode: RunMode,
+    requester: Principal | None = None,
 ) -> CourtState:
     """Build the state a submitted change starts from."""
-    return CourtState(
+    state = CourtState(
         thread_id=thread_id,
         change_id=change_id,
         raw_request=raw_request,
@@ -62,3 +64,6 @@ def initial_state(
         results=[],
         errors=[],
     )
+    if requester is not None:
+        state["requester"] = requester.model_dump(mode="json")
+    return state

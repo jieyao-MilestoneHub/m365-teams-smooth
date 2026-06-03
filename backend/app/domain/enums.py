@@ -51,6 +51,7 @@ class VerdictType(StrEnum):
     REQUEST_REVISION = "request_revision"
     REJECT = "reject"
     ACCEPT_ALTERNATIVE = "accept_alternative"
+    WITHDRAW = "withdraw"  # requester abandons before approval (non-approving → execute skips)
 
 
 class ApproverRole(StrEnum):

@@ -79,6 +79,12 @@ class Settings(BaseSettings):
     # Toggles collection/exposure of the in-process metrics registry.
     metrics_enabled: bool = True
 
+    # --- Approvals (separation of duties) ---
+    # Map approver roles to identities (UPN or oid), comma-separated "role:identity" (a role may
+    # repeat). e.g. "security_lead:joel@x,account_owner:joel@x". Empty -> no authorized approvers,
+    # so identity-aware enforcement stays off and the legacy single-verdict path is used.
+    approver_directory: str = ""
+
     # --- Deployment ---
     # Public HTTPS origin this backend is reachable at (e.g. https://change-court.example.com).
     # The MCP resource-server URL is derived as "{public_base_url}/mcp"; empty -> localhost default.
@@ -92,6 +98,16 @@ class Settings(BaseSettings):
         """
         origin = self.public_base_url.rstrip("/") or "http://localhost:8000"
         return f"{origin}/mcp"
+
+    def approver_map(self) -> dict[str, set[str]]:
+        """Parse ``approver_directory`` into ``{role: {identity_key, ...}}`` (all lowercased)."""
+        mapping: dict[str, set[str]] = {}
+        for raw_pair in self.approver_directory.split(","):
+            role, _, identity = raw_pair.strip().partition(":")
+            role, identity = role.strip().lower(), identity.strip().lower()
+            if role and identity:
+                mapping.setdefault(role, set()).add(identity)
+        return mapping
 
     def integration_modes(self) -> dict[str, str]:
         """Parse ``integration_mode`` into a ``{system: mode}`` map.
