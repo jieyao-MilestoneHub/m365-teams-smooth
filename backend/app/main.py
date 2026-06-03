@@ -14,6 +14,7 @@ from fastapi import FastAPI
 from app import __version__
 from app.api.health import router as health_router
 from app.config import Settings
+from app.observability import configure_logging
 
 Lifespan = Callable[[FastAPI], AbstractAsyncContextManager[None]]
 
@@ -25,6 +26,7 @@ def create_app(settings: Settings | None = None, *, lifespan: Lifespan | None = 
     without coupling the REST app to those concerns; the health-only app passes none.
     """
     settings = settings or Settings()
+    configure_logging(settings)
     app = FastAPI(title="AI Change Court", version=__version__, lifespan=lifespan)
     app.state.settings = settings
     app.include_router(health_router)

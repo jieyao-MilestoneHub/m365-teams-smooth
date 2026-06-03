@@ -16,12 +16,14 @@ from app.config import Settings
 from app.main import create_app
 from app.mcp.security import build_auth_settings, build_token_verifier
 from app.mcp.server import MCP_PATH, build_mcp_server
+from app.observability import configure_logging
 from app.services.court_service import CourtService
 
 
 def create_full_app(service: CourtService | None = None) -> FastAPI:
     """Build the REST app and mount the OAuth2-protected MCP server, run via the lifespan."""
     settings = Settings()
+    configure_logging(settings)
     mcp = build_mcp_server(
         service or get_court_service(),
         token_verifier=build_token_verifier(settings),
