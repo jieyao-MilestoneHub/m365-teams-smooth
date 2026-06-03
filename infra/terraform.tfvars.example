@@ -11,3 +11,12 @@ location        = "eastus"
 # integration_mode = "github:real"   # used only when force_all_mock = false
 # github_token     = ""              # only for the real GitHub adapter
 # github_repo      = ""              # owner/name
+
+# Real Microsoft Graph evidence (set force_all_mock = false and
+# integration_mode = "github:real,outlook:real,sharepoint:real" to use these). All three graph_*
+# values are required together; omit any and Outlook/SharePoint fall back to mock.
+# graph_tenant_id      = ""          # app-only client-credentials tenant
+# graph_client_id      = ""          # app (client) id
+# graph_client_secret  = ""          # app secret (stored as a Container App secret)
+# outlook_calendar_upn = ""          # UPN whose calendar holds the security-review event
+# sharepoint_site_id   = ""          # site id whose library holds the ProjectX folders

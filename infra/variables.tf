@@ -63,6 +63,40 @@ variable "github_repo" {
   default     = ""
 }
 
+# --- Microsoft Graph read-only evidence (Outlook calendar + SharePoint folders) ---
+# App-only (client-credentials) auth. Supplied only when outlook/sharepoint run real; otherwise the
+# backend's graph-ready gate stays false and those systems fall back to mock in the cloud.
+variable "graph_tenant_id" {
+  type        = string
+  description = "Optional: Entra tenant id for the app-only Graph client (real Outlook/SharePoint reads)."
+  default     = ""
+}
+
+variable "graph_client_id" {
+  type        = string
+  description = "Optional: app (client) id for the app-only Graph client."
+  default     = ""
+}
+
+variable "graph_client_secret" {
+  type        = string
+  description = "Optional: client secret for the app-only Graph client. Stored as a Container App secret."
+  default     = ""
+  sensitive   = true
+}
+
+variable "outlook_calendar_upn" {
+  type        = string
+  description = "Optional: UPN whose calendar holds the security-review event (Customer Promise evidence)."
+  default     = ""
+}
+
+variable "sharepoint_site_id" {
+  type        = string
+  description = "Optional: SharePoint site id whose library holds the ProjectX folders (Vendor Access evidence)."
+  default     = ""
+}
+
 variable "app_display_name" {
   type        = string
   description = "Display name for the Entra ID app registration."
