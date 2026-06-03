@@ -53,7 +53,7 @@ check "MCP tools + resources + OAuth verifier" backend pytest -q \
 section "Quality gates"
 check "ruff clean" backend ruff check
 check "mypy clean" backend mypy
-check "pytest green (full suite)" backend pytest -q
+check "pytest green + coverage ≥80% (full suite)" backend pytest --cov=app
 
 # Shipped docs must not reference the competition.
 section "Docs"
