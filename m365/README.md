@@ -11,12 +11,31 @@ The declarative agent that surfaces the Change Court in Microsoft 365 Copilot / 
 
 ## Placeholders
 
-These are resolved at package time (e.g. by the Microsoft 365 Agents Toolkit), not committed:
+These are resolved at package time (by `package.py` below, or the Microsoft 365 Agents Toolkit) and
+are not committed:
 
 - `${{TEAMS_APP_ID}}` — the app id for the dev tenant.
 - `${{MCP_HOST_DOMAIN}}` / `${{MCP_SERVER_URL}}` — the public HTTPS host of the MCP server
   (a dev tunnel locally; see `app/asgi.py`, endpoint `/mcp`).
-- `color.png` (192×192) and `outline.png` (32×32) icons — add before packaging.
+- `${{OAUTH_CONNECTION_ID}}` — the reference id of the Teams OAuth connection (Entra ID).
+- `color.png` (192×192) and `outline.png` (32×32) icons — add to `m365/` before packaging.
+
+## Packaging
+
+`package.py` resolves the placeholders from environment variables and zips the manifests + icons into
+`m365/build/appPackage.zip` (the file uploaded to a tenant). It fails loudly if an icon or a
+placeholder value is missing — nothing partial is written.
+
+```bash
+make package        # or: from the repo root, the command below
+TEAMS_APP_ID=<guid> MCP_HOST_DOMAIN=change-court.example.com \
+MCP_SERVER_URL=https://change-court.example.com/mcp \
+OAUTH_CONNECTION_ID=<connection-ref> \
+python m365/package.py
+```
+
+See [`../docs/deploy.md`](../docs/deploy.md) for hosting the backend over HTTPS and registering the
+Entra ID app that supplies these values.
 
 ## Verifying in a tenant
 
