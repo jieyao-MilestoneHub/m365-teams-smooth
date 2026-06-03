@@ -72,6 +72,14 @@ resource "azurerm_container_app" "this" {
     }
   }
 
+  dynamic "secret" {
+    for_each = var.graph_client_secret == "" ? [] : [1]
+    content {
+      name  = "graph-client-secret"
+      value = var.graph_client_secret
+    }
+  }
+
   ingress {
     external_enabled = true
     target_port      = 8000
@@ -132,6 +140,33 @@ resource "azurerm_container_app" "this" {
           name        = "GITHUB_TOKEN"
           secret_name = "github-token"
         }
+      }
+
+      # Microsoft Graph read-only evidence. The non-secret identifiers go in plain env; the client
+      # secret rides a Container App secret. All three of tenant/client/secret must be present for the
+      # backend's graph-ready gate to offer the real Outlook/SharePoint adapters — otherwise it mocks.
+      env {
+        name  = "GRAPH_TENANT_ID"
+        value = var.graph_tenant_id
+      }
+      env {
+        name  = "GRAPH_CLIENT_ID"
+        value = var.graph_client_id
+      }
+      dynamic "env" {
+        for_each = var.graph_client_secret == "" ? [] : [1]
+        content {
+          name        = "GRAPH_CLIENT_SECRET"
+          secret_name = "graph-client-secret"
+        }
+      }
+      env {
+        name  = "OUTLOOK_CALENDAR_UPN"
+        value = var.outlook_calendar_upn
+      }
+      env {
+        name  = "SHAREPOINT_SITE_ID"
+        value = var.sharepoint_site_id
       }
     }
   }
