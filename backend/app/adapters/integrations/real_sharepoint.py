@@ -32,6 +32,7 @@ class RealSharePointAdapter(BaseIntegrationAdapter):
     def __init__(self, graph: GraphClient, site_id: str) -> None:
         self._graph = graph
         self._site_id = site_id
+        self._drive_ids: dict[str, str] = {}
 
     @property
     def system(self) -> str:
@@ -48,12 +49,35 @@ class RealSharePointAdapter(BaseIntegrationAdapter):
             ),
         ]
 
+    def _drive_id(self, library: str) -> str:
+        # A SharePoint site has several document libraries (each a Graph "drive"); resolve by name.
+        if not self._drive_ids:
+            data = self._graph.get(
+                f"/sites/{self._site_id}/drives", **{"$select": "id,name", "$top": "100"}
+            )
+            value = data.get("value", [])
+            self._drive_ids = {
+                str(d.get("name")): str(d.get("id"))
+                for d in (value if isinstance(value, list) else [])
+                if isinstance(d, dict)
+            }
+        drive_id = self._drive_ids.get(library)
+        if not drive_id:
+            raise IntegrationError(f"{_SYSTEM}: no document library named '{library}'")
+        return drive_id
+
     def _children(self, path: str) -> list[dict[str, object]]:
-        # Graph addresses the drive root directly, or a subpath via the "root:/<path>:" form.
-        rel = path.strip("/")
-        segment = f"root:/{rel}:" if rel else "root"
+        # The first path segment selects the document library; the rest is the in-library path,
+        # addressed as the drive root or a subpath via the "root:/<path>:" form.
+        parts = [p for p in path.strip("/").split("/") if p]
+        if not parts:
+            raise IntegrationError(
+                f"{_SYSTEM}: path must name a document library, e.g. '/ProjectX'"
+            )
+        library, rest = parts[0], "/".join(parts[1:])
+        segment = f"root:/{rest}:" if rest else "root"
         data = self._graph.get(
-            f"/sites/{self._site_id}/drive/{segment}/children",
+            f"/sites/{self._site_id}/drives/{self._drive_id(library)}/{segment}/children",
             **{"$select": "name,folder", "$top": "200"},
         )
         value = data.get("value", [])

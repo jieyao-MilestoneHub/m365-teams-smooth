@@ -139,10 +139,21 @@ def _sharepoint() -> RealSharePointAdapter:
     return RealSharePointAdapter(GraphClient("t1", "cid", "secret"), "site1")
 
 
+def _drives_route() -> None:
+    # The first path segment ("ProjectX") resolves to a document library (drive).
+    respx.get(f"{_GRAPH}/sites/site1/drives").mock(
+        return_value=httpx.Response(
+            200,
+            json={"value": [{"id": "d1", "name": "ProjectX"}, {"id": "d0", "name": "Documents"}]},
+        )
+    )
+
+
 @respx.mock
 def test_read_folder_flags_customer_data() -> None:
     _token_route()
-    respx.get(f"{_GRAPH}/sites/site1/drive/root:/ProjectX:/children").mock(
+    _drives_route()
+    respx.get(f"{_GRAPH}/sites/site1/drives/d1/root/children").mock(
         return_value=httpx.Response(
             200,
             json={
@@ -164,7 +175,8 @@ def test_read_folder_flags_customer_data() -> None:
 @respx.mock
 def test_read_folder_safe_subfolder_has_no_customer_data() -> None:
     _token_route()
-    respx.get(f"{_GRAPH}/sites/site1/drive/root:/ProjectX/LaunchAssets:/children").mock(
+    _drives_route()
+    respx.get(f"{_GRAPH}/sites/site1/drives/d1/root:/LaunchAssets:/children").mock(
         return_value=httpx.Response(
             200, json={"value": [{"name": "brief.docx"}, {"name": "timeline.xlsx"}]}
         )
