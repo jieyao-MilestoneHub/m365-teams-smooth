@@ -29,8 +29,8 @@ jobs:
         run: uv run ruff check
       - name: Type-check (mypy)
         run: uv run mypy
-      - name: Test (pytest)
-        run: uv run pytest
+      - name: Test (pytest, coverage gate ≥80%)
+        run: uv run pytest --cov=app
 
   # The tenant-free Playground bot (reuses the backend in-process); same lint/type/test gate.
   bot:

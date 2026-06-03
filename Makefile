@@ -9,7 +9,7 @@ help:
 	@echo "  run          run the backend with reload (uvicorn)"
 	@echo "  lint         ruff check"
 	@echo "  type         mypy"
-	@echo "  test         pytest"
+	@echo "  test         pytest with coverage (fails under 80%)"
 	@echo "  check        lint + type + test (local pre-PR gate)"
 	@echo "  demo         run the three trials end-to-end and print each Change Court"
 	@echo "  cards        export the Change Court Adaptive Card JSON (m365/adaptive-cards/generated)"
@@ -32,7 +32,7 @@ type:
 	cd backend && uv run mypy
 
 test:
-	cd backend && uv run pytest
+	cd backend && uv run pytest --cov=app
 
 check: lint type test
 
