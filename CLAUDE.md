@@ -102,7 +102,9 @@ uv run pytest path/to/test.py::test_name   # single test
 ```
 
 There is no frontend. The Teams Adaptive Card is the only UI; audit/trial data is exposed via an MCP
-resource (REST is health-only).
+resource (REST is health-only). The intended MCP surface (Phase 4) is the tools `submit_change`,
+`get_trial`, `cast_verdict`, `get_status` plus the resources for trial / audit / capabilities —
+`cast_verdict` must reach idempotent parity across both MCP and REST.
 
 End-to-end checklist: `scripts/verify.sh` (verifies the three trials + safety/MCP/quality gates;
 tenant-dependent checks report PENDING). Package the M365 app with `make package` (see
@@ -117,6 +119,8 @@ Env-driven via `config.py` (pydantic-settings) — see `.env.example`. Architect
 - `DRY_RUN_DEFAULT` — whether new decisions default to dry-run.
 - `DB_URL` — SQLite locally, Postgres later.
 - `GITHUB_TOKEN` — only when the GitHub adapter runs in `real` mode. `OAUTH_*` — MCP OAuth2 settings.
+- `LLM_API_KEY` / `LLM_MODEL` — leave empty to use the offline fake LLM provider (the default for local
+  development and fully-mocked runs).
 
 GitHub is the one real adapter; the rest (Outlook, Planner, SharePoint, Teams, CRM, Entra) are mocks
 returning realistic data, so the system runs fully locally. Only the adapters the three trials need
