@@ -6,6 +6,7 @@ import logging
 
 from app.config import Settings
 from app.domain import Capability
+from app.observability import metrics
 from app.ports.integration import IntegrationAdapter
 from app.ports.registry import IntegrationRegistry
 
@@ -50,6 +51,7 @@ def select_adapters(
                 logger.warning(
                     "adapter.fallback", extra={"system": system, "requested": requested}
                 )
+                metrics.increment("adapter.fallback")
         if adapter is not None:
             logger.info("adapter.selected", extra={"system": system, "mode": selected_mode})
             chosen.append(adapter)

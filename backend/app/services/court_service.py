@@ -32,6 +32,7 @@ from app.domain import (
     Verdict,
     VerdictType,
 )
+from app.observability import metrics
 from app.ports.registry import IntegrationRegistry
 from app.ports.repository import AuditRepository, VerdictLedger
 from app.services.dto import CastResult, TrialSummary
@@ -100,6 +101,7 @@ class CourtService:
                 "run_mode": mode.value,
             },
         )
+        metrics.increment("trials.submitted")
 
         risk = _model(state, "risk", RiskResult)
         needs_approval = isinstance(risk, RiskResult) and risk.requires_approval
@@ -128,6 +130,7 @@ class CourtService:
                 "verdict.duplicate",
                 extra={"thread_id": thread_id, "idempotency_key": key, "audit_id": audit_id},
             )
+            metrics.increment("verdicts.duplicate")
             return CastResult(
                 thread_id=thread_id, status=status, audit_id=audit_id, idempotent=True
             )
@@ -153,6 +156,7 @@ class CourtService:
                 "audit_id": audit_id if isinstance(audit_id, str) else None,
             },
         )
+        metrics.increment("verdicts.cast")
         return CastResult(
             thread_id=thread_id,
             status=str(state.get("status", "")),

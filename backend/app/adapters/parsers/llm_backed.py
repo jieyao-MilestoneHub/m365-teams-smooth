@@ -14,6 +14,7 @@ import logging
 from pydantic import BaseModel, Field
 
 from app.domain import Change, RequestedAction
+from app.observability import metrics
 from app.ports.llm import LLMProvider
 from app.ports.registry import IntegrationRegistry
 from app.ports.request_parser import RequestParser
@@ -76,10 +77,12 @@ class LlmRequestParser(RequestParser):
             logger.warning(
                 "parser.llm_fallback", extra={"reason": "parse_error", "error": str(exc)}
             )
+            metrics.increment("parser.llm_fallback")
             return self._fallback.parse(raw, change_id=change_id)
 
         if result.subject not in _SUBJECTS:
             logger.warning("parser.llm_fallback", extra={"reason": "unknown_subject"})
+            metrics.increment("parser.llm_fallback")
             return self._fallback.parse(raw, change_id=change_id)
 
         return Change(

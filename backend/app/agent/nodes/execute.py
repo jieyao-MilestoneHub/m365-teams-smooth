@@ -19,6 +19,7 @@ from app.domain import (
     Verdict,
     VerdictType,
 )
+from app.observability import metrics
 from app.ports.registry import IntegrationRegistry
 
 logger = logging.getLogger(__name__)
@@ -58,6 +59,7 @@ class ExecuteNode:
                     extra={"step_id": step.step_id, "system": step.capability.system,
                            "error": "no adapter"},
                 )
+                metrics.increment("steps.failed")
                 results.append(
                     StepResult(
                         step_id=step.step_id,
@@ -72,11 +74,13 @@ class ExecuteNode:
                 logger.warning(
                     "step.failed", extra={"step_id": result.step_id, "error": result.error}
                 )
+                metrics.increment("steps.failed")
                 errors.append(f"step {result.step_id} failed: {result.error}")
             else:
                 logger.info(
                     "step.ok", extra={"step_id": result.step_id, "status": result.status.value}
                 )
+                metrics.increment("steps.ok")
 
         had_failure = any(r.status is StepStatus.FAILED for r in results)
         status = ChangeStatus.FAILED if had_failure else ChangeStatus.DONE

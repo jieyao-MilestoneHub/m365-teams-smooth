@@ -8,5 +8,6 @@ the home for concerns that span the HTTP edge, the MCP edge, and the graph nodes
 from __future__ import annotations
 
 from app.observability.logging import JsonFormatter, configure_logging
+from app.observability.metrics import configure_metrics
 
-__all__ = ["JsonFormatter", "configure_logging"]
+__all__ = ["JsonFormatter", "configure_logging", "configure_metrics"]
