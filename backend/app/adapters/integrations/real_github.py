@@ -94,8 +94,20 @@ class RealGitHubAdapter(BaseIntegrationAdapter):
             )
         if query.capability == "github.read_blocking_issues":
             label = str(query.params.get("label", "blocker"))
-            issues = self._get(f"/repos/{repo}/issues", state="open", labels=label).json()
-            return ReadResult(capability=query.capability, data={"issues": list(issues)})
+            raw = self._get(f"/repos/{repo}/issues", state="open", labels=label).json()
+            # The /issues endpoint also returns pull requests (each carries a "pull_request" key);
+            # drop those so PRs aren't counted as blockers, and normalize to the fields the impact
+            # evidence needs (raw issue objects are large and would leak into the card and audit).
+            issues = [
+                {
+                    "number": item.get("number"),
+                    "title": item.get("title"),
+                    "state": item.get("state"),
+                }
+                for item in raw
+                if "pull_request" not in item
+            ]
+            return ReadResult(capability=query.capability, data={"issues": issues})
         raise IntegrationError(f"{_SYSTEM}: unknown read capability '{query.capability}'")
 
     def _predict(self, step: ExecutionStep, before: dict[str, object]) -> PredictedEffect:

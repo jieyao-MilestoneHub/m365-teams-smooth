@@ -163,8 +163,26 @@ Set via environment variables (see `.env.example`):
 - `GITHUB_TOKEN` / `GITHUB_REPO` — required only when the GitHub adapter runs in `real` mode
   (point `GITHUB_REPO` at a throwaway `owner/name`).
 - `OAUTH_*` — MCP OAuth2 settings; a local dev issuer is used when no tenant is configured.
+- `PUBLIC_BASE_URL` — public HTTPS origin once the backend is deployed; the MCP resource URL is
+  `{PUBLIC_BASE_URL}/mcp`. Left empty locally (defaults to `http://localhost:8000`).
 
 **Never commit secrets.** Use environment variables or a secret store.
+
+### Grounding the Customer Promise trial in real GitHub (opt-in)
+
+The Customer Promise trial weighs open **blocking issues** as impact evidence. By default these come
+from the mock adapter, so the trial runs credential-free. To ground them in a live repository
+instead:
+
+1. In a throwaway repo, open a few issues and label them `blocker` (the default label; override with
+   the `label` read param). Pull requests are ignored — only issues count.
+2. Run with the GitHub adapter in `real` mode:
+
+   ```bash
+   INTEGRATION_MODE=github:real GITHUB_TOKEN=<token> GITHUB_REPO=<owner/name> make demo
+   ```
+
+`FORCE_ALL_MOCK` stays the default elsewhere, so every other system remains mocked.
 
 ## Status
 

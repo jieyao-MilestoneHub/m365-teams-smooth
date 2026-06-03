@@ -47,6 +47,23 @@ def test_read_blocking_issues() -> None:
 
 
 @respx.mock
+def test_read_blocking_issues_excludes_prs_and_normalizes() -> None:
+    # The /issues endpoint returns pull requests too; they must not be counted as blockers, and
+    # only the {number, title, state} fields should survive into the evidence.
+    respx.get(f"{_API}/repos/octo/launch/issues").mock(
+        return_value=httpx.Response(
+            200,
+            json=[
+                {"number": 42, "title": "SSO blocker", "state": "open", "body": "secret details"},
+                {"number": 43, "title": "a PR", "state": "open", "pull_request": {"url": "..."}},
+            ],
+        )
+    )
+    data = _adapter().read(ReadQuery(capability="github.read_blocking_issues")).data
+    assert data["issues"] == [{"number": 42, "title": "SSO blocker", "state": "open"}]
+
+
+@respx.mock
 def test_live_update_milestone_due() -> None:
     respx.get(f"{_API}/repos/octo/launch/milestones").mock(
         return_value=httpx.Response(
