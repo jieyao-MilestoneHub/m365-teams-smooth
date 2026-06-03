@@ -13,6 +13,7 @@ from typing import Any
 
 from langgraph.graph import END, START, StateGraph
 
+from app.agent.instrument import instrument
 from app.agent.state import CourtState
 
 Node = Callable[[CourtState], CourtState]
@@ -31,12 +32,13 @@ def build_court_graph(
     """Wire intake → impact → options → policy → [interrupt] → execute → audit and compile it."""
     # Typed Any to keep the engine's API (and version churn) confined to this module + the runner.
     graph: Any = StateGraph(CourtState)
-    graph.add_node("intake", intake)
-    graph.add_node("impact", impact)
-    graph.add_node("options", options)
-    graph.add_node("policy", policy)
-    graph.add_node("execute", execute)
-    graph.add_node("audit", audit)
+    # The wrapper binds correlation IDs and logs start/end + duration; nodes stay transparent.
+    graph.add_node("intake", instrument(intake, "intake"))
+    graph.add_node("impact", instrument(impact, "impact"))
+    graph.add_node("options", instrument(options, "options"))
+    graph.add_node("policy", instrument(policy, "policy"))
+    graph.add_node("execute", instrument(execute, "execute"))
+    graph.add_node("audit", instrument(audit, "audit"))
 
     graph.add_edge(START, "intake")
     graph.add_edge("intake", "impact")
