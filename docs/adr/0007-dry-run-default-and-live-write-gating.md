@@ -22,8 +22,8 @@ whether, and under what conditions, execution should leave dry-run.
 3. **Conditions to enable a live write**, all of them, when the deferral ends:
    - the trial passed the approval gates (a verdict alone is not enough — quorum must be satisfied
      where required);
-   - the target system is explicitly opted in (`run_mode=live` per submission, plus the per-system
-     `INTEGRATION_MODE=<system>:real` and its credentials/scopes);
+   - the target system is explicitly opted in (`run_mode=live` on the submitted change, plus the
+     per-system `INTEGRATION_MODE=<system>:real` and its credentials/scopes);
    - `FORCE_ALL_MOCK=true` stays available as the kill-switch that turns every integration back
      into a mock regardless of other settings.
 4. **Blast-radius limits stay advisory-first:** rollback hints remain data the card shows, never
