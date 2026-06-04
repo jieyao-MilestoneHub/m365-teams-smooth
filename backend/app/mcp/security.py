@@ -8,6 +8,7 @@ real tokens via JWKS — a follow-up that swaps the verifier without touching to
 
 from __future__ import annotations
 
+import logging
 import time
 from collections.abc import Mapping
 
@@ -25,6 +26,40 @@ DEV_SECRET = "dev-only-not-a-secret-please-change-me"  # noqa: S105 — local de
 DEV_ISSUER = "https://change-court.local/dev"
 DEV_AUDIENCE = "ai-change-court"
 DEFAULT_SCOPES = ["court.use"]
+
+logger = logging.getLogger(__name__)
+
+
+def _audience_candidates(audience: str) -> list[str]:
+    """Both spellings of an Entra application audience.
+
+    v1 access tokens carry the Application ID URI (``api://<client-id>``) while v2 tokens carry
+    the bare client id — accept whichever the tenant mints for the same app.
+    """
+    candidates = [audience]
+    if audience.startswith("api://"):
+        candidates.append(audience.removeprefix("api://"))
+    else:
+        candidates.append(f"api://{audience}")
+    return candidates
+
+
+def _claim_scopes(claims: Mapping[str, object]) -> list[str]:
+    """Normalize the scope claim across issuers.
+
+    The dev issuer mints ``scopes`` (list); Entra delegated tokens carry ``scp`` (space-delimited
+    string) and app-only tokens carry ``roles`` (list).
+    """
+    scopes = claims.get("scopes")
+    if isinstance(scopes, list):
+        return [str(s) for s in scopes]
+    scp = claims.get("scp")
+    if isinstance(scp, str) and scp:
+        return scp.split()
+    roles = claims.get("roles")
+    if isinstance(roles, list):
+        return [str(r) for r in roles]
+    return []
 
 
 def mint_dev_token(
@@ -52,11 +87,10 @@ def mint_dev_token(
 def _access_token(token: str, claims: dict[str, object]) -> AccessToken:
     """Map validated JWT claims to an MCP AccessToken (shared by both verifiers)."""
     subject = str(claims.get("sub", ""))
-    scopes = claims.get("scopes", [])
     return AccessToken(
         token=token,
         client_id=subject,
-        scopes=list(scopes) if isinstance(scopes, list) else [],
+        scopes=_claim_scopes(claims),
         expires_at=claims.get("exp"),  # type: ignore[arg-type]
         subject=subject,
         claims=claims,
@@ -121,7 +155,8 @@ class DevTokenVerifier(TokenVerifier):
                 audience=self._audience,
                 issuer=self._issuer,
             )
-        except jwt.PyJWTError:
+        except jwt.PyJWTError as err:
+            logger.warning("mcp.token_rejected", extra={"verifier": "dev", "reason": str(err)})
             return None
         return _access_token(token, claims)
 
@@ -138,7 +173,7 @@ class JwksTokenVerifier(TokenVerifier):
         jwk_client: PyJWKClient | None = None,
     ) -> None:
         self._issuer = issuer
-        self._audience = audience
+        self._audiences = _audience_candidates(audience)
         self._jwks = jwk_client or PyJWKClient(jwks_url)
 
     async def verify_token(self, token: str) -> AccessToken | None:
@@ -148,10 +183,11 @@ class JwksTokenVerifier(TokenVerifier):
                 token,
                 signing_key.key,
                 algorithms=["RS256"],
-                audience=self._audience,
+                audience=self._audiences,
                 issuer=self._issuer,
             )
-        except jwt.PyJWTError:  # covers PyJWKClientError (a PyJWTError subclass) + decode failures
+        except jwt.PyJWTError as err:  # covers PyJWKClientError (a PyJWTError subclass) too
+            logger.warning("mcp.token_rejected", extra={"verifier": "jwks", "reason": str(err)})
             return None
         return _access_token(token, claims)
 
