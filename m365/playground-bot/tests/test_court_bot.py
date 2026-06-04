@@ -146,3 +146,54 @@ def test_unknown_verdict_is_rejected_gracefully() -> None:
     card = bot.respond(text=None, value={"thread_id": "t", "verdict_type": "nonsense"})
     assert any("not recognized" in t for t in _texts(card))
     assert fake.calls == []
+
+
+class _FakeActivity:
+    """The slice of a Bot Framework activity that on_message_activity touches."""
+
+    def __init__(self, activity_id: str | None, text: str | None, value: Any = None) -> None:
+        self.id = activity_id
+        self.text = text
+        self.value = value
+
+
+class _FakeTurnContext:
+    def __init__(self, activity: _FakeActivity) -> None:
+        self.activity = activity
+        self.sent: list[Any] = []
+
+    async def send_activity(self, activity: Any) -> None:
+        self.sent.append(activity)
+
+
+async def test_redelivered_activity_sends_card_once() -> None:
+    """The channel may redeliver the same activity; only the first delivery posts a card."""
+    bot, fake = _bot_with_fake()
+    verdict = {
+        "thread_id": "thread-1",
+        "verdict_type": "accept_alternative",
+        "selected_plan": "safe_alternative",
+    }
+    contexts = [_FakeTurnContext(_FakeActivity("act-1", None, verdict)) for _ in range(4)]
+    for ctx in contexts:
+        await bot.on_message_activity(ctx)
+    assert sum(len(ctx.sent) for ctx in contexts) == 1
+    assert len([c for c in fake.calls if c[0] == "cast"]) == 1
+
+
+async def test_distinct_activities_each_send_a_card() -> None:
+    bot, _ = _bot_with_fake()
+    first = _FakeTurnContext(_FakeActivity("act-1", "slip the launch"))
+    second = _FakeTurnContext(_FakeActivity("act-2", "slip the launch"))
+    await bot.on_message_activity(first)
+    await bot.on_message_activity(second)
+    assert len(first.sent) == 1
+    assert len(second.sent) == 1
+
+
+async def test_activity_without_id_is_never_deduplicated() -> None:
+    bot, _ = _bot_with_fake()
+    contexts = [_FakeTurnContext(_FakeActivity(None, "slip the launch")) for _ in range(2)]
+    for ctx in contexts:
+        await bot.on_message_activity(ctx)
+    assert sum(len(ctx.sent) for ctx in contexts) == 2
