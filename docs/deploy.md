@@ -58,6 +58,14 @@ Defender's plan drafting within the court's refusal — each with a deterministi
 per-call timeout, `LLM_MAX_TOKENS`, and the 3-calls-per-trial ceiling (see `adr/0009`). Leave the
 endpoint unset and every role stays deterministic.
 
+Keyless requirements: the Container App's user-assigned identity needs the **Cognitive Services
+OpenAI User** role on the OpenAI account, and `AZURE_CLIENT_ID` must point at that identity —
+Terraform injects it unconditionally, so `DefaultAzureCredential` resolves the right principal
+even when only the LLM (and not knowledge grounding) is keyless. The deployment must accept the
+`max_tokens` parameter (GPT-4o-class chat deployments do). Watch for silent degradation: if LLM
+auth fails every role falls back to deterministic — check the `agentic.*` fallback counters in
+`court://metrics` after deploying.
+
 ### Optional: knowledge grounding (Azure AI Search)
 
 The impact node can ground its evidence in a knowledge base served by Azure AI Search agentic
