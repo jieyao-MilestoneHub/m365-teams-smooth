@@ -1,9 +1,9 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/copilot/plugin/v2.3/schema.json",
-  "schema_version": "v2.3",
+  "$schema": "https://developer.microsoft.com/json-schemas/copilot/plugin/v2.4/schema.json",
+  "schema_version": "v2.4",
   "name_for_human": "AI Change Court",
   "description_for_human": "Put a risky change on trial: impact, a plan or safe alternative, approvers, audit trail.",
-  "description_for_model": "Use to open and review a governed-execution trial for a risky enterprise change. submit_change opens a trial and returns the impact, risk, plan (or safe alternative), and required approvers; get_trial returns the full record; cast_verdict records a decision (use accept_alternative for the safe alternative); get_status returns the lifecycle state.",
+  "description_for_model": "Use to open and review a governed-execution trial for a risky enterprise change. submit_change opens a trial and returns the impact, risk, plan (or safe alternative), and required approvers; get_trial returns the full record; cast_verdict records a decision (use accept_alternative for the safe alternative); send_for_approval/withdraw_change/decide drive the separation-of-duties approval flow; list_pending_approvals is the approver's queue; get_status returns the lifecycle state.",
   "namespace": "changecourt",
   "functions": [
     {
@@ -21,6 +21,22 @@
     {
       "name": "cast_verdict",
       "description": "Record a reviewer's verdict and resume the trial; idempotent per thread and key."
+    },
+    {
+      "name": "send_for_approval",
+      "description": "Requester sends the trial to its approvers with a mandatory note."
+    },
+    {
+      "name": "withdraw_change",
+      "description": "Requester gives up the change instead of sending it for approval."
+    },
+    {
+      "name": "decide",
+      "description": "An authorized approver approves, or rejects with a note; the requester cannot self-approve."
+    },
+    {
+      "name": "list_pending_approvals",
+      "description": "List trials awaiting the caller's approval (authorized role, not their own requests)."
     }
   ],
   "runtimes": [
@@ -30,10 +46,165 @@
         "type": "OAuthPluginVault",
         "reference_id": "${{OAUTH_CONNECTION_ID}}"
       },
+      "run_for_functions": [
+        "submit_change",
+        "get_status",
+        "get_trial",
+        "cast_verdict",
+        "send_for_approval",
+        "withdraw_change",
+        "decide",
+        "list_pending_approvals"
+      ],
       "spec": {
-        "url": "${{MCP_SERVER_URL}}"
-      },
-      "run_for_functions": ["submit_change", "get_status", "get_trial", "cast_verdict"]
+        "url": "${{MCP_SERVER_URL}}",
+        "mcp_tool_description": {
+          "tools": [
+            {
+              "name": "submit_change",
+              "description": "Open a trial for a risky change; returns the trial summary (status, risk, plan, verdict options).",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "raw_request": {
+                    "type": "string",
+                    "description": "The change request in natural language."
+                  },
+                  "source": {
+                    "type": "string",
+                    "description": "Origin of the request; defaults to mcp."
+                  },
+                  "run_mode": {
+                    "type": "string",
+                    "description": "dry_run (predict effects) or live; defaults to dry_run."
+                  }
+                },
+                "required": ["raw_request"]
+              }
+            },
+            {
+              "name": "get_status",
+              "description": "Return the current lifecycle status of a trial.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "thread_id": {
+                    "type": "string",
+                    "description": "The trial's thread id."
+                  }
+                },
+                "required": ["thread_id"]
+              }
+            },
+            {
+              "name": "get_trial",
+              "description": "Return the full trial record: change, impact, options, risk, quorum, verdict, results.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "thread_id": {
+                    "type": "string",
+                    "description": "The trial's thread id."
+                  }
+                },
+                "required": ["thread_id"]
+              }
+            },
+            {
+              "name": "cast_verdict",
+              "description": "Record a reviewer's verdict and resume the trial; idempotent per thread and key.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "thread_id": {
+                    "type": "string",
+                    "description": "The trial's thread id."
+                  },
+                  "verdict_type": {
+                    "type": "string",
+                    "description": "approve, accept_alternative, approve_internal_only, request_revision, or reject."
+                  },
+                  "selected_plan": {
+                    "type": "string",
+                    "description": "feasible or safe_alternative; defaults to feasible."
+                  },
+                  "idempotency_key": {
+                    "type": "string",
+                    "description": "Optional key making the verdict exactly-once."
+                  },
+                  "actor": {
+                    "type": "string",
+                    "description": "The reviewer's identifier."
+                  }
+                },
+                "required": ["thread_id", "verdict_type"]
+              }
+            },
+            {
+              "name": "send_for_approval",
+              "description": "Requester sends the trial to its approvers with a mandatory note.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "thread_id": {
+                    "type": "string",
+                    "description": "The trial's thread id."
+                  },
+                  "note": {
+                    "type": "string",
+                    "description": "A note to the approvers (required)."
+                  }
+                },
+                "required": ["thread_id", "note"]
+              }
+            },
+            {
+              "name": "withdraw_change",
+              "description": "Requester gives up the change instead of sending it for approval.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "thread_id": {
+                    "type": "string",
+                    "description": "The trial's thread id."
+                  }
+                },
+                "required": ["thread_id"]
+              }
+            },
+            {
+              "name": "decide",
+              "description": "An authorized approver approves, or rejects with a note; the requester cannot self-approve.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "thread_id": {
+                    "type": "string",
+                    "description": "The trial's thread id."
+                  },
+                  "approve": {
+                    "type": "boolean",
+                    "description": "true to approve, false to reject."
+                  },
+                  "note": {
+                    "type": "string",
+                    "description": "Reason; required when rejecting."
+                  }
+                },
+                "required": ["thread_id", "approve"]
+              }
+            },
+            {
+              "name": "list_pending_approvals",
+              "description": "List trials awaiting the caller's approval (authorized role, not their own requests).",
+              "inputSchema": {
+                "type": "object",
+                "properties": {}
+              }
+            }
+          ]
+        }
+      }
     }
   ]
 }
