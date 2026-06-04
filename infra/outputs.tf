@@ -31,12 +31,12 @@ output "mcp_host_domain" {
 
 output "entra_client_id" {
   description = "Application (client) id of the Entra app."
-  value       = azuread_application.court.client_id
+  value       = local.entra_client_id
 }
 
 output "oauth_audience" {
   description = "OAUTH_AUDIENCE — the API's Application ID URI."
-  value       = "api://${azuread_application.court.client_id}"
+  value       = "api://${local.entra_client_id}"
 }
 
 output "oauth_issuer" {
@@ -51,11 +51,11 @@ output "oauth_jwks_url" {
 
 output "court_scope" {
   description = "The delegated scope the agent requests (api://<client-id>/court.use)."
-  value       = "api://${azuread_application.court.client_id}/court.use"
+  value       = "api://${local.entra_client_id}/court.use"
 }
 
 output "entra_client_secret" {
-  description = "Client secret for registering the Teams OAuth connection. Sensitive."
-  value       = azuread_application_password.court.value
+  description = "Client secret for the Teams OAuth connection (only when Terraform created the app)."
+  value       = var.create_entra_app ? azuread_application_password.court[0].value : ""
   sensitive   = true
 }

@@ -151,7 +151,7 @@ resource "azurerm_container_app" "this" {
       }
       env {
         name  = "OAUTH_AUDIENCE"
-        value = "api://${azuread_application.court.client_id}"
+        value = "api://${local.entra_client_id}"
       }
       env {
         name  = "GITHUB_REPO"
