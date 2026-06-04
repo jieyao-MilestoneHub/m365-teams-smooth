@@ -196,6 +196,10 @@ class SqlPrecedentStore(MemoryPort):
     def find_similar(
         self, subject: str, tags: list[str], *, top_k: int = 3
     ) -> list[PrecedentRecord]:
+        if not subject:
+            # An empty subject means "never extracted", not a retrieval pattern — citing every
+            # subjectless trial as precedent would be noise, not case law.
+            return []
         with self._session_factory() as session:
             stmt = (
                 select(PrecedentRow.payload)

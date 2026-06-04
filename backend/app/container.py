@@ -232,4 +232,5 @@ def build_maintenance_service(settings: Settings) -> MaintenanceService:
         store,
         SqlAuditRepository(session_factory),
         SqlVerdictLedger(session_factory),
+        approvals=SqlApprovalLedger(session_factory),
     )

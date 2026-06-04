@@ -30,6 +30,13 @@ _APPROVING = {
     VerdictType.ACCEPT_ALTERNATIVE,
 }
 
+# A non-approving verdict ends the trial without executing; the terminal status must reflect the
+# verdict so the audit record (written downstream) captures the true outcome, not a generic DONE.
+_TERMINAL_BY_VERDICT = {
+    VerdictType.REJECT: ChangeStatus.REJECTED,
+    VerdictType.WITHDRAW: ChangeStatus.WITHDRAWN,
+}
+
 
 class ExecuteNode:
     """Runs the plan's write steps when the verdict approves; honors the run mode."""
@@ -43,12 +50,13 @@ class ExecuteNode:
         errors = list(state.get("errors", []))
 
         verdict_data = state.get("verdict")
-        approved = True
+        verdict_type: VerdictType | None = None
         if verdict_data is not None:
-            approved = Verdict.model_validate(verdict_data).type in _APPROVING
+            verdict_type = Verdict.model_validate(verdict_data).type
 
-        if not approved:
-            return {"results": [], "status": ChangeStatus.DONE.value, "errors": errors}
+        if verdict_type is not None and verdict_type not in _APPROVING:
+            terminal = _TERMINAL_BY_VERDICT.get(verdict_type, ChangeStatus.DONE)
+            return {"results": [], "status": terminal.value, "errors": errors}
 
         results: list[StepResult] = []
         for step in plan.steps:
