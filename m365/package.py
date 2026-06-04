@@ -35,6 +35,8 @@ PLACEHOLDERS = {
     "MCP_HOST_DOMAIN": "MCP_HOST_DOMAIN",
     "MCP_SERVER_URL": "MCP_SERVER_URL",
     "OAUTH_CONNECTION_ID": "OAUTH_CONNECTION_ID",
+    # Entra app that sends Graph activity-feed notifications (manifest webApplicationInfo).
+    "GRAPH_CLIENT_ID": "GRAPH_CLIENT_ID",
 }
 _TOKEN = re.compile(r"\$\{\{\s*(\w+)\s*\}\}")
 
