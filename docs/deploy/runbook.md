@@ -23,8 +23,17 @@ path in [`deploy.md`](deploy.md) is faster; this runbook is for a real, repeatab
   - `azure_tenant_id` — the Azure subscription's tenant (runtime resources).
   - `entra_tenant_id` — the M365 tenant users sign in to (app registration, OAuth). For this
     project that is `agentleague` → `ce383846-da17-481d-8306-22dbfed87ff7`.
-- **M365 tenant** with **custom-app upload enabled** and a Copilot Chat license on the demo account(s).
+- **M365 tenant** with **custom-app upload enabled**. To *use* a declarative agent that has actions
+  (this one calls an MCP), each demo account needs **either** a Microsoft 365 Copilot license **or**
+  the tenant must have **pay-as-you-go (metered) billing** connected to Copilot Chat (see Phase 5).
+  A base Microsoft 365 license (e.g. Business Basic) plus pay-as-you-go is enough for testing.
 - **Icons:** add `m365/color.png` (192×192) and `m365/outline.png` (32×32) — packaging fails without them.
+- **Cross-tenant deploys** (the deployer's identity cannot create the Entra app in the M365 tenant —
+  e.g. the runtime subscription lives in a different tenant): set `create_entra_app = false` and
+  register the Entra app in the M365 tenant separately, then pass its `entra_client_id` in
+  `terraform.tfvars`. The `azuread` provider then creates nothing and authenticates against
+  `azure_tenant_id`. Expose an `api://<client-id>/court.use` scope and a Teams redirect URI on that
+  app; it backs both `OAUTH_AUDIENCE` and the Phase 3 OAuth connection.
 - **(Optional) Azure OpenAI** deployment (GPT-4o-class, accepts `max_tokens`) if you want the
   agentic roles live; **(optional)** a throwaway GitHub repo with `blocker`-labelled issues for the
   real-evidence Customer Promise trial.
@@ -137,6 +146,14 @@ custom app, or via Agents Toolkit). The declarative agent now appears in Copilot
 ---
 
 ## Phase 5 — Run the demo in Teams
+
+> **Prerequisite to *use* the agent — Copilot entitlement.** A declarative agent with actions is
+> gated: the **Add** button stays disabled until the account is entitled. Either assign a Microsoft
+> 365 Copilot license, or set up **pay-as-you-go**: in the Microsoft 365 admin center → **Copilot →
+> Billing & usage**, create a billing policy (Azure subscription + resource group, scope it to the
+> demo accounts, set a budget), then connect it to **Microsoft 365 Copilot Chat**. The billing
+> subscription must be visible in the M365 tenant's directory. Entitlement can take up to ~2 hours to
+> propagate. See [`pay-as-you-go/setup`](https://learn.microsoft.com/en-us/copilot/microsoft-365/pay-as-you-go/setup).
 
 Single-flow (any signed-in user):
 
