@@ -13,6 +13,7 @@ Turn routing:
 
 from __future__ import annotations
 
+from collections import OrderedDict
 from collections.abc import Callable, Mapping
 from typing import Any
 
@@ -30,6 +31,10 @@ WELCOME = (
     "Put a risky decision on trial. Type a change request — for example:\n\n"
     "*promise Customer A that SSO is GA by 2026-06-17*"
 )
+
+# Bounded memory of processed activity ids: enough to absorb channel redeliveries within a
+# Playground session without growing unbounded across long-running processes.
+_SEEN_ACTIVITY_CAPACITY = 256
 
 
 def _text_card(message: str) -> Card:
@@ -55,6 +60,9 @@ class CourtBot(ActivityHandler):  # type: ignore[misc]  # SDK base is untyped (A
         self._service = service
         self._request_card = request_card
         self._result_card = result_card
+        # LRU of activity ids already answered — the channel can redeliver the same activity
+        # (observed with Action.Submit in the Playground), which would re-send the result card.
+        self._seen_activity_ids: OrderedDict[str, None] = OrderedDict()
 
     def respond(self, *, text: str | None, value: Mapping[str, Any] | None) -> Card:
         """Map one turn to a card. Pure (no I/O beyond the service) so it is unit-testable."""
@@ -88,8 +96,22 @@ class CourtBot(ActivityHandler):  # type: ignore[misc]  # SDK base is untyped (A
             return _text_card(f"Verdict recorded ({result.status}), but the trial is unavailable.")
         return self._result_card(trial, status=result.status, audit_id=result.audit_id)
 
+    def _already_handled(self, activity_id: str | None) -> bool:
+        """Record ``activity_id`` and report whether it was seen before (None never dedupes)."""
+        if not activity_id:
+            return False
+        if activity_id in self._seen_activity_ids:
+            self._seen_activity_ids.move_to_end(activity_id)
+            return True
+        self._seen_activity_ids[activity_id] = None
+        if len(self._seen_activity_ids) > _SEEN_ACTIVITY_CAPACITY:
+            self._seen_activity_ids.popitem(last=False)
+        return False
+
     async def on_message_activity(self, turn_context: TurnContext) -> None:
         activity = turn_context.activity
+        if self._already_handled(activity.id):
+            return  # redelivered activity: the card for this turn was already sent once
         card = self.respond(text=activity.text, value=activity.value)
         await turn_context.send_activity(MessageFactory.attachment(CardFactory.adaptive_card(card)))
 
