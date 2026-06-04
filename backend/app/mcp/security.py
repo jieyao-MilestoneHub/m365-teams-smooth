@@ -9,14 +9,17 @@ real tokens via JWKS — a follow-up that swaps the verifier without touching to
 from __future__ import annotations
 
 import time
+from collections.abc import Mapping
 
 import jwt
 from jwt import PyJWKClient
+from mcp.server.auth.middleware.auth_context import get_access_token
 from mcp.server.auth.provider import AccessToken, TokenVerifier
 from mcp.server.auth.settings import AuthSettings
 from pydantic import AnyHttpUrl
 
 from app.config import Settings
+from app.domain.principal import Principal
 
 DEV_SECRET = "dev-only-not-a-secret-please-change-me"  # noqa: S105 — local dev issuer only
 DEV_ISSUER = "https://change-court.local/dev"
@@ -58,6 +61,41 @@ def _access_token(token: str, claims: dict[str, object]) -> AccessToken:
         subject=subject,
         claims=claims,
     )
+
+
+def principal_from_claims(claims: Mapping[str, object]) -> Principal:
+    """Map validated token claims to a :class:`Principal`.
+
+    Claim names follow standard OIDC with Entra ID spellings first, falling back across the common
+    variants so tokens from any standards-compliant issuer (including the local dev issuer, which
+    only sets ``sub``) yield a usable identity.
+    """
+
+    def first(*keys: str) -> str:
+        for key in keys:
+            value = claims.get(key)
+            if isinstance(value, str) and value:
+                return value
+        return ""
+
+    return Principal(
+        oid=first("oid", "sub"),
+        upn=first("preferred_username", "upn", "email"),
+        display_name=first("name"),
+    )
+
+
+def current_principal() -> Principal | None:
+    """The authenticated caller of the current MCP request, or ``None`` when unauthenticated.
+
+    Reads the access token the auth middleware bound for this request; tools use ``None`` to select
+    the legacy (identity-free) flow, so unauthenticated local runs keep working unchanged.
+    """
+    token = get_access_token()
+    if token is None or not token.claims:
+        return None
+    principal = principal_from_claims(token.claims)
+    return principal if principal.key() else None
 
 
 class DevTokenVerifier(TokenVerifier):

@@ -6,9 +6,24 @@ from typing import Any, cast
 
 import pytest
 
+import app.mcp.tools as tools_module
+from app.agent.policy_rules.models import (
+    ApproverRule,
+    MatchRules,
+    QuorumRules,
+    RiskBands,
+    RiskFactorRule,
+    RulePack,
+    VerdictOptionRules,
+)
 from app.config import Settings
 from app.container import build_court_service
+from app.domain import Change, ImpactEvidence, VerdictType
+from app.domain.enums import ApproverRole
+from app.domain.principal import Principal
 from app.mcp.server import build_mcp_server
+from app.ports.knowledge import KnowledgePort
+from app.ports.registry import IntegrationRegistry
 from app.services.court_service import CourtService
 
 
@@ -27,7 +42,16 @@ async def _call(mcp: Any, name: str, args: dict[str, Any]) -> dict[str, Any]:
 
 async def test_all_court_tools_registered(mcp: Any) -> None:
     names = {t.name for t in await mcp.list_tools()}
-    assert {"submit_change", "get_status", "get_trial", "cast_verdict"} <= names
+    assert {
+        "submit_change",
+        "get_status",
+        "get_trial",
+        "cast_verdict",
+        "send_for_approval",
+        "withdraw_change",
+        "decide",
+        "list_pending_approvals",
+    } <= names
 
 
 async def test_get_trial_unknown_surfaces_typed_error(mcp: Any) -> None:
@@ -61,3 +85,109 @@ async def test_submit_then_cast_via_tools(mcp: Any) -> None:
     )
     assert result["status"] == "done"
     assert result["audit_id"]
+
+
+# --- identity-aware approval tools ---------------------------------------------------------------
+#
+# FastMCP.call_tool does not run the ASGI auth middleware, so the auth contextvar is never bound in
+# unit tests; the correct seam is the tools module's ``current_principal`` reader, monkeypatched to
+# impersonate each caller. The transport-level binding itself is covered in test_mcp_security.
+
+REQUESTER = Principal(oid="low-1", upn="lowpriv@agentleague.onmicrosoft.com")
+APPROVER = Principal(oid="joel-1", upn="joel@agentleague.onmicrosoft.com")
+
+_PACK = RulePack(
+    id="launch_slip",
+    match=MatchRules(any_action_capability=["github.update_milestone_due"]),
+    risk_factors=[RiskFactorRule(id="m", when_tag="schedule.milestone_move", weight=80)],
+    risk_bands=RiskBands(low=0, medium=30, high=60),
+    quorum=QuorumRules(
+        approvers=[ApproverRule(role=ApproverRole.ENG_LEAD, when_tag="schedule.milestone_move")],
+        policy="all",
+    ),
+    verdict_options=VerdictOptionRules(default=[VerdictType.APPROVE, VerdictType.REJECT]),
+)
+
+_REQ = "slip the launch from 2026-06-10 to 2026-06-17"
+
+
+def _gatherer(
+    change: Change, registry: IntegrationRegistry, knowledge: KnowledgePort, errors: list[str]
+) -> ImpactEvidence:
+    return ImpactEvidence(tags=["schedule.milestone_move"])
+
+
+@pytest.fixture
+def approval_mcp():  # type: ignore[no-untyped-def]
+    """An MCP server whose service routes approvals through a configured directory."""
+    service: CourtService = build_court_service(
+        Settings(
+            force_all_mock=True,
+            db_url="sqlite:///:memory:",
+            dry_run_default=True,
+            approver_directory="eng_lead:joel@agentleague.onmicrosoft.com",
+        ),
+        gatherers={"launch": _gatherer},
+        packs=[_PACK],
+    )
+    return build_mcp_server(service)
+
+
+def _impersonate(monkeypatch: pytest.MonkeyPatch, principal: Principal | None) -> None:
+    monkeypatch.setattr(tools_module, "current_principal", lambda: principal)
+
+
+async def test_two_identity_approval_flow_via_tools(
+    approval_mcp: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _impersonate(monkeypatch, REQUESTER)
+    summary = await _call(approval_mcp, "submit_change", {"raw_request": _REQ})
+    assert summary["status"] == "awaiting_requester_review"
+    thread_id = summary["thread_id"]
+
+    sent = await _call(
+        approval_mcp, "send_for_approval", {"thread_id": thread_id, "note": "please review"}
+    )
+    assert sent["status"] == "awaiting_approval"
+
+    _impersonate(monkeypatch, APPROVER)
+    queue = await _call(approval_mcp, "list_pending_approvals", {})
+    assert thread_id in {item["thread_id"] for item in queue["pending"]}
+
+    decided = await _call(approval_mcp, "decide", {"thread_id": thread_id, "approve": True})
+    assert decided["status"] == "done"
+
+
+async def test_self_approval_is_rejected_via_tools(
+    approval_mcp: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from mcp.server.fastmcp.exceptions import ToolError
+
+    _impersonate(monkeypatch, REQUESTER)
+    summary = await _call(approval_mcp, "submit_change", {"raw_request": _REQ})
+    thread_id = summary["thread_id"]
+    await _call(approval_mcp, "send_for_approval", {"thread_id": thread_id, "note": "review"})
+
+    with pytest.raises(ToolError) as excinfo:
+        await _call(approval_mcp, "decide", {"thread_id": thread_id, "approve": True})
+    assert "separation_of_duties" in str(excinfo.value)
+
+
+async def test_withdraw_via_tools(approval_mcp: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    _impersonate(monkeypatch, REQUESTER)
+    summary = await _call(approval_mcp, "submit_change", {"raw_request": _REQ})
+    withdrawn = await _call(
+        approval_mcp, "withdraw_change", {"thread_id": summary["thread_id"]}
+    )
+    assert withdrawn["status"] == "withdrawn"
+
+
+async def test_approval_tools_require_authentication(
+    approval_mcp: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from mcp.server.fastmcp.exceptions import ToolError
+
+    _impersonate(monkeypatch, None)
+    with pytest.raises(ToolError) as excinfo:
+        await _call(approval_mcp, "send_for_approval", {"thread_id": "t", "note": "n"})
+    assert "unauthorized_approver" in str(excinfo.value)

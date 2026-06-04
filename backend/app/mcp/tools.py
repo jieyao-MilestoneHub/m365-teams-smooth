@@ -18,8 +18,10 @@ from mcp.types import ErrorData
 
 from app.api.errors import classify, current_request_id, error_body, mcp_code
 from app.domain import PlanKind, RunMode, VerdictType
-from app.domain.errors import ChangeCourtError, NotFoundError
+from app.domain.errors import ChangeCourtError, NotFoundError, UnauthorizedApproverError
+from app.domain.principal import Principal
 from app.mcp import correlate
+from app.mcp.security import current_principal
 from app.services.court_service import CourtService
 
 logger = logging.getLogger(__name__)
@@ -53,6 +55,14 @@ def _translate_errors(fn: Callable[P, dict[str, object]]) -> Callable[P, dict[st
     return wrapper
 
 
+def _require_principal() -> Principal:
+    """The authenticated caller, required for approval actions (no anonymous approvals)."""
+    actor = current_principal()
+    if actor is None:
+        raise UnauthorizedApproverError("authentication is required for approval actions")
+    return actor
+
+
 def register_tools(mcp: FastMCP, service: CourtService) -> None:
     """Register the court tools on the MCP server."""
 
@@ -63,7 +73,12 @@ def register_tools(mcp: FastMCP, service: CourtService) -> None:
         raw_request: str, source: str = "mcp", run_mode: str = "dry_run"
     ) -> dict[str, object]:
         """Put a change on trial; returns the trial summary (status, risk, plan, verdicts)."""
-        summary = service.submit_change(raw_request, source=source, run_mode=RunMode(run_mode))
+        summary = service.submit_change(
+            raw_request,
+            source=source,
+            run_mode=RunMode(run_mode),
+            requester=current_principal(),
+        )
         return summary.model_dump(mode="json")
 
     @mcp.tool()
@@ -102,3 +117,37 @@ def register_tools(mcp: FastMCP, service: CourtService) -> None:
             actor=actor,
         )
         return result.model_dump(mode="json")
+
+    @mcp.tool()
+    @correlate
+    @_translate_errors
+    def send_for_approval(thread_id: str, note: str) -> dict[str, object]:
+        """Requester gate: send the trial to its approvers with a mandatory note."""
+        summary = service.send_for_approval(thread_id, actor=_require_principal(), note=note)
+        return summary.model_dump(mode="json")
+
+    @mcp.tool()
+    @correlate
+    @_translate_errors
+    def withdraw_change(thread_id: str) -> dict[str, object]:
+        """Requester gate: give up the change instead of sending it for approval."""
+        summary = service.withdraw_change(thread_id, actor=_require_principal())
+        return summary.model_dump(mode="json")
+
+    @mcp.tool()
+    @correlate
+    @_translate_errors
+    def decide(thread_id: str, approve: bool, note: str = "") -> dict[str, object]:
+        """Approver gate: approve, or reject with a note. The requester cannot self-approve."""
+        summary = service.decide(
+            thread_id, actor=_require_principal(), approve=approve, note=note
+        )
+        return summary.model_dump(mode="json")
+
+    @mcp.tool()
+    @correlate
+    @_translate_errors
+    def list_pending_approvals() -> dict[str, object]:
+        """Trials awaiting the caller's approval (authorized role, not their own requests)."""
+        summaries = service.list_pending_approvals(_require_principal())
+        return {"pending": [summary.model_dump(mode="json") for summary in summaries]}
