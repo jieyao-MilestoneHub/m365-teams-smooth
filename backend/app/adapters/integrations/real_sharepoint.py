@@ -12,6 +12,7 @@ from __future__ import annotations
 from app.adapters.integrations.base import BaseIntegrationAdapter
 from app.adapters.integrations.graph import GraphClient
 from app.adapters.integrations.retry import RetryPolicy
+from app.adapters.integrations.validation import safe_path
 from app.domain import (
     Capability,
     CapabilityKind,
@@ -72,8 +73,9 @@ class RealSharePointAdapter(BaseIntegrationAdapter):
 
     def _children(self, path: str) -> list[dict[str, object]]:
         # The first path segment selects the document library; the rest is the in-library path,
-        # addressed as the drive root or a subpath via the "root:/<path>:" form.
-        parts = [p for p in path.strip("/").split("/") if p]
+        # addressed as the drive root or a subpath via the "root:/<path>:" form. Validate first so
+        # a crafted path cannot traverse out of the scoped site.
+        parts = [p for p in safe_path(path).strip("/").split("/") if p]
         if not parts:
             raise IntegrationError(
                 f"{_SYSTEM}: path must name a document library, e.g. '/ProjectX'"

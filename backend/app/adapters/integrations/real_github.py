@@ -11,6 +11,7 @@ import httpx
 
 from app.adapters.integrations.base import BaseIntegrationAdapter
 from app.adapters.integrations.retry import RetryPolicy
+from app.adapters.integrations.validation import safe_repo
 from app.domain import (
     Capability,
     CapabilityKind,
@@ -52,7 +53,7 @@ class RealGitHubAdapter(BaseIntegrationAdapter):
         return _SYSTEM
 
     def _repo_of(self, step: ExecutionStep) -> str:
-        return str(step.params.get("repo", self._repo))
+        return safe_repo(str(step.params.get("repo", self._repo)))
 
     def _get(self, path: str, **params: object) -> httpx.Response:
         response = self._client.get(path, params={k: str(v) for k, v in params.items()})
@@ -93,7 +94,7 @@ class RealGitHubAdapter(BaseIntegrationAdapter):
         return {}
 
     def _read(self, query: ReadQuery) -> ReadResult:
-        repo = str(query.params.get("repo", self._repo))
+        repo = safe_repo(str(query.params.get("repo", self._repo)))
         if query.capability == "github.read_milestone":
             title = str(query.params.get("milestone", "Launch"))
             found = self._find_milestone(repo, title)
