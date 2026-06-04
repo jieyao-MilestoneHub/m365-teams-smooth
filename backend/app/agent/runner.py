@@ -34,7 +34,7 @@ class CourtRunner:
         return self.state(thread_id)
 
     def resume(self, thread_id: str, verdict: Verdict) -> CourtState:
-        """Record the verdict and resume into execute → audit. A completed run is left untouched."""
+        """Record the verdict and resume into execute → verify → audit. Completed runs: no-op."""
         config = self._config(thread_id)
         snapshot = self._graph.get_state(config)
         if not snapshot.next:
