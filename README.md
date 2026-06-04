@@ -175,7 +175,9 @@ from the mock adapter, so the trial runs credential-free. To ground them in a li
 instead:
 
 1. In a throwaway repo, open a few issues and label them `blocker` (the default label; override with
-   the `label` read param). Pull requests are ignored — only issues count.
+   the `label` read param). Pull requests are ignored — only issues count. This repository already
+   carries `blocker`-labelled demo issues mirroring the trial's scenario, so it can serve as the
+   seed repo directly (`GITHUB_REPO=<this repo's owner/name>`).
 2. Run with the GitHub adapter in `real` mode:
 
    ```bash
