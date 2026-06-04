@@ -10,6 +10,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.api.deps import get_court_service
 from app.config import Settings
@@ -18,6 +19,25 @@ from app.mcp.security import build_auth_settings, build_token_verifier
 from app.mcp.server import MCP_PATH, build_mcp_server
 from app.observability import configure_logging, configure_metrics
 from app.services.court_service import CourtService
+
+
+class MountPathNormalizer:
+    """Rewrite the bare mount path to the mounted root instead of redirecting.
+
+    Starlette answers ``POST /mcp`` with a 307 to ``/mcp/``; MCP clients (e.g. the Copilot
+    plugin runtime) do not follow redirects, so the tool call silently dies. Normalizing the
+    path here makes both spellings reach the mounted server directly.
+    """
+
+    def __init__(self, app: ASGIApp, mount_path: str) -> None:
+        self._app = app
+        self._mount_path = mount_path.rstrip("/")
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "http" and scope.get("path") == self._mount_path:
+            scope["path"] = self._mount_path + "/"
+            scope["raw_path"] = scope["path"].encode("ascii")
+        await self._app(scope, receive, send)
 
 
 def create_full_app(service: CourtService | None = None) -> FastAPI:
@@ -38,6 +58,7 @@ def create_full_app(service: CourtService | None = None) -> FastAPI:
 
     app = create_app(lifespan=lifespan)
     app.mount(MCP_PATH, mcp.streamable_http_app())
+    app.add_middleware(MountPathNormalizer, mount_path=MCP_PATH)
     return app
 
 
