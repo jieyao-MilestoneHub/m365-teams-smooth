@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from app.domain import AuditRecord
+from app.domain import ApprovalEvent, AuditRecord
 
 
 class AuditRepository(ABC):
@@ -45,3 +45,23 @@ class VerdictLedger(ABC):
     @abstractmethod
     def result_for(self, thread_id: str, idempotency_key: str) -> str | None:
         """Return the audit id recorded for a completed verdict, or ``None``."""
+
+
+class ApprovalLedger(ABC):
+    """Append-only log of approval actions (send/withdraw/approve/reject) per trial.
+
+    The service folds these events (via :func:`app.domain.evaluate_quorum`) to decide whether a
+    trial may resume into execution. Records are never updated.
+    """
+
+    @abstractmethod
+    def append(self, event: ApprovalEvent) -> None:
+        """Persist a new approval event."""
+
+    @abstractmethod
+    def list_for_thread(self, thread_id: str) -> list[ApprovalEvent]:
+        """Return all approval events for a trial, in insertion order."""
+
+    @abstractmethod
+    def thread_ids(self) -> list[str]:
+        """Return the distinct thread ids that have at least one approval event (for the queue)."""

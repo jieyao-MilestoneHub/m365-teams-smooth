@@ -72,6 +72,15 @@ class CourtRunner:
         finally:
             pool.shutdown(wait=False)
 
+    def update(self, thread_id: str, values: dict[str, Any]) -> CourtState:
+        """Persist a partial state update on the suspended checkpoint without resuming.
+
+        Used by the requester-review gate (record the requester / their note / the new status) while
+        the run waits at the verdict interrupt — the graph is not advanced.
+        """
+        self._graph.update_state(self._config(thread_id), values)
+        return self.state(thread_id)
+
     def state(self, thread_id: str) -> CourtState:
         """The current checkpointed state for a thread."""
         return cast(CourtState, self._graph.get_state(self._config(thread_id)).values)

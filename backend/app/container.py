@@ -29,7 +29,11 @@ from app.adapters.parsers.deterministic import DeterministicRequestParser
 from app.adapters.parsers.llm_backed import LlmRequestParser
 from app.adapters.persistence.checkpointer import SqliteCheckpointStore
 from app.adapters.persistence.db import init_db, make_engine, make_session_factory
-from app.adapters.persistence.repositories import SqlAuditRepository, SqlVerdictLedger
+from app.adapters.persistence.repositories import (
+    SqlApprovalLedger,
+    SqlAuditRepository,
+    SqlVerdictLedger,
+)
 from app.agent.gatherers import GATHERERS
 from app.agent.graph import build_court_graph
 from app.agent.nodes.audit import AuditNode
@@ -48,6 +52,7 @@ from app.ports.knowledge import KnowledgePort
 from app.ports.llm import LLMProvider
 from app.ports.registry import IntegrationRegistry
 from app.ports.request_parser import RequestParser
+from app.services.approver_directory import ApproverDirectory
 from app.services.court_service import CourtService
 
 
@@ -136,6 +141,8 @@ def build_court_service(
     session_factory = make_session_factory(engine)
     audit_repo = SqlAuditRepository(session_factory)
     ledger = SqlVerdictLedger(session_factory)
+    approvals = SqlApprovalLedger(session_factory)
+    directory = ApproverDirectory.from_settings(settings)
 
     store = SqliteCheckpointStore.from_db_url(settings.db_url)
     store.setup()
@@ -183,5 +190,7 @@ def build_court_service(
         audit_repo,
         ledger,
         registry=registry,
+        approvals=approvals,
+        directory=directory,
         dry_run_default=settings.dry_run_default,
     )

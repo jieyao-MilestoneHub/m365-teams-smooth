@@ -5,6 +5,7 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 from app.domain.enums import ChangeStatus
+from app.domain.principal import Principal
 
 
 class RequestedAction(BaseModel):
@@ -22,6 +23,7 @@ class Change(BaseModel):
     change_id: str
     raw_request: str
     source: str = "unknown"
+    requester: Principal | None = None  # authenticated opener (separation of duties)
     subject: str | None = None
     due_by: str | None = None
     requested_actions: list[RequestedAction] = Field(default_factory=list)
