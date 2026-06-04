@@ -135,8 +135,10 @@ class CourtService:
         )
         metrics.increment("trials.submitted")
 
-        if requester is not None:
+        if requester is not None and self.approvals_configured():
             # Identity-aware flow: stamp the requester onto the change and hold for self-review.
+            # Engages only when an approver directory exists — otherwise a held trial could never
+            # be decided, so an unconfigured deployment keeps the legacy flow below.
             change = _model(state, "change", Change)
             update: CourtState = {"status": ChangeStatus.AWAITING_REQUESTER_REVIEW.value}
             if change is not None:
@@ -290,6 +292,23 @@ class CourtService:
                 continue
             pending.append(self._summary(thread_id, state))
         return pending
+
+    def approvals_configured(self) -> bool:
+        """True when approval routing can be enforced (ledger present + a populated directory)."""
+        return (
+            self._approvals is not None
+            and self._directory is not None
+            and self._directory.configured()
+        )
+
+    def requester_note(self, thread_id: str) -> str:
+        """The note the requester attached when sending for approval (empty when not sent)."""
+        if self._approvals is None:
+            return ""
+        for event in self._approvals.list_for_thread(thread_id):
+            if event.decision is ApprovalDecision.SEND:
+                return event.note
+        return ""
 
     def _trial_or_raise(self, thread_id: str) -> TrialRecord:
         trial = self.get_trial(thread_id)
