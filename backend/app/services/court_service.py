@@ -26,6 +26,7 @@ from app.domain import (
     Capability,
     Change,
     ChangeStatus,
+    EffectVerification,
     ExecutionPlan,
     ImpactEvidence,
     PlanKind,
@@ -413,6 +414,9 @@ class CourtService:
             quorum=_model(state, "quorum", Quorum),
             verdict=_model(state, "verdict", Verdict),
             results=[StepResult.model_validate(x) for x in state.get("results", [])],
+            verifications=[
+                EffectVerification.model_validate(v) for v in state.get("verifications", [])
+            ],
         )
 
     def _summary(self, thread_id: str, state: CourtState) -> TrialSummary:

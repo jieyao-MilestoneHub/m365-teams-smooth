@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from app.adapters.persistence.db import make_engine, make_session_factory
 from app.adapters.persistence.repositories import SqlPrecedentStore
-from app.agent.agentic.gatherer import render_precedents
+from app.agent.agentic.precedents import render_precedents
 from app.config import Settings
 from app.container import build_court_service
 from app.domain import VerdictType

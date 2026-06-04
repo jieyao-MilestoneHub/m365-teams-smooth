@@ -13,8 +13,9 @@ import logging
 
 from pydantic import BaseModel, Field
 
-from app.agent.agentic.gatherer import render_precedents
+from app.agent.agentic.precedents import render_precedents
 from app.agent.agentic.structured import extract_json
+from app.agent.nodes.options import Planner
 from app.domain import (
     Capability,
     CapabilityKind,
@@ -53,7 +54,7 @@ class LlmPlanner:
         self,
         llm: LLMProvider,
         registry: IntegrationRegistry,
-        fallback: object,  # Planner protocol (callable); typed loosely to avoid a cycle
+        fallback: Planner,
         *,
         memory: MemoryPort | None = None,
     ) -> None:
@@ -63,7 +64,7 @@ class LlmPlanner:
         self._memory = memory
 
     def __call__(self, change: Change, impact: ImpactEvidence) -> ExecutionPlan:
-        baseline: ExecutionPlan = self._fallback(change, impact)  # type: ignore[operator]
+        baseline = self._fallback(change, impact)
         try:
             plan = self._agentic_plan(change, impact, baseline)
         except Exception as exc:  # noqa: BLE001 — an unsure Defender keeps the baseline
