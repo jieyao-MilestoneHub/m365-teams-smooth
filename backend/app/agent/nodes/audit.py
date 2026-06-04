@@ -8,6 +8,7 @@ so the record is deterministic under test.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from datetime import UTC, datetime
 from uuid import uuid4
@@ -26,7 +27,10 @@ from app.domain import (
     TrialRecord,
     Verdict,
 )
+from app.ports.memory import MemoryPort, PrecedentRecord
 from app.ports.repository import AuditRepository
+
+logger = logging.getLogger(__name__)
 
 
 def _default_clock() -> str:
@@ -45,10 +49,12 @@ class AuditNode:
         self,
         audit_repo: AuditRepository,
         *,
+        memory: MemoryPort | None = None,
         clock: Callable[[], str] = _default_clock,
         id_factory: Callable[[], str] = lambda: uuid4().hex,
     ) -> None:
         self._repo = audit_repo
+        self._memory = memory
         self._clock = clock
         self._id_factory = id_factory
 
@@ -83,5 +89,28 @@ class AuditNode:
             created_at=self._clock(),
         )
         self._repo.append(record)
+        self._remember(record)
 
         return {"audit_id": record.audit_id, "status": status.value}
+
+    def _remember(self, record: AuditRecord) -> None:
+        """Summarize the ruling as a precedent. Best-effort: memory never blocks the audit."""
+        if self._memory is None:
+            return
+        trial = record.trial
+        try:
+            self._memory.record(
+                PrecedentRecord(
+                    thread_id=record.thread_id,
+                    subject=trial.change.subject or "",
+                    tags=list(trial.impact.tags) if trial.impact else [],
+                    raw_request=trial.change.raw_request,
+                    verdict_type=trial.verdict.type.value if trial.verdict else "",
+                    plan_kind=trial.options.kind.value if trial.options else "",
+                    rationale=(trial.options.rationale if trial.options else "")[:300],
+                    status=record.status.value,
+                    created_at=record.created_at,
+                )
+            )
+        except Exception as exc:  # noqa: BLE001 — the audit record is already safe
+            logger.warning("precedent.record_failed", extra={"error": str(exc)})

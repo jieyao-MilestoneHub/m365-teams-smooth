@@ -10,10 +10,16 @@ from app.adapters.persistence.models import (
     ApprovalEventRow,
     AuditRecordRow,
     PendingApprovalRow,
+    PrecedentRow,
     VerdictClaimRow,
 )
 from app.domain import ApprovalDecision, ApprovalEvent, AuditRecord
+from app.ports.memory import MemoryPort, PrecedentRecord
 from app.ports.repository import ApprovalLedger, AuditRepository, VerdictLedger
+
+# How many same-subject candidates the precedent query pulls before ranking by tag overlap; the
+# scan stays bounded regardless of how much history accumulates.
+_PRECEDENT_CANDIDATES = 50
 
 
 class SqlAuditRepository(AuditRepository):
@@ -165,3 +171,41 @@ class SqlApprovalLedger(ApprovalLedger):
         with self._session_factory() as session:
             stmt = select(PendingApprovalRow.thread_id).order_by(PendingApprovalRow.created_at)
             return list(session.execute(stmt).scalars().all())
+
+
+class SqlPrecedentStore(MemoryPort):
+    """Same-database precedent memory with explainable retrieval (subject + tag overlap)."""
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    def record(self, record: PrecedentRecord) -> None:
+        with self._session_factory() as session:
+            if session.get(PrecedentRow, record.thread_id) is not None:
+                return  # one precedent per trial; re-runs are no-ops
+            session.add(
+                PrecedentRow(
+                    thread_id=record.thread_id,
+                    subject=record.subject,
+                    created_at=record.created_at,
+                    payload=record.model_dump(mode="json"),
+                )
+            )
+            session.commit()
+
+    def find_similar(
+        self, subject: str, tags: list[str], *, top_k: int = 3
+    ) -> list[PrecedentRecord]:
+        with self._session_factory() as session:
+            stmt = (
+                select(PrecedentRow.payload)
+                .where(PrecedentRow.subject == subject)
+                .order_by(PrecedentRow.created_at.desc())
+                .limit(_PRECEDENT_CANDIDATES)
+            )
+            payloads = session.execute(stmt).scalars().all()
+        records = [PrecedentRecord.model_validate(p) for p in payloads]
+        wanted = set(tags)
+        # Rank by shared tags (the explainable signal), most recent first within a rank.
+        records.sort(key=lambda r: len(wanted & set(r.tags)), reverse=True)
+        return records[:top_k]

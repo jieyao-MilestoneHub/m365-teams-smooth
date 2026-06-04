@@ -32,6 +32,7 @@ from app.adapters.persistence.db import init_db, make_engine, make_session_facto
 from app.adapters.persistence.repositories import (
     SqlApprovalLedger,
     SqlAuditRepository,
+    SqlPrecedentStore,
     SqlVerdictLedger,
 )
 from app.agent.agentic.gatherer import LlmEvidenceGatherer
@@ -146,6 +147,7 @@ def build_court_service(
     ledger = SqlVerdictLedger(session_factory)
     approvals = SqlApprovalLedger(session_factory)
     directory = ApproverDirectory.from_settings(settings)
+    memory = SqlPrecedentStore(session_factory)
 
     store = SqliteCheckpointStore.from_db_url(settings.db_url)
     store.setup()
@@ -186,12 +188,12 @@ def build_court_service(
     if llm_is_real:
         gatherers = {
             subject: LlmEvidenceGatherer(
-                llm, fallback=gatherer, max_reads=settings.max_agentic_reads
+                llm, fallback=gatherer, max_reads=settings.max_agentic_reads, memory=memory
             )
             for subject, gatherer in gatherers.items()
         }
         planners = {
-            subject: LlmPlanner(llm, registry, fallback=planner)
+            subject: LlmPlanner(llm, registry, fallback=planner, memory=memory)
             for subject, planner in planners.items()
         }
 
@@ -201,7 +203,7 @@ def build_court_service(
         options=OptionsNode(planners),
         policy=PolicyNode(packs, RulePackQuorumResolver()),
         execute=ExecuteNode(registry),
-        audit=AuditNode(audit_repo),
+        audit=AuditNode(audit_repo, memory=memory),
         checkpointer=store.saver(),
     )
     runner = CourtRunner(graph, timeout_seconds=settings.graph_timeout_seconds)

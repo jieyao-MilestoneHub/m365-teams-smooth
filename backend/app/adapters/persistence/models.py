@@ -50,6 +50,17 @@ class ApprovalEventRow(Base):
     payload: Mapped[dict[str, object]] = mapped_column(JSON)
 
 
+class PrecedentRow(Base):
+    """One past ruling's compact summary, retrieved as precedent for future trials."""
+
+    __tablename__ = "precedents"
+
+    thread_id: Mapped[str] = mapped_column(String, primary_key=True)
+    subject: Mapped[str] = mapped_column(String, index=True)
+    created_at: Mapped[str] = mapped_column(String, index=True)
+    payload: Mapped[dict[str, object]] = mapped_column(JSON)
+
+
 class PendingApprovalRow(Base):
     """Index of trials currently awaiting an approver, so the queue never scans history.
 
