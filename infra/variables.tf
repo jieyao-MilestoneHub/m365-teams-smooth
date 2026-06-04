@@ -3,9 +3,14 @@ variable "subscription_id" {
   description = "Azure subscription to deploy into."
 }
 
-variable "tenant_id" {
+variable "azure_tenant_id" {
   type        = string
-  description = "Entra ID (Microsoft 365) tenant id. Also forms the OAuth issuer/JWKS URLs."
+  description = "Tenant id of the Azure subscription that hosts the runtime resources (azurerm)."
+}
+
+variable "entra_tenant_id" {
+  type        = string
+  description = "Entra ID (Microsoft 365) tenant id for the app registration and user sign-in. Forms the OAuth issuer/JWKS URLs. May differ from azure_tenant_id when the subscription and the M365 tenant are separate."
 }
 
 variable "location" {
@@ -101,4 +106,38 @@ variable "app_display_name" {
   type        = string
   description = "Display name for the Entra ID app registration."
   default     = "AI Change Court"
+}
+
+# --- Knowledge grounding (Azure AI Search agentic retrieval) ---
+# All optional: leave empty and the backend's knowledge provider stays on the offline fallback.
+# The Container App authenticates keylessly via its managed identity, so the search and OpenAI
+# resources must grant it data-plane roles — pass their resource ids to create the assignments.
+variable "knowledge_search_endpoint" {
+  type        = string
+  description = "Optional: Azure AI Search endpoint URL for knowledge grounding."
+  default     = ""
+}
+
+variable "knowledge_base_name" {
+  type        = string
+  description = "Optional: knowledge base (agent) name on the search service."
+  default     = ""
+}
+
+variable "knowledge_source_name" {
+  type        = string
+  description = "Optional: knowledge source name backing the knowledge base."
+  default     = ""
+}
+
+variable "knowledge_search_resource_id" {
+  type        = string
+  description = "Optional: resource id of the Azure AI Search service; grants the app's identity Search Index Data Reader."
+  default     = ""
+}
+
+variable "knowledge_openai_resource_id" {
+  type        = string
+  description = "Optional: resource id of the Azure OpenAI account the knowledge base answers with; grants the app's identity Cognitive Services OpenAI User."
+  default     = ""
 }

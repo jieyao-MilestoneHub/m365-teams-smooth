@@ -26,6 +26,22 @@ resource "azurerm_role_assignment" "acr_pull" {
   principal_id         = azurerm_user_assigned_identity.app.principal_id
 }
 
+# Keyless data-plane access for knowledge grounding: the backend reaches Azure AI Search (and the
+# OpenAI account answering for the knowledge base) with DefaultAzureCredential via the app identity.
+resource "azurerm_role_assignment" "knowledge_search_reader" {
+  count                = var.knowledge_search_resource_id == "" ? 0 : 1
+  scope                = var.knowledge_search_resource_id
+  role_definition_name = "Search Index Data Reader"
+  principal_id         = azurerm_user_assigned_identity.app.principal_id
+}
+
+resource "azurerm_role_assignment" "knowledge_openai_user" {
+  count                = var.knowledge_openai_resource_id == "" ? 0 : 1
+  scope                = var.knowledge_openai_resource_id
+  role_definition_name = "Cognitive Services OpenAI User"
+  principal_id         = azurerm_user_assigned_identity.app.principal_id
+}
+
 resource "azurerm_log_analytics_workspace" "this" {
   name                = "${var.name}-logs"
   resource_group_name = azurerm_resource_group.this.name
@@ -119,11 +135,11 @@ resource "azurerm_container_app" "this" {
       }
       env {
         name  = "OAUTH_ISSUER"
-        value = "https://login.microsoftonline.com/${var.tenant_id}/v2.0"
+        value = "https://login.microsoftonline.com/${var.entra_tenant_id}/v2.0"
       }
       env {
         name  = "OAUTH_JWKS_URL"
-        value = "https://login.microsoftonline.com/${var.tenant_id}/discovery/v2.0/keys"
+        value = "https://login.microsoftonline.com/${var.entra_tenant_id}/discovery/v2.0/keys"
       }
       env {
         name  = "OAUTH_AUDIENCE"
@@ -167,6 +183,38 @@ resource "azurerm_container_app" "this" {
       env {
         name  = "SHAREPOINT_SITE_ID"
         value = var.sharepoint_site_id
+      }
+
+      # Knowledge grounding (Azure AI Search agentic retrieval). Injected only when configured so
+      # the backend's provider selection stays on its offline fallback otherwise. AZURE_CLIENT_ID
+      # points DefaultAzureCredential at the user-assigned identity holding the data-plane roles.
+      dynamic "env" {
+        for_each = var.knowledge_search_endpoint == "" ? [] : [1]
+        content {
+          name  = "KNOWLEDGE_SEARCH_ENDPOINT"
+          value = var.knowledge_search_endpoint
+        }
+      }
+      dynamic "env" {
+        for_each = var.knowledge_base_name == "" ? [] : [1]
+        content {
+          name  = "KNOWLEDGE_BASE_NAME"
+          value = var.knowledge_base_name
+        }
+      }
+      dynamic "env" {
+        for_each = var.knowledge_source_name == "" ? [] : [1]
+        content {
+          name  = "KNOWLEDGE_SOURCE_NAME"
+          value = var.knowledge_source_name
+        }
+      }
+      dynamic "env" {
+        for_each = var.knowledge_search_endpoint == "" ? [] : [1]
+        content {
+          name  = "AZURE_CLIENT_ID"
+          value = azurerm_user_assigned_identity.app.client_id
+        }
       }
     }
   }
