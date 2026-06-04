@@ -153,3 +153,56 @@ def test_withdraw_is_terminal_without_executing() -> None:
     s = service.submit_change(_REQ, requester=REQUESTER)
     withdrawn = service.withdraw_change(s.thread_id, actor=REQUESTER)
     assert withdrawn.status == ChangeStatus.WITHDRAWN.value
+
+
+# --- pending index lifecycle: the queue reads the index, never the full history ------------------
+
+
+def _pending_ids(service: CourtService) -> list[str]:
+    ledger = service._approvals  # white-box: assert the read-model
+    assert ledger is not None
+    return ledger.pending_thread_ids()
+
+
+def test_send_marks_pending_and_terminal_decisions_clear_it() -> None:
+    service = _service()
+    s = service.submit_change(_REQ, requester=REQUESTER)
+    assert _pending_ids(service) == []
+    service.send_for_approval(s.thread_id, actor=REQUESTER, note="ready")
+    assert _pending_ids(service) == [s.thread_id]
+    service.decide(s.thread_id, actor=APPROVER, approve=True)
+    assert _pending_ids(service) == []
+
+
+def test_reject_and_withdraw_clear_the_pending_index() -> None:
+    service = _service()
+    rejected = service.submit_change(_REQ, requester=REQUESTER)
+    service.send_for_approval(rejected.thread_id, actor=REQUESTER, note="ready")
+    service.decide(rejected.thread_id, actor=APPROVER, approve=False, note="not yet")
+    assert rejected.thread_id not in _pending_ids(service)
+
+    withdrawn = service.submit_change(_REQ, requester=REQUESTER)
+    service.withdraw_change(withdrawn.thread_id, actor=REQUESTER)
+    assert withdrawn.thread_id not in _pending_ids(service)
+
+
+def test_queue_scales_with_open_items_not_history() -> None:
+    # Many finished trials, one open: the index (and so the queue scan) holds only the open one.
+    service = _service()
+    for _ in range(5):
+        s = service.submit_change(_REQ, requester=REQUESTER)
+        service.send_for_approval(s.thread_id, actor=REQUESTER, note="ready")
+        service.decide(s.thread_id, actor=APPROVER, approve=True)
+    open_one = service.submit_change(_REQ, requester=REQUESTER)
+    service.send_for_approval(open_one.thread_id, actor=REQUESTER, note="ready")
+
+    assert _pending_ids(service) == [open_one.thread_id]
+    assert [t.thread_id for t in service.list_pending_approvals(APPROVER)] == [open_one.thread_id]
+
+
+def test_requester_note_uses_the_send_event() -> None:
+    service = _service()
+    s = service.submit_change(_REQ, requester=REQUESTER)
+    assert service.requester_note(s.thread_id) == ""
+    service.send_for_approval(s.thread_id, actor=REQUESTER, note="first note")
+    assert service.requester_note(s.thread_id) == "first note"
