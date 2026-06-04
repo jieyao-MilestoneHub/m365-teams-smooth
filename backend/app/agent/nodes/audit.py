@@ -18,6 +18,7 @@ from app.domain import (
     AuditRecord,
     Change,
     ChangeStatus,
+    EffectVerification,
     ExecutionPlan,
     ImpactEvidence,
     Quorum,
@@ -63,6 +64,9 @@ class AuditNode:
         options_data = _opt(state, "options")
         options = ExecutionPlan.model_validate(options_data) if options_data else None
         results = [StepResult.model_validate(r) for r in state.get("results", [])]
+        verifications = [
+            EffectVerification.model_validate(v) for v in state.get("verifications", [])
+        ]
 
         impact_data = _opt(state, "impact")
         risk_data = _opt(state, "risk")
@@ -76,6 +80,7 @@ class AuditNode:
             quorum=Quorum.model_validate(quorum_data) if quorum_data else None,
             verdict=Verdict.model_validate(verdict_data) if verdict_data else None,
             results=results,
+            verifications=verifications,
         )
 
         status = ChangeStatus(state.get("status", ChangeStatus.DONE.value))

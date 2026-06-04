@@ -105,6 +105,7 @@ def test_build_court_graph_instruments_each_node(captured: list[logging.LogRecor
         options=identity,
         policy=identity,
         execute=identity,
+        verify=identity,
         audit=identity,
         checkpointer=store.saver(),
     )

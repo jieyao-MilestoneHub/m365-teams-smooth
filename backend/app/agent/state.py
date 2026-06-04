@@ -34,6 +34,7 @@ class CourtState(TypedDict, total=False):
     selected_plan: str  # PlanKind value
 
     results: list[dict[str, object]]  # StepResult dumps
+    verifications: list[dict[str, object]]  # EffectVerification dumps (live runs only)
     audit_id: str
     status: str  # ChangeStatus value
     errors: list[str]

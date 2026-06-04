@@ -45,6 +45,7 @@ from app.agent.nodes.impact import Gatherer, ImpactNode
 from app.agent.nodes.intake import IntakeNode
 from app.agent.nodes.options import OptionsNode, Planner
 from app.agent.nodes.policy import PolicyNode, RulePackQuorumResolver
+from app.agent.nodes.verify import VerifyNode
 from app.agent.planners import PLANNERS
 from app.agent.policy_rules.models import RulePack
 from app.agent.policy_rules.packs import default_packs
@@ -203,6 +204,7 @@ def build_court_service(
         options=OptionsNode(planners),
         policy=PolicyNode(packs, RulePackQuorumResolver()),
         execute=ExecuteNode(registry),
+        verify=VerifyNode(),
         audit=AuditNode(audit_repo, memory=memory),
         checkpointer=store.saver(),
     )

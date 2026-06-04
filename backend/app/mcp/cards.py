@@ -188,6 +188,16 @@ def build_verdict_result_card(
         body.append(_text(line))
         if result.rollback is not None:
             body.append(_text(f"    ↩ rollback: {result.rollback.instruction}"))
+    for verification in trial.verifications:
+        if not verification.matched:
+            issues = "; ".join(verification.mismatches)
+            body.append(
+                _text(
+                    f"⚠ {verification.step_id} verification: {issues}",
+                    weight="Bolder",
+                    color="Warning",
+                )
+            )
     return {
         "type": "AdaptiveCard",
         "$schema": _SCHEMA,
