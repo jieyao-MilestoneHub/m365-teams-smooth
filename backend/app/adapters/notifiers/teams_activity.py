@@ -21,14 +21,16 @@ class TeamsActivityNotifier(ApprovalNotifier):
         self._graph = graph
         self._link_url = link_url
 
-    def _send(self, upn: str, activity_type: str, preview: str, actor: str) -> None:
+    def _send(self, upn: str, activity_type: str, preview: str) -> None:
+        # Graph contract, learned live: topic.webUrl must be a Teams deep link ("…/l/…"), and
+        # the manifest template's ``{actor}`` is reserved — Graph fills it with the caller and
+        # rejects it as an explicit template parameter (400).
         self._graph.post(
             f"/users/{upn}/teamwork/sendActivityNotification",
             {
                 "topic": {"source": "text", "value": _TOPIC_VALUE, "webUrl": self._link_url},
                 "activityType": activity_type,
                 "previewText": {"content": preview[:150]},
-                "templateParameters": [{"name": "actor", "value": actor}],
             },
         )
 
@@ -41,9 +43,9 @@ class TeamsActivityNotifier(ApprovalNotifier):
         approver_upns: list[str],
         note: str,
     ) -> None:
-        preview = f"{title} — {note}" if note else title
+        preview = f"{requester_upn}: {title}" + (f" — {note}" if note else "")
         for upn in approver_upns:
-            self._send(upn, "approvalRequired", preview, requester_upn or _TOPIC_VALUE)
+            self._send(upn, "approvalRequired", preview)
 
     def decided(
         self,
@@ -58,5 +60,5 @@ class TeamsActivityNotifier(ApprovalNotifier):
         if not requester_upn:
             return
         outcome = "approved" if approved else "rejected"
-        preview = f"{title} — {outcome}" + (f": {note}" if note else "")
-        self._send(requester_upn, "trialDecided", preview, decider_upn or _TOPIC_VALUE)
+        preview = f"{decider_upn} {outcome}: {title}" + (f" — {note}" if note else "")
+        self._send(requester_upn, "trialDecided", preview)
