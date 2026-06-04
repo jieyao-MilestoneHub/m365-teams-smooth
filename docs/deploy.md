@@ -49,6 +49,15 @@ When the subscription's tenant and the M365 sign-in tenant differ (a common ente
 the Terraform module separates them: `azure_tenant_id` places the runtime resources, while
 `entra_tenant_id` drives the app registration and the `OAUTH_ISSUER`/`OAUTH_JWKS_URL` values above.
 
+### Optional: agentic roles (Azure OpenAI)
+
+Setting `AZURE_OPENAI_ENDPOINT` + `AZURE_OPENAI_DEPLOYMENT` (keyless via the app's identity, or
+`LLM_API_KEY`) switches the court from the deterministic role implementations to the **agentic**
+ones: LLM-backed intake parsing, the Prosecutor's validated read-selection loop, and the
+Defender's plan drafting within the court's refusal — each with a deterministic fallback, a
+per-call timeout, `LLM_MAX_TOKENS`, and the 3-calls-per-trial ceiling (see `adr/0009`). Leave the
+endpoint unset and every role stays deterministic.
+
 ### Optional: knowledge grounding (Azure AI Search)
 
 The impact node can ground its evidence in a knowledge base served by Azure AI Search agentic
