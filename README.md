@@ -36,7 +36,14 @@ intake → impact → options → policy + quorum → [verdict] → execute → 
 7. **Audit** — every step records an append-only before/after snapshot with rollback hints.
 
 The pipeline is presented as courtroom roles — Prosecutor (impact), Defender (options), Clerk
-(audit), Executor (execution) — implemented today as one controllable agent.
+(audit), Executor (execution) — implemented as one controllable agent. With a real LLM configured
+the roles reason for themselves: the Prosecutor selects additional evidence reads from the
+capability catalog (validated and bounded), the Defender drafts the plan within the court's
+refusal, both cite precedents from past rulings, and a verification step checks live writes
+against the reviewed plan. Offline, every role falls back to its deterministic implementation, so
+the trials stay reproducible. Risk scoring, quorum, and refusal authority are always
+deterministic — the agent's freedom lives in perception and generation, never in the safety
+verdict (see `docs/adr/0009`).
 
 ## What it looks like
 
