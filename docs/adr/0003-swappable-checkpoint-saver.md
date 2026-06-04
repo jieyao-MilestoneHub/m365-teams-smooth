@@ -16,6 +16,10 @@ Drive persistence by `DB_URL` (SQLite locally, Postgres later) via SQLAlchemy + 
 LangGraph saver behind a `CheckpointStore` port; the SQLite implementation wraps LangGraph's
 SQLite saver and is the only place the saver type appears. Audit records are append-only.
 
+The port exposes `setup()` and `saver()`, and — added later for the retention pass (ADR-0008) —
+`thread_ids()` and `delete_thread(thread_id)`, so working-storage cleanup goes through the same
+swappable seam and never reaches into the saver's tables directly.
+
 ## Consequences
 
 - Swapping SQLite → Postgres is a configuration change plus one adapter, no graph/service edits.

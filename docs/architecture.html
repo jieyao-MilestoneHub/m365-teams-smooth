@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AI Change Court — 架構圖</title>
+<style>
+  :root {
+    --ink: #1c2430; --muted: #5b6675; --line: #d8dee6; --bg: #ffffff; --page: #f4f6f9;
+    --entry: #6d4ca8;   /* M365 / entry      — purple */
+    --facade: #2a6fb0;  /* mcp/api façade    — blue   */
+    --core: #1f7a8c;    /* services/agent    — teal   */
+    --port: #46708a;    /* ports (DIP)       — slate  */
+    --adapter: #b5651d; /* adapters          — amber  */
+    --domain: #1f9d57;  /* domain (pure)     — green  */
+    --data: #5b6675;    /* persistence       — grey   */
+    --agentic: #2a6fb0; /* agentic role      — blue   */
+    --gov: #1f9d57;     /* deterministic gov — green  */
+    --gate: #c9851b;    /* durable interrupt — orange */
+    --danger: #c0392b;  /* refusal / guard   — red    */
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink);
+    font: 16px/1.6 -apple-system, "Segoe UI", "Noto Sans TC", Roboto, "PingFang TC",
+      "Microsoft JhengHei", sans-serif; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 32px 20px 80px; }
+  header.hero { background: linear-gradient(135deg, #2a6fb0, #1c4f80); color: #fff;
+    border-radius: 14px; padding: 26px 30px; margin-bottom: 26px; }
+  header.hero h1 { margin: 0 0 6px; font-size: 27px; }
+  header.hero p { margin: 0; opacity: .93; font-size: 15px; }
+  h2 { font-size: 21px; margin: 36px 0 6px; padding-bottom: 6px; border-bottom: 2px solid #eaf2fb; }
+  h2 .n { color: #2a6fb0; font-variant-numeric: tabular-nums; }
+  p.lead { color: var(--muted); margin: 8px 0 14px; font-size: 14.5px; }
+  figure { margin: 0 0 8px; background: var(--bg); border: 1px solid var(--line);
+    border-radius: 12px; padding: 16px 16px 10px; overflow-x: auto; }
+  figcaption { color: var(--muted); font-size: 13px; padding: 6px 4px 2px; }
+  svg { display: block; width: 100%; height: auto; min-width: 720px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 6px 2px 16px; font-size: 13px;
+    color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 13px; height: 13px; border-radius: 3px; display: inline-block; }
+  code { font-family: "SFMono-Regular", Consolas, monospace; font-size: 13px;
+    background: #f0f3f7; padding: 1px 5px; border-radius: 4px; }
+  footer { margin-top: 36px; color: var(--muted); font-size: 13px; text-align: center; }
+  /* SVG shared text */
+  text { font-family: -apple-system, "Segoe UI", "Noto Sans TC", sans-serif; fill: var(--ink); }
+  .t-title { font-size: 14px; font-weight: 700; }
+  .t-sub { font-size: 11.5px; fill: #5b6675; }
+  .t-white { fill: #fff; }
+  .t-lbl { font-size: 11px; fill: #5b6675; }
+  .edge { stroke: #9aa7b4; stroke-width: 1.6; fill: none; }
+  .edge-strong { stroke: #2a6fb0; stroke-width: 2; fill: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>AI Change Court — 架構圖</h1>
+  <p>把高風險的企業決策送上法庭：蒐證 → 評估衝擊 → 提出可行方案或更安全的替代 → 解析核准人 →
+     收取裁決 → 執行 → 留下不可竄改的稽核。本頁為自包含靜態 HTML,離線即可開啟。</p>
+</header>
+
+<p class="lead">五張圖由外而內、由流程到資料:① 分層容器架構 ② 法庭管線與治理自治分割 ③ 職責分離審批時序
+  ④ 安全與信任邊界 ⑤ 持久化與資料模型。每張圖採單向流向、每層一色、附圖例。</p>
+
+<!-- ============================================================ 1. LAYERED ARCHITECTURE -->
+<h2><span class="n">①</span> 分層容器架構(C4 container 級)</h2>
+<p class="lead">依賴反轉:<code>agent/</code>、<code>services/</code> 只依賴 <code>ports/</code>;具體實作在
+  <code>adapters/</code>;<code>domain/</code> 不 import 任何框架或 SDK。新增整合 = 一個 adapter + 一次註冊。</p>
+<div class="legend">
+  <span><i style="background:#6d4ca8"></i>M365 入口</span>
+  <span><i style="background:#2a6fb0"></i>門面 mcp/api</span>
+  <span><i style="background:#1f7a8c"></i>核心 services/agent</span>
+  <span><i style="background:#46708a"></i>ports(DIP 邊界)</span>
+  <span><i style="background:#b5651d"></i>adapters</span>
+  <span><i style="background:#1f9d57"></i>domain(純)</span>
+  <span><i style="background:#5b6675"></i>持久化</span>
+</div>
+<figure>
+<svg viewBox="0 0 960 590" role="img" aria-label="分層容器架構圖">
+  <defs>
+    <marker id="ah1" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#6b7886"/>
+    </marker>
+  </defs>
+
+  <!-- entry -->
+  <rect x="300" y="14" width="360" height="44" rx="9" fill="#6d4ca8"/>
+  <text x="480" y="34" text-anchor="middle" class="t-title t-white">Microsoft 365 Copilot Chat / Teams</text>
+  <text x="480" y="50" text-anchor="middle" class="t-sub t-white">使用者輸入決策請求 · Change Court 自適應卡片為唯一 UI</text>
+
+  <rect x="300" y="78" width="360" height="40" rx="9" fill="#7d5fb8"/>
+  <text x="480" y="96" text-anchor="middle" class="t-title t-white">Declarative Agent (m365/)</text>
+  <text x="480" y="111" text-anchor="middle" class="t-sub t-white">宣告式代理 — 必要的 M365 入口</text>
+
+  <line x1="480" y1="58" x2="480" y2="76" class="edge" marker-end="url(#ah1)"/>
+  <line x1="480" y1="118" x2="480" y2="150" class="edge" marker-end="url(#ah1)"/>
+  <text x="496" y="138" class="t-lbl">MCP + OAuth 2.0</text>
+
+  <!-- FastAPI process container -->
+  <rect x="40" y="150" width="880" height="330" rx="12" fill="#fbfcfe" stroke="#c9d3de"/>
+  <text x="60" y="172" class="t-title" fill="#2a6fb0">FastAPI process — app.asgi:app</text>
+
+  <!-- façade row -->
+  <rect x="60" y="186" width="400" height="56" rx="9" fill="#eaf2fb" stroke="#2a6fb0"/>
+  <text x="76" y="208" class="t-title" fill="#2a6fb0">mcp/</text>
+  <text x="76" y="225" class="t-sub">tools: submit · send_for_approval · decide · cast_verdict</text>
+  <text x="76" y="238" class="t-sub">resources: court://trial · audit · capabilities · metrics</text>
+  <rect x="476" y="186" width="184" height="56" rx="9" fill="#eaf2fb" stroke="#2a6fb0"/>
+  <text x="492" y="208" class="t-title" fill="#2a6fb0">api/</text>
+  <text x="492" y="227" class="t-sub">REST — 僅 /api/health</text>
+  <text x="675" y="214" class="t-lbl">薄門面</text>
+  <text x="675" y="229" class="t-lbl">零商業邏輯</text>
+
+  <!-- core row -->
+  <rect x="60" y="256" width="288" height="56" rx="9" fill="#e3f1f3" stroke="#1f7a8c"/>
+  <text x="76" y="278" class="t-title" fill="#1f7a8c">services/ — CourtService</text>
+  <text x="76" y="296" class="t-sub">單一商業層;REST 與 MCP 都委派於此</text>
+  <rect x="360" y="256" width="300" height="56" rx="9" fill="#e3f1f3" stroke="#1f7a8c"/>
+  <text x="376" y="278" class="t-title" fill="#1f7a8c">agent/ — LangGraph 法庭</text>
+  <text x="376" y="296" class="t-sub">intake→…→execute→verify→audit(見圖②)</text>
+
+  <!-- ports (DIP) -->
+  <rect x="60" y="326" width="600" height="40" rx="9" fill="#e7edf2" stroke="#46708a" stroke-dasharray="5 4"/>
+  <text x="360" y="351" text-anchor="middle" class="t-title" fill="#46708a">ports/ — 抽象介面(依賴反轉邊界:上層只依賴這裡)</text>
+
+  <!-- adapters -->
+  <rect x="60" y="380" width="600" height="84" rx="9" fill="#f7ede1" stroke="#b5651d"/>
+  <text x="76" y="400" class="t-title" fill="#b5651d">adapters/ — ports 的具體實作(real-vs-mock 由設定挑選)</text>
+  <text x="76" y="420" class="t-sub">integrations: GitHub(real) + Outlook/Planner/SharePoint/Teams/CRM/Entra(mock)</text>
+  <text x="76" y="436" class="t-sub">persistence(SQLAlchemy) · llm(Azure OpenAI/offline) · knowledge(Foundry IQ/offline)</text>
+  <text x="76" y="452" class="t-sub">每個 real adapter 在邊界做參數驗證(safe_repo / safe_path)</text>
+
+  <!-- domain -->
+  <rect x="676" y="256" width="228" height="208" rx="9" fill="#e6f6ed" stroke="#1f9d57"/>
+  <text x="790" y="278" text-anchor="middle" class="t-title" fill="#1f9d57">domain/</text>
+  <text x="790" y="298" text-anchor="middle" class="t-sub">純模型 / 列舉 / 錯誤</text>
+  <text x="790" y="314" text-anchor="middle" class="t-sub">Change · Plan · Risk</text>
+  <text x="790" y="330" text-anchor="middle" class="t-sub">Quorum · Verdict</text>
+  <text x="790" y="346" text-anchor="middle" class="t-sub">AuditRecord · Principal</text>
+  <text x="790" y="368" text-anchor="middle" class="t-sub">不 import 任何</text>
+  <text x="790" y="384" text-anchor="middle" class="t-sub">框架或 SDK</text>
+  <text x="790" y="408" text-anchor="middle" class="t-lbl">所有層皆可依賴</text>
+  <text x="790" y="423" text-anchor="middle" class="t-lbl">domain;domain</text>
+  <text x="790" y="438" text-anchor="middle" class="t-lbl">不依賴任何層</text>
+
+  <!-- internal edges -->
+  <line x1="260" y1="242" x2="260" y2="254" class="edge" marker-end="url(#ah1)"/>
+  <line x1="510" y1="242" x2="510" y2="254" class="edge" marker-end="url(#ah1)"/>
+  <line x1="360" y1="312" x2="360" y2="324" class="edge" marker-end="url(#ah1)"/>
+  <line x1="360" y1="366" x2="360" y2="378" class="edge" marker-end="url(#ah1)"/>
+
+  <!-- external systems + DB -->
+  <rect x="40" y="500" width="560" height="70" rx="10" fill="#fff" stroke="#c9d3de"/>
+  <text x="60" y="521" class="t-title" fill="#b5651d">外部系統(經 adapters)</text>
+  <text x="60" y="540" class="t-sub">GitHub API(real) · Microsoft Graph(Outlook/SharePoint) · CRM/Teams/Planner/Entra(mock)</text>
+  <text x="60" y="556" class="t-sub">Azure AI Foundry(Foundry IQ)— 知識接地</text>
+  <line x1="360" y1="464" x2="360" y2="498" class="edge" marker-end="url(#ah1)"/>
+
+  <rect x="620" y="500" width="300" height="70" rx="10" fill="#fff" stroke="#c9d3de"/>
+  <text x="640" y="521" class="t-title" fill="#5b6675">持久化</text>
+  <text x="640" y="540" class="t-sub">SQLite(本地)→ Postgres(之後)</text>
+  <text x="640" y="556" class="t-sub">DB_URL 驅動 · Alembic 管理 schema</text>
+  <line x1="620" y1="430" x2="620" y2="498" class="edge" marker-end="url(#ah1)"/>
+</svg>
+</figure>
+<figcaption>圖① 容器分層。箭頭為依賴/呼叫方向;<code>ports/</code> 虛線框是依賴反轉邊界——核心永不直接觸碰 SDK。</figcaption>
+
+<!-- ============================================================ 2. PIPELINE + GOVERNED AUTONOMY -->
+<h2><span class="n">②</span> 法庭管線與治理自治分割</h2>
+<p class="lead">一條可檢視的 LangGraph 圖,角色化呈現。代理的自由在<strong>感知與生成</strong>(藍);
+  安全裁決<strong>恆為確定性</strong>(綠)。裁決是持久中斷(橘),送出即返回、由 checkpoint 還原續跑。</p>
+<div class="legend">
+  <span><i style="background:#2a6fb0"></i>Agentic(有 LLM 時推理,失敗回退確定性)</span>
+  <span><i style="background:#1f9d57"></i>確定性治理(永不交給 LLM)</span>
+  <span><i style="background:#c9851b"></i>持久中斷 / 裁決閘</span>
+</div>
+<figure>
+<svg viewBox="0 0 960 340" role="img" aria-label="法庭管線圖">
+  <defs>
+    <marker id="ah2" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#2a6fb0"/>
+    </marker>
+  </defs>
+  <!-- nodes: x positions -->
+  <!-- intake -->
+  <g>
+    <rect x="20" y="70" width="120" height="74" rx="10" fill="#eaf2fb" stroke="#2a6fb0"/>
+    <text x="80" y="94" text-anchor="middle" class="t-title" fill="#2a6fb0">intake</text>
+    <text x="80" y="112" text-anchor="middle" class="t-sub">解析請求</text>
+    <text x="80" y="127" text-anchor="middle" class="t-sub">能力幻覺守門</text>
+  </g>
+  <!-- impact -->
+  <g>
+    <rect x="160" y="70" width="120" height="74" rx="10" fill="#eaf2fb" stroke="#2a6fb0"/>
+    <text x="220" y="92" text-anchor="middle" class="t-title" fill="#2a6fb0">impact</text>
+    <text x="220" y="108" text-anchor="middle" class="t-sub">Prosecutor</text>
+    <text x="220" y="123" text-anchor="middle" class="t-sub">選讀證據(≤5)</text>
+    <text x="220" y="137" text-anchor="middle" class="t-sub">知識接地</text>
+  </g>
+  <!-- options -->
+  <g>
+    <rect x="300" y="70" width="120" height="74" rx="10" fill="#eaf2fb" stroke="#2a6fb0"/>
+    <text x="360" y="92" text-anchor="middle" class="t-title" fill="#2a6fb0">options</text>
+    <text x="360" y="108" text-anchor="middle" class="t-sub">Defender</text>
+    <text x="360" y="123" text-anchor="middle" class="t-sub">計畫 / 安全替代</text>
+    <text x="360" y="137" text-anchor="middle" class="t-sub">拒絕權綁定</text>
+  </g>
+  <!-- policy -->
+  <g>
+    <rect x="440" y="70" width="120" height="74" rx="10" fill="#e6f6ed" stroke="#1f9d57"/>
+    <text x="500" y="92" text-anchor="middle" class="t-title" fill="#1f9d57">policy+quorum</text>
+    <text x="500" y="110" text-anchor="middle" class="t-sub">風險計分(資料)</text>
+    <text x="500" y="125" text-anchor="middle" class="t-sub">核准人 + 裁決選項</text>
+    <text x="500" y="139" text-anchor="middle" class="t-sub">零 LLM</text>
+  </g>
+  <!-- verdict gate -->
+  <g>
+    <rect x="580" y="62" width="120" height="90" rx="10" fill="#fff4e0" stroke="#c9851b"/>
+    <text x="640" y="86" text-anchor="middle" class="t-title" fill="#c9851b">[ verdict ]</text>
+    <text x="640" y="104" text-anchor="middle" class="t-sub">持久中斷</text>
+    <text x="640" y="119" text-anchor="middle" class="t-sub">interrupt_before</text>
+    <text x="640" y="133" text-anchor="middle" class="t-sub">=["execute"]</text>
+    <text x="640" y="147" text-anchor="middle" class="t-sub">冪等續跑</text>
+  </g>
+  <!-- execute -->
+  <g>
+    <rect x="720" y="70" width="110" height="74" rx="10" fill="#e6f6ed" stroke="#1f9d57"/>
+    <text x="775" y="94" text-anchor="middle" class="t-title" fill="#1f9d57">execute</text>
+    <text x="775" y="112" text-anchor="middle" class="t-sub">逐步執行</text>
+    <text x="775" y="127" text-anchor="middle" class="t-sub">honors dry-run</text>
+  </g>
+  <!-- verify + audit stacked -->
+  <g>
+    <rect x="850" y="36" width="92" height="50" rx="10" fill="#e6f6ed" stroke="#1f9d57"/>
+    <text x="896" y="58" text-anchor="middle" class="t-title" fill="#1f9d57">verify</text>
+    <text x="896" y="74" text-anchor="middle" class="t-sub">反思:預測vs實際</text>
+    <rect x="850" y="128" width="92" height="50" rx="10" fill="#e6f6ed" stroke="#1f9d57"/>
+    <text x="896" y="150" text-anchor="middle" class="t-title" fill="#1f9d57">audit</text>
+    <text x="896" y="166" text-anchor="middle" class="t-sub">append-only</text>
+  </g>
+
+  <!-- arrows -->
+  <line x1="140" y1="107" x2="158" y2="107" class="edge-strong" marker-end="url(#ah2)"/>
+  <line x1="280" y1="107" x2="298" y2="107" class="edge-strong" marker-end="url(#ah2)"/>
+  <line x1="420" y1="107" x2="438" y2="107" class="edge-strong" marker-end="url(#ah2)"/>
+  <line x1="560" y1="107" x2="578" y2="107" class="edge-strong" marker-end="url(#ah2)"/>
+  <line x1="700" y1="107" x2="718" y2="107" class="edge-strong" marker-end="url(#ah2)"/>
+  <line x1="830" y1="100" x2="848" y2="74" class="edge-strong" marker-end="url(#ah2)"/>
+  <line x1="896" y1="86" x2="896" y2="126" class="edge-strong" marker-end="url(#ah2)"/>
+
+  <!-- precedent memory loop -->
+  <rect x="300" y="230" width="340" height="50" rx="10" fill="#fff" stroke="#9aa7b4" stroke-dasharray="5 4"/>
+  <text x="470" y="251" text-anchor="middle" class="t-title" fill="#5b6675">判例記憶(precedents)</text>
+  <text x="470" y="268" text-anchor="middle" class="t-sub">audit 寫入判例;impact/options 引用過往裁決(可解釋檢索)</text>
+  <line x1="896" y1="178" x2="896" y2="255" class="edge" /><line x1="896" y1="255" x2="642" y2="255" class="edge" marker-end="url(#ah2)"/>
+  <line x1="360" y1="230" x2="360" y2="146" class="edge" marker-end="url(#ah2)"/>
+  <line x1="300" y1="255" x2="220" y2="255" class="edge"/><line x1="220" y1="255" x2="220" y2="146" class="edge" marker-end="url(#ah2)"/>
+
+  <!-- caller note -->
+  <text x="640" y="40" text-anchor="middle" class="t-lbl">submit 立即返回 ↑ · cast_verdict 由 checkpoint 還原 →</text>
+</svg>
+</figure>
+<figcaption>圖② 管線。藍=感知/生成(Prosecutor 選讀、Defender 計畫,均經能力驗證、失敗回退);
+  綠=確定性治理(風險、quorum、執行、驗證、稽核);橘=裁決持久中斷。詳見 <code>adr/0009</code>。</figcaption>
+
+<!-- ============================================================ 3. APPROVAL SEQUENCE -->
+<h2><span class="n">③</span> 職責分離審批時序</h2>
+<p class="lead">提案人不能核准自己的變更;核准人由設定的 ApproverDirectory 解析。時間由上而下。</p>
+<figure>
+<svg viewBox="0 0 960 430" role="img" aria-label="審批時序圖">
+  <defs>
+    <marker id="ah3" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#6b7886"/>
+    </marker>
+  </defs>
+  <!-- lanes -->
+  <g>
+    <rect x="40" y="14" width="180" height="34" rx="8" fill="#6d4ca8"/>
+    <text x="130" y="36" text-anchor="middle" class="t-title t-white">Requester(低權)</text>
+    <rect x="280" y="14" width="180" height="34" rx="8" fill="#2a6fb0"/>
+    <text x="370" y="36" text-anchor="middle" class="t-title t-white">Court(服務 + 圖)</text>
+    <rect x="520" y="14" width="180" height="34" rx="8" fill="#6d4ca8"/>
+    <text x="610" y="36" text-anchor="middle" class="t-title t-white">Approver(≠ 提案人)</text>
+    <rect x="760" y="14" width="160" height="34" rx="8" fill="#b5651d"/>
+    <text x="840" y="36" text-anchor="middle" class="t-title t-white">系統(adapters)</text>
+  </g>
+  <!-- lifelines -->
+  <line x1="130" y1="48" x2="130" y2="410" stroke="#d8dee6"/>
+  <line x1="370" y1="48" x2="370" y2="410" stroke="#d8dee6"/>
+  <line x1="610" y1="48" x2="610" y2="410" stroke="#d8dee6"/>
+  <line x1="840" y1="48" x2="840" y2="410" stroke="#d8dee6"/>
+
+  <!-- 1 submit -->
+  <line x1="130" y1="74" x2="368" y2="74" class="edge" marker-end="url(#ah3)"/>
+  <text x="140" y="68" class="t-lbl">1. submit_change(請求)</text>
+  <!-- court builds trial -->
+  <rect x="300" y="86" width="140" height="34" rx="7" fill="#eaf2fb" stroke="#2a6fb0"/>
+  <text x="370" y="107" text-anchor="middle" class="t-sub">建構審判 → 自我檢視閘</text>
+  <!-- 2 send -->
+  <line x1="130" y1="142" x2="368" y2="142" class="edge" marker-end="url(#ah3)"/>
+  <text x="140" y="136" class="t-lbl">2. send_for_approval(附 note,必填)</text>
+  <!-- court marks pending -->
+  <rect x="300" y="154" width="140" height="34" rx="7" fill="#fff4e0" stroke="#c9851b"/>
+  <text x="370" y="175" text-anchor="middle" class="t-sub">入審批佇列(pending)</text>
+  <!-- 3 queue pull -->
+  <line x1="608" y1="210" x2="372" y2="210" class="edge" marker-end="url(#ah3)"/>
+  <text x="430" y="204" class="t-lbl">3. list_pending_approvals</text>
+  <!-- 4 decide -->
+  <line x1="610" y1="244" x2="372" y2="244" class="edge" marker-end="url(#ah3)"/>
+  <text x="430" y="238" class="t-lbl">4. decide(approve / reject+note)</text>
+  <!-- guard box -->
+  <rect x="300" y="256" width="140" height="48" rx="7" fill="#fdecea" stroke="#c0392b"/>
+  <text x="370" y="276" text-anchor="middle" class="t-sub" fill="#c0392b">職責分離檢查</text>
+  <text x="370" y="291" text-anchor="middle" class="t-sub" fill="#c0392b">提案人≠核准人 · quorum</text>
+  <!-- 5 quorum satisfied → execute -->
+  <line x1="370" y1="318" x2="370" y2="338" class="edge"/>
+  <line x1="372" y1="346" x2="838" y2="346" class="edge" marker-end="url(#ah3)"/>
+  <text x="430" y="340" class="t-lbl">5. quorum 滿足 → 由 checkpoint 還原、execute(honors DRY_RUN)</text>
+  <!-- idempotent gate note -->
+  <rect x="300" y="358" width="140" height="34" rx="7" fill="#e6f6ed" stroke="#1f9d57"/>
+  <text x="370" y="379" text-anchor="middle" class="t-sub" fill="#1f9d57">冪等閘 + append-only audit</text>
+  <!-- system back -->
+  <line x1="838" y1="378" x2="372" y2="378" class="edge" marker-end="url(#ah3)"/>
+  <text x="600" y="372" class="t-lbl">結果 + before/after → audit + 判例</text>
+</svg>
+</figure>
+<figcaption>圖③ 審批時序。紅框為職責分離守門(提案人自批被拒、空身分被拒);綠框為冪等閘——
+  重複裁決回傳已記錄結果、不重複執行。reject/withdraw 為終態,亦寫入稽核。</figcaption>
+
+<!-- ============================================================ 4. SECURITY BOUNDARIES -->
+<h2><span class="n">④</span> 安全與信任邊界</h2>
+<p class="lead">每道防線標出其位置:認證在 MCP 邊界、授權在服務層、參數驗證在 adapter 邊界、稽核不可竄改。</p>
+<div class="legend">
+  <span><i style="background:#c0392b"></i>守門 / 拒絕</span>
+  <span><i style="background:#2a6fb0"></i>認證邊界</span>
+  <span><i style="background:#1f9d57"></i>完整性 / 邊界值</span>
+</div>
+<figure>
+<svg viewBox="0 0 960 360" role="img" aria-label="安全邊界圖">
+  <defs>
+    <marker id="ah4" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#6b7886"/>
+    </marker>
+  </defs>
+  <!-- caller -->
+  <rect x="20" y="150" width="120" height="60" rx="10" fill="#6d4ca8"/>
+  <text x="80" y="176" text-anchor="middle" class="t-title t-white">呼叫者</text>
+  <text x="80" y="193" text-anchor="middle" class="t-sub t-white">Copilot/Teams</text>
+
+  <!-- boundary 1: OAuth -->
+  <rect x="170" y="120" width="150" height="120" rx="10" fill="#eaf2fb" stroke="#2a6fb0" stroke-width="2"/>
+  <text x="245" y="142" text-anchor="middle" class="t-title" fill="#2a6fb0">① MCP 邊界</text>
+  <text x="245" y="162" text-anchor="middle" class="t-sub">OAuth2 resource server</text>
+  <text x="245" y="178" text-anchor="middle" class="t-sub">驗 sig+iss+aud+exp</text>
+  <text x="245" y="194" text-anchor="middle" class="t-sub">scope: court.use</text>
+  <text x="245" y="212" text-anchor="middle" class="t-sub">claims → Principal</text>
+  <text x="245" y="228" text-anchor="middle" class="t-sub">(身分不可偽造)</text>
+
+  <!-- boundary 2: service guards -->
+  <rect x="350" y="80" width="180" height="200" rx="10" fill="#fff" stroke="#46708a"/>
+  <text x="440" y="100" text-anchor="middle" class="t-title" fill="#46708a">② 服務層</text>
+  <rect x="364" y="110" width="152" height="44" rx="7" fill="#fdecea" stroke="#c0392b"/>
+  <text x="440" y="128" text-anchor="middle" class="t-sub" fill="#c0392b">輸入邊界:≤1000 字元</text>
+  <text x="440" y="143" text-anchor="middle" class="t-sub" fill="#c0392b">拒絕(非截斷)</text>
+  <rect x="364" y="160" width="152" height="44" rx="7" fill="#fdecea" stroke="#c0392b"/>
+  <text x="440" y="178" text-anchor="middle" class="t-sub" fill="#c0392b">職責分離</text>
+  <text x="440" y="193" text-anchor="middle" class="t-sub" fill="#c0392b">空身分→拒絕</text>
+  <rect x="364" y="210" width="152" height="56" rx="7" fill="#e6f6ed" stroke="#1f9d57"/>
+  <text x="440" y="228" text-anchor="middle" class="t-sub" fill="#1f9d57">資源邊界</text>
+  <text x="440" y="243" text-anchor="middle" class="t-sub" fill="#1f9d57">token/逾時/retry/</text>
+  <text x="440" y="257" text-anchor="middle" class="t-sub" fill="#1f9d57">graph wall-clock</text>
+
+  <!-- boundary 3: capability guard (agent) -->
+  <rect x="560" y="80" width="160" height="120" rx="10" fill="#fdecea" stroke="#c0392b"/>
+  <text x="640" y="100" text-anchor="middle" class="t-title" fill="#c0392b">③ 能力幻覺守門</text>
+  <text x="640" y="120" text-anchor="middle" class="t-sub">LLM/解析產出的動作</text>
+  <text x="640" y="136" text-anchor="middle" class="t-sub">對照已註冊能力</text>
+  <text x="640" y="152" text-anchor="middle" class="t-sub">未支援 → 拒絕/記錄</text>
+  <text x="640" y="168" text-anchor="middle" class="t-sub">絕不規劃或執行</text>
+  <text x="640" y="188" text-anchor="middle" class="t-sub">(delete repo 被擋)</text>
+
+  <!-- boundary 4: adapter param validation -->
+  <rect x="560" y="216" width="160" height="64" rx="10" fill="#fdecea" stroke="#c0392b"/>
+  <text x="640" y="236" text-anchor="middle" class="t-title" fill="#c0392b">④ adapter 邊界</text>
+  <text x="640" y="254" text-anchor="middle" class="t-sub">safe_repo / safe_path</text>
+  <text x="640" y="269" text-anchor="middle" class="t-sub">擋 ../ 路徑穿越</text>
+
+  <!-- external + audit -->
+  <rect x="750" y="96" width="190" height="80" rx="10" fill="#fff" stroke="#b5651d"/>
+  <text x="845" y="120" text-anchor="middle" class="t-title" fill="#b5651d">外部 API</text>
+  <text x="845" y="140" text-anchor="middle" class="t-sub">secrets:Container App</text>
+  <text x="845" y="155" text-anchor="middle" class="t-sub">secret / 受管身分</text>
+  <text x="845" y="170" text-anchor="middle" class="t-sub">不入 git / log</text>
+
+  <rect x="750" y="200" width="190" height="80" rx="10" fill="#e6f6ed" stroke="#1f9d57"/>
+  <text x="845" y="224" text-anchor="middle" class="t-title" fill="#1f9d57">append-only 稽核</text>
+  <text x="845" y="244" text-anchor="middle" class="t-sub">PK 約束 · 永不更新</text>
+  <text x="845" y="259" text-anchor="middle" class="t-sub">冪等 ledger</text>
+  <text x="845" y="274" text-anchor="middle" class="t-sub">DRY_RUN / kill-switch</text>
+
+  <!-- flow arrows -->
+  <line x1="140" y1="180" x2="168" y2="180" class="edge" marker-end="url(#ah4)"/>
+  <line x1="320" y1="180" x2="348" y2="180" class="edge" marker-end="url(#ah4)"/>
+  <line x1="530" y1="150" x2="558" y2="140" class="edge" marker-end="url(#ah4)"/>
+  <line x1="530" y1="210" x2="558" y2="240" class="edge" marker-end="url(#ah4)"/>
+  <line x1="720" y1="140" x2="748" y2="140" class="edge" marker-end="url(#ah4)"/>
+  <line x1="720" y1="248" x2="748" y2="240" class="edge" marker-end="url(#ah4)"/>
+  <text x="40" y="320" class="t-lbl">縱深防禦:每一層都假設上一層可能被繞過;prompt injection 的正解在 ④(約束輸出),不是消毒 prompt。</text>
+</svg>
+</figure>
+<figcaption>圖④ 信任邊界。① 認證(MCP)② 服務守門 ③ 能力幻覺守門 ④ adapter 參數驗證,加上不可竄改稽核與 secret 管理。詳見 <code>docs/security.md</code>。</figcaption>
+
+<!-- ============================================================ 5. DATA MODEL / RETENTION -->
+<h2><span class="n">⑤</span> 持久化與資料模型</h2>
+<p class="lead">稽核是永久真相來源;工作儲存可依保留窗清理。佇列與判例為可重建的讀模型。</p>
+<div class="legend">
+  <span><i style="background:#1f9d57"></i>永久(真相來源)</span>
+  <span><i style="background:#5b6675"></i>工作儲存(可清理)</span>
+  <span><i style="background:#2a6fb0"></i>讀模型 / 索引</span>
+</div>
+<figure>
+<svg viewBox="0 0 960 300" role="img" aria-label="資料模型圖">
+  <!-- permanent -->
+  <rect x="30" y="40" width="260" height="100" rx="10" fill="#e6f6ed" stroke="#1f9d57" stroke-width="2"/>
+  <text x="160" y="64" text-anchor="middle" class="t-title" fill="#1f9d57">audit_records — 永久</text>
+  <text x="160" y="86" text-anchor="middle" class="t-sub">append-only;audit_id PK</text>
+  <text x="160" y="102" text-anchor="middle" class="t-sub">完整 TrialRecord(衍生 before/after</text>
+  <text x="160" y="116" text-anchor="middle" class="t-sub">、rollback、verifications)</text>
+  <text x="160" y="132" text-anchor="middle" class="t-sub">保留策略永不刪除</text>
+
+  <!-- working storage -->
+  <rect x="30" y="170" width="400" height="100" rx="10" fill="#eef1f4" stroke="#5b6675" stroke-dasharray="5 4"/>
+  <text x="230" y="192" text-anchor="middle" class="t-title" fill="#5b6675">工作儲存 — 超過 RETENTION_DAYS 可清</text>
+  <rect x="44" y="204" width="180" height="52" rx="7" fill="#fff" stroke="#9aa7b4"/>
+  <text x="134" y="224" text-anchor="middle" class="t-sub">checkpoints(LangGraph)</text>
+  <text x="134" y="240" text-anchor="middle" class="t-sub">每節點一份序列化狀態</text>
+  <rect x="240" y="204" width="176" height="52" rx="7" fill="#fff" stroke="#9aa7b4"/>
+  <text x="328" y="224" text-anchor="middle" class="t-sub">verdict_claims</text>
+  <text x="328" y="240" text-anchor="middle" class="t-sub">冪等 ledger(複合 PK)</text>
+
+  <!-- read models -->
+  <rect x="470" y="40" width="460" height="100" rx="10" fill="#eaf2fb" stroke="#2a6fb0"/>
+  <text x="700" y="64" text-anchor="middle" class="t-title" fill="#2a6fb0">事件源 + 讀模型</text>
+  <rect x="486" y="78" width="210" height="50" rx="7" fill="#fff" stroke="#2a6fb0"/>
+  <text x="591" y="98" text-anchor="middle" class="t-sub">approval_events(append-only)</text>
+  <text x="591" y="114" text-anchor="middle" class="t-sub">send/withdraw/approve/reject</text>
+  <rect x="708" y="78" width="208" height="50" rx="7" fill="#fff" stroke="#2a6fb0"/>
+  <text x="812" y="98" text-anchor="middle" class="t-sub">pending_approvals(索引)</text>
+  <text x="812" y="114" text-anchor="middle" class="t-sub">佇列只掃開放項,非全歷史</text>
+
+  <!-- precedents -->
+  <rect x="470" y="170" width="460" height="100" rx="10" fill="#eaf2fb" stroke="#2a6fb0"/>
+  <text x="700" y="194" text-anchor="middle" class="t-title" fill="#2a6fb0">precedents — 判例記憶</text>
+  <text x="700" y="216" text-anchor="middle" class="t-sub">每件結案的精簡摘要(subject、tags、verdict、plan_kind、rationale)</text>
+  <text x="700" y="234" text-anchor="middle" class="t-sub">可解釋檢索:同 subject、tag 重疊排序 → agentic prompt 引用</text>
+  <text x="700" y="252" text-anchor="middle" class="t-sub">與稽核同庫;可換語意檢索(behind MemoryPort)</text>
+
+  <!-- retention arrow -->
+  <line x1="230" y1="170" x2="230" y2="142" stroke="#1f9d57" stroke-width="1.6" stroke-dasharray="4 3"/>
+  <text x="244" y="160" class="t-lbl">purge 不碰稽核</text>
+</svg>
+</figure>
+<figcaption>圖⑤ 持久化。綠=永久稽核(真相來源,保留策略永不刪);灰虛線=工作儲存(終結後超過保留窗由
+  <code>scripts.purge</code> 清);藍=事件源與讀模型(佇列索引、判例記憶)。詳見 <code>adr/0008</code>。</figcaption>
+
+<footer>
+  本頁為自包含靜態 HTML,inline SVG、零外部依賴,離線可開。圖中所有元件對應原始碼層級。
+  延伸閱讀:<code>docs/security.md</code> · <code>docs/adr/0008</code>(資源邊界)· <code>docs/adr/0009</code>(agentic 角色)。
+</footer>
+
+</div>
+</body>
+</html>

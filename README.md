@@ -131,6 +131,10 @@ docs/        architecture, ADRs, API/contract, trials & test data
 scripts/     developer/demo scripts (verify.sh, seed data)
 ```
 
+A visual tour of every layer is in [`docs/architecture.html`](docs/architecture.html) (self-contained,
+opens offline); the security posture and credential-rotation runbook are in
+[`docs/security.md`](docs/security.md).
+
 ## Getting started (local)
 
 > The project runs fully locally. No Microsoft 365 tenant is required for development; the chat

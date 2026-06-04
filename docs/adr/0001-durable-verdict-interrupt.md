@@ -16,7 +16,8 @@ resume to one process.
 Model the verdict as a **durable interrupt**. The LangGraph court compiles with
 `interrupt_before=["execute"]` and a checkpointer keyed by `thread_id`. `submit_change` runs
 `intake → … → policy+quorum`, then suspends and persists a checkpoint, returning immediately.
-A later `cast_verdict` rehydrates from the checkpoint and resumes into `execute → audit`. The graph
+A later `cast_verdict` rehydrates from the checkpoint and resumes into `execute → verify → audit`
+(the `verify` node was added in ADR-0009). The graph
 is **never held in memory across the gap**. Idempotency is enforced in the service layer (a verdict
 ledger) so casting the same verdict twice — over REST or MCP — is a no-op.
 
