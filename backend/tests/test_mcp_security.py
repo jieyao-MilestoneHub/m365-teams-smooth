@@ -1,7 +1,10 @@
-"""The dev token verifier accepts valid tokens and rejects tampered/expired/wrong-audience ones."""
+"""The token verifiers accept valid tokens and reject tampered/expired/wrong-audience ones."""
 
 from __future__ import annotations
 
+import time
+
+import pytest
 from mcp.server.auth.middleware.auth_context import auth_context_var
 from mcp.server.auth.middleware.bearer_auth import AuthenticatedUser
 
@@ -12,6 +15,7 @@ from app.mcp.security import (
     DEV_ISSUER,
     DEV_SECRET,
     DevTokenVerifier,
+    JwksTokenVerifier,
     build_auth_settings,
     current_principal,
     mint_dev_token,
@@ -44,6 +48,76 @@ async def test_wrong_audience_is_rejected() -> None:
     verifier = DevTokenVerifier()
     other = mint_dev_token(secret=DEV_SECRET, issuer=DEV_ISSUER, audience="someone-else")
     assert await verifier.verify_token(other) is None
+
+
+def _rs256_jwks_verifier() -> tuple[JwksTokenVerifier, object]:
+    """A JwksTokenVerifier with an in-test RSA keypair stubbed in as the JWKS client."""
+    from cryptography.hazmat.primitives.asymmetric import rsa
+
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+
+    class _StubSigningKey:
+        def __init__(self, public_key: object) -> None:
+            self.key = public_key
+
+    class _StubJwkClient:
+        def get_signing_key_from_jwt(self, _token: str) -> _StubSigningKey:
+            return _StubSigningKey(key.public_key())
+
+    verifier = JwksTokenVerifier(
+        jwks_url="https://unused.example/jwks",
+        issuer="https://login.microsoftonline.com/tenant-id/v2.0",
+        audience="api://client-guid",
+        jwk_client=_StubJwkClient(),  # type: ignore[arg-type]
+    )
+    return verifier, key
+
+
+def _mint_rs256(key: object, *, aud: str, **extra: object) -> str:
+    import jwt as pyjwt
+
+    now = int(time.time())
+    payload: dict[str, object] = {
+        "sub": "user-oid",
+        "iss": "https://login.microsoftonline.com/tenant-id/v2.0",
+        "aud": aud,
+        "iat": now,
+        "exp": now + 600,
+        **extra,
+    }
+    return pyjwt.encode(payload, key, algorithm="RS256")  # type: ignore[arg-type]
+
+
+async def test_entra_v2_token_with_bare_guid_audience_and_scp_is_accepted() -> None:
+    # Entra v2 access tokens carry the bare client id as `aud` and scopes in `scp`.
+    verifier, key = _rs256_jwks_verifier()
+    token = _mint_rs256(key, aud="client-guid", scp="court.use")
+    access = await verifier.verify_token(token)
+    assert access is not None
+    assert "court.use" in access.scopes
+
+
+async def test_v1_style_api_uri_audience_is_accepted() -> None:
+    verifier, key = _rs256_jwks_verifier()
+    token = _mint_rs256(key, aud="api://client-guid", scp="court.use")
+    assert await verifier.verify_token(token) is not None
+
+
+async def test_app_only_roles_map_to_scopes() -> None:
+    verifier, key = _rs256_jwks_verifier()
+    token = _mint_rs256(key, aud="client-guid", roles=["court.use"])
+    access = await verifier.verify_token(token)
+    assert access is not None
+    assert "court.use" in access.scopes
+
+
+async def test_jwks_rejection_logs_the_reason(caplog: pytest.LogCaptureFixture) -> None:
+    # Rejections must be observable: a wrong-audience token logs mcp.token_rejected.
+    verifier, key = _rs256_jwks_verifier()
+    token = _mint_rs256(key, aud="someone-else", scp="court.use")
+    with caplog.at_level("WARNING"):
+        assert await verifier.verify_token(token) is None
+    assert any(r.message == "mcp.token_rejected" for r in caplog.records)
 
 
 def test_server_builds_with_auth_enabled() -> None:
