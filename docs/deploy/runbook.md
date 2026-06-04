@@ -156,7 +156,7 @@ account; full script in [`two-user-demo.md`](two-user-demo.md)):
 3. Quorum satisfied → executes (DRY_RUN by default, ADR-0007) → audit recorded. Confirm the
    requester **cannot** approve their own change, and an account outside the directory cannot decide.
 
-The three trials and their expected outcomes are in [`trials.md`](trials.md).
+The three trials and their expected outcomes are in [`trials.md`](../reference/trials.md).
 
 ---
 

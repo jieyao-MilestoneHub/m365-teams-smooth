@@ -68,7 +68,7 @@ Two boundaries do the load-bearing work:
 Every reachable loop and allocation is bounded: request size (1000 chars), LLM output
 (`LLM_MAX_TOKENS`=1024) and per-call timeout (30s), graph wall-clock guard (60s), agentic reads
 (`MAX_AGENTIC_READS`=5), accumulated errors (50), and idempotency-aware retries (max 3, exponential
-backoff). Queue and precedent reads scale with open work, not history (see `adr/0008`).
+backoff). Queue and precedent reads scale with open work, not history (see `reference/adr/0008`).
 
 ## Secrets
 

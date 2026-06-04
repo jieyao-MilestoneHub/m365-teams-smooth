@@ -6,7 +6,7 @@ MCP server must validate **Entra ID** tokens. This guide covers that path. It as
 already green locally (`make check`, `scripts/verify.sh`).
 
 The work splits into two halves that meet at environment variables: **hosting the backend** (below)
-and **packaging the declarative agent** (see [`../m365/README.md`](../m365/README.md)).
+and **packaging the declarative agent** (see [`../m365/README.md`](../../m365/README.md)).
 
 ## 1. Host the backend over HTTPS
 
@@ -55,7 +55,7 @@ Setting `AZURE_OPENAI_ENDPOINT` + `AZURE_OPENAI_DEPLOYMENT` (keyless via the app
 `LLM_API_KEY`) switches the court from the deterministic role implementations to the **agentic**
 ones: LLM-backed intake parsing, the Prosecutor's validated read-selection loop, and the
 Defender's plan drafting within the court's refusal — each with a deterministic fallback, a
-per-call timeout, `LLM_MAX_TOKENS`, and the 3-calls-per-trial ceiling (see `adr/0009`). Leave the
+per-call timeout, `LLM_MAX_TOKENS`, and the 3-calls-per-trial ceiling (see `reference/adr/0009`). Leave the
 endpoint unset and every role stays deterministic.
 
 Keyless requirements: the Container App's user-assigned identity needs the **Cognitive Services
@@ -86,7 +86,7 @@ Leave them unset and the backend keeps its offline fallback.
 ## 2. Register the Entra ID application
 
 In the same tenant (a dedicated **Microsoft 365 dev tenant** with custom-app upload enabled — see
-[`adr/0004-development-environment.md`](adr/0004-development-environment.md)):
+[`adr/0004-development-environment.md`](../reference/adr/0004-development-environment.md)):
 
 1. **App registration** → note the *Application (client) ID* and *Directory (tenant) ID*.
 2. **Expose an API** → set the Application ID URI to `api://<app-id>` and add a scope `court.use`
@@ -100,8 +100,8 @@ In the same tenant (a dedicated **Microsoft 365 dev tenant** with custom-app upl
 ## 3. Package and sideload the agent
 
 With the host URL and the values above, build the app package and upload it — see
-[`../m365/README.md`](../m365/README.md) (`make package`). Then walk the three trials in Copilot Chat
-and tick off the *Pending tenant* checks in [`../verify.md`](../verify.md).
+[`../m365/README.md`](../../m365/README.md) (`make package`). Then walk the three trials in Copilot Chat
+and tick off the *Pending tenant* checks in [`../verify.md`](../../verify.md).
 
 ## Retention maintenance
 

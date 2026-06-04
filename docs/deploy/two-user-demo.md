@@ -46,7 +46,7 @@ requester: submit ──► AWAITING_REQUESTER_REVIEW ── send (note required
 ## Real tenant (Copilot Chat / Teams)
 
 Prerequisites: the backend deployed over HTTPS with Entra OAuth (see [deploy.md](deploy.md)), the
-declarative agent sideloaded (see [../m365/README.md](../m365/README.md)).
+declarative agent sideloaded (see [../m365/README.md](../../m365/README.md)).
 
 1. **Entra app registration** in the sign-in tenant: Application ID URI `api://<app-id>`, scope
    `court.use`; the backend's `OAUTH_ISSUER`/`OAUTH_JWKS_URL`/`OAUTH_AUDIENCE` point at this tenant

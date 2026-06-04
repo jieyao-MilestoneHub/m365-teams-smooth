@@ -24,7 +24,7 @@ or the exported card JSON. The commands and module paths below are runnable toda
 
 What remains is **going live in a real tenant** (the *Pending tenant* items in `verify.md`): hosting
 the backend over public HTTPS, Entra ID OAuth2, sideloading the declarative agent, and — optionally —
-replacing the mocks with real Microsoft Graph adapters. See `docs/deploy.md`. Roadmap phases and PR
+replacing the mocks with real Microsoft Graph adapters. See `docs/deploy/deploy.md`. Roadmap phases and PR
 slicing live in `roadmap.md` (Phases 1–5, plus enhancements) and in GitHub issues (labeled
 `ready`/`blocked`, `area:*`); keep PRs single-responsibility. **Stay convergent:** every change must
 serve one of the three trials (Launch Slip, Customer Promise, Vendor Access); see `verify.md`.
@@ -85,7 +85,7 @@ M365 Copilot Chat / Teams
 - **Audit is append-only** — never updated. Rollback hints are advisory data, never auto-executed.
 
 When you make a significant design choice (e.g. the interrupt-vs-statelessness decision), record it
-as an ADR under `docs/adr/`.
+as an ADR under `docs/reference/adr/`.
 
 ## Commands
 
@@ -108,7 +108,7 @@ resource (REST is health-only). The intended MCP surface (Phase 4) is the tools 
 
 End-to-end checklist: `scripts/verify.sh` (verifies the three trials + safety/MCP/quality gates;
 tenant-dependent checks report PENDING). Package the M365 app with `make package` (see
-`docs/deploy.md`).
+`docs/deploy/deploy.md`).
 
 ## Configuration & run modes
 

@@ -81,7 +81,7 @@ terraform output -raw entra_client_secret   # sensitive; for the Teams OAuth con
    `m365/build/appPackage.zip` to the tenant (custom-app upload) and walk the three trials in
    Copilot Chat — ticking off the *Pending tenant* checks in [`../verify.md`](../verify.md).
 
-See [`../docs/deploy.md`](../docs/deploy.md) for the conceptual walkthrough.
+See [`../docs/deploy/deploy.md`](../docs/deploy/deploy.md) for the conceptual walkthrough.
 
 ## Cost
 
