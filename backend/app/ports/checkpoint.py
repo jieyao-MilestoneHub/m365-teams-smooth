@@ -20,3 +20,11 @@ class CheckpointStore(ABC):
     @abstractmethod
     def saver(self) -> object:
         """Return the underlying checkpoint saver instance used to compile the graph."""
+
+    @abstractmethod
+    def thread_ids(self) -> list[str]:
+        """The thread ids that currently hold checkpoints (the live, not-yet-purged set)."""
+
+    @abstractmethod
+    def delete_thread(self, thread_id: str) -> None:
+        """Delete every checkpoint for a thread (no-op when none exist). Irreversible."""

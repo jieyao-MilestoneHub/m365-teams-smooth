@@ -23,6 +23,12 @@ class _MemAudit(AuditRepository):
         matches = [r for r in self._records if r.change_id == change_id]
         return matches[-1] if matches else None
 
+    def thread_ids_completed_before(self, cutoff: str) -> list[str]:
+        latest: dict[str, str] = {}
+        for r in self._records:
+            latest[r.thread_id] = max(latest.get(r.thread_id, ""), r.created_at)
+        return [tid for tid, at in latest.items() if at < cutoff]
+
 
 class _MemLedger(VerdictLedger):
     def __init__(self) -> None:
@@ -40,6 +46,9 @@ class _MemLedger(VerdictLedger):
 
     def result_for(self, thread_id: str, idempotency_key: str) -> str | None:
         return self._claims.get((thread_id, idempotency_key))
+
+    def purge_thread(self, thread_id: str) -> None:
+        self._claims = {k: v for k, v in self._claims.items() if k[0] != thread_id}
 
 
 def _record(audit_id: str, change_id: str) -> AuditRecord:

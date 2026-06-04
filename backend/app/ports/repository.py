@@ -26,6 +26,10 @@ class AuditRepository(ABC):
     def latest_for_change(self, change_id: str) -> AuditRecord | None:
         """Fetch the most recent record for a change, or ``None``."""
 
+    @abstractmethod
+    def thread_ids_completed_before(self, cutoff: str) -> list[str]:
+        """Threads whose latest audit record predates ``cutoff`` (ISO-8601) — finished trials."""
+
 
 class VerdictLedger(ABC):
     """Idempotency ledger making a cast verdict exactly-once across REST and MCP.
@@ -45,6 +49,11 @@ class VerdictLedger(ABC):
     @abstractmethod
     def result_for(self, thread_id: str, idempotency_key: str) -> str | None:
         """Return the audit id recorded for a completed verdict, or ``None``."""
+
+    @abstractmethod
+    def purge_thread(self, thread_id: str) -> None:
+        """Drop a thread's claims during retention cleanup. Only valid once its checkpoints are
+        gone — without a checkpoint the thread can never resume, so the claims protect nothing."""
 
 
 class ApprovalLedger(ABC):

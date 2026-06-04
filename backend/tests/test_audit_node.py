@@ -34,6 +34,12 @@ class _MemAudit(AuditRepository):
         matches = [r for r in self.records if r.change_id == change_id]
         return matches[-1] if matches else None
 
+    def thread_ids_completed_before(self, cutoff: str) -> list[str]:
+        latest: dict[str, str] = {}
+        for r in self.records:
+            latest[r.thread_id] = max(latest.get(r.thread_id, ""), r.created_at)
+        return [tid for tid, at in latest.items() if at < cutoff]
+
 
 def _state() -> CourtState:
     state = initial_state(

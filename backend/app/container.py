@@ -54,6 +54,7 @@ from app.ports.registry import IntegrationRegistry
 from app.ports.request_parser import RequestParser
 from app.services.approver_directory import ApproverDirectory
 from app.services.court_service import CourtService
+from app.services.maintenance import MaintenanceService
 
 
 def build_court_service(
@@ -193,4 +194,18 @@ def build_court_service(
         approvals=approvals,
         directory=directory,
         dry_run_default=settings.dry_run_default,
+    )
+
+
+def build_maintenance_service(settings: Settings) -> MaintenanceService:
+    """Wire the retention maintenance service against the same database as the court."""
+    engine = make_engine(settings.db_url)
+    init_db(engine)
+    session_factory = make_session_factory(engine)
+    store = SqliteCheckpointStore.from_db_url(settings.db_url)
+    store.setup()
+    return MaintenanceService(
+        store,
+        SqlAuditRepository(session_factory),
+        SqlVerdictLedger(session_factory),
     )
