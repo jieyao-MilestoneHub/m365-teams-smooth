@@ -21,6 +21,8 @@ from app.domain.errors import (
     ChangeCourtError,
     IntegrationError,
     NotFoundError,
+    SeparationOfDutiesError,
+    UnauthorizedApproverError,
     UnsafeChangeError,
     VerdictConflictError,
 )
@@ -34,6 +36,8 @@ _MAPPING: list[tuple[type[ChangeCourtError], int, str]] = [
     (CapabilityNotFoundError, 422, "capability_not_found"),
     (UnsafeChangeError, 409, "unsafe_change"),
     (VerdictConflictError, 409, "verdict_conflict"),
+    (SeparationOfDutiesError, 403, "separation_of_duties"),
+    (UnauthorizedApproverError, 403, "unauthorized_approver"),
     (IntegrationError, 502, "integration_error"),
     (ChangeCourtError, 500, "internal_error"),
 ]
@@ -44,6 +48,8 @@ _MCP_CODES: dict[str, int] = {
     "capability_not_found": INVALID_PARAMS,
     "unsafe_change": -32009,
     "verdict_conflict": -32009,
+    "separation_of_duties": -32010,
+    "unauthorized_approver": -32010,
     "integration_error": -32002,
     "internal_error": INTERNAL_ERROR,
 }

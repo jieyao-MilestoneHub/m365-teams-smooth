@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from mcp.server.auth.middleware.auth_context import auth_context_var
+from mcp.server.auth.middleware.bearer_auth import AuthenticatedUser
+
 from app.config import Settings
 from app.container import build_court_service
 from app.mcp.security import (
@@ -10,7 +13,9 @@ from app.mcp.security import (
     DEV_SECRET,
     DevTokenVerifier,
     build_auth_settings,
+    current_principal,
     mint_dev_token,
+    principal_from_claims,
 )
 from app.mcp.server import build_mcp_server
 
@@ -56,6 +61,44 @@ def test_server_builds_with_auth_enabled() -> None:
 
 def test_dev_audience_constant() -> None:
     assert DEV_AUDIENCE  # sanity: a non-empty default audience exists
+
+
+def test_principal_from_entra_claims() -> None:
+    principal = principal_from_claims(
+        {"oid": "11111111-aaaa", "preferred_username": "alice@contoso.com", "name": "Alice"}
+    )
+    assert principal.oid == "11111111-aaaa"
+    assert principal.upn == "alice@contoso.com"
+    assert principal.display_name == "Alice"
+
+
+def test_principal_falls_back_across_claim_spellings() -> None:
+    # No oid/preferred_username: sub fills oid, upn fills upn — any standard issuer works.
+    principal = principal_from_claims({"sub": "user-42", "upn": "bob@contoso.com"})
+    assert principal.oid == "user-42"
+    assert principal.upn == "bob@contoso.com"
+
+
+async def test_principal_from_dev_token_claims() -> None:
+    access = await DevTokenVerifier().verify_token(mint_dev_token("alice"))
+    assert access is not None and access.claims is not None
+    assert principal_from_claims(access.claims).key() == "alice"
+
+
+def test_current_principal_is_none_without_request_context() -> None:
+    assert current_principal() is None
+
+
+async def test_current_principal_reads_the_bound_auth_context() -> None:
+    # Bind the contextvar exactly as AuthContextMiddleware does for an authenticated request.
+    access = await DevTokenVerifier().verify_token(mint_dev_token("alice"))
+    assert access is not None
+    token = auth_context_var.set(AuthenticatedUser(access))
+    try:
+        principal = current_principal()
+    finally:
+        auth_context_var.reset(token)
+    assert principal is not None and principal.key() == "alice"
 
 
 def test_resource_url_defaults_to_localhost() -> None:
