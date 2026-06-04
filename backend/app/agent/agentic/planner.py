@@ -13,6 +13,7 @@ import logging
 
 from pydantic import BaseModel, Field
 
+from app.agent.agentic.gatherer import render_precedents
 from app.agent.agentic.structured import extract_json
 from app.domain import (
     Capability,
@@ -26,6 +27,7 @@ from app.domain import (
 )
 from app.observability import metrics
 from app.ports.llm import LLMProvider
+from app.ports.memory import MemoryPort
 from app.ports.registry import IntegrationRegistry
 
 logger = logging.getLogger(__name__)
@@ -52,10 +54,13 @@ class LlmPlanner:
         llm: LLMProvider,
         registry: IntegrationRegistry,
         fallback: object,  # Planner protocol (callable); typed loosely to avoid a cycle
+        *,
+        memory: MemoryPort | None = None,
     ) -> None:
         self._llm = llm
         self._registry = registry
         self._fallback = fallback
+        self._memory = memory
 
     def __call__(self, change: Change, impact: ImpactEvidence) -> ExecutionPlan:
         baseline: ExecutionPlan = self._fallback(change, impact)  # type: ignore[operator]
@@ -122,17 +127,20 @@ class LlmPlanner:
             return []
         return [str(k) for k in required if k not in params]
 
-    @staticmethod
-    def _user_prompt(change: Change, impact: ImpactEvidence, baseline: ExecutionPlan) -> str:
+    def _user_prompt(
+        self, change: Change, impact: ImpactEvidence, baseline: ExecutionPlan
+    ) -> str:
         evidence = "; ".join(f"{i.system}/{i.kind}: {i.summary}" for i in impact.items) or "none"
         base = "; ".join(f"{s.capability.system}.{s.capability.name}" for s in baseline.steps)
-        return (
+        prompt = (
             f"Change request ({change.subject}): {change.raw_request}\n"
             f"Due by: {change.due_by or 'unspecified'}\n"
             f"Impact evidence: {evidence}\n"
             f"Baseline plan ({baseline.kind.value}): {base or 'none'}\n"
             f"Baseline rationale: {baseline.rationale}"
         )
+        precedents = render_precedents(self._memory, change.subject or "", impact.tags)
+        return f"{prompt}\n{precedents}" if precedents else prompt
 
     def _system_prompt(
         self, catalog: dict[tuple[str, str], Capability], kind: PlanKind

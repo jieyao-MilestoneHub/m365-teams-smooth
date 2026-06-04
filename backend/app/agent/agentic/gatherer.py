@@ -22,11 +22,31 @@ from app.observability import metrics
 from app.ports.integration import ReadQuery
 from app.ports.knowledge import KnowledgePort
 from app.ports.llm import LLMProvider
+from app.ports.memory import MemoryPort
 from app.ports.registry import IntegrationRegistry
 
 logger = logging.getLogger(__name__)
 
 _MAX_ASSESSMENT_CHARS = 600
+_MAX_PRECEDENT_CHARS = 200
+
+
+def render_precedents(
+    memory: MemoryPort | None, subject: str, tags: list[str], *, top_k: int = 3
+) -> str:
+    """A bounded, citable summary of past rulings for a prompt (empty when none/unavailable)."""
+    if memory is None:
+        return ""
+    try:
+        precedents = memory.find_similar(subject, tags, top_k=top_k)
+    except Exception:  # noqa: BLE001 — missing memory must never block a trial
+        return ""
+    lines = [
+        f"- [{p.thread_id[:8]}] {p.raw_request[:80]} -> {p.verdict_type or p.status}"
+        f" ({p.plan_kind}): {p.rationale}"[:_MAX_PRECEDENT_CHARS]
+        for p in precedents
+    ]
+    return "Past rulings on similar changes:\n" + "\n".join(lines) if lines else ""
 
 
 class _LlmRead(BaseModel):
@@ -49,10 +69,12 @@ class LlmEvidenceGatherer:
         fallback: Gatherer,
         *,
         max_reads: int = 5,
+        memory: MemoryPort | None = None,
     ) -> None:
         self._llm = llm
         self._fallback = fallback
         self._max_reads = max_reads
+        self._memory = memory
 
     def __call__(
         self,
@@ -146,14 +168,15 @@ class LlmEvidenceGatherer:
             return []
         return [str(k) for k in required if k not in params]
 
-    @staticmethod
-    def _user_prompt(change: Change, gathered: ImpactEvidence) -> str:
+    def _user_prompt(self, change: Change, gathered: ImpactEvidence) -> str:
         already = "; ".join(f"{i.system}/{i.kind}: {i.summary}" for i in gathered.items) or "none"
-        return (
+        prompt = (
             f"Change request ({change.subject}): {change.raw_request}\n"
             f"Due by: {change.due_by or 'unspecified'}\n"
             f"Evidence already gathered: {already}"
         )
+        precedents = render_precedents(self._memory, change.subject or "", gathered.tags)
+        return f"{prompt}\n{precedents}" if precedents else prompt
 
     def _system_prompt(self, catalog: dict[tuple[str, str], Capability]) -> str:
         lines = []
