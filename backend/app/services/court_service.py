@@ -202,6 +202,10 @@ class CourtService:
         audit_id = state.get("audit_id")
         if isinstance(audit_id, str):
             self._ledger.mark_completed(thread_id, key, audit_id)
+        if self._approvals is not None:
+            # A cast verdict is terminal however the trial got here — a trial that was sitting in
+            # the approval queue must not linger there as a zombie row.
+            self._approvals.clear_pending(thread_id)
         logger.info(
             "verdict.cast",
             extra={

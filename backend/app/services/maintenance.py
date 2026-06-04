@@ -17,7 +17,7 @@ from datetime import UTC, datetime, timedelta
 
 from app.observability import metrics
 from app.ports.checkpoint import CheckpointStore
-from app.ports.repository import AuditRepository, VerdictLedger
+from app.ports.repository import ApprovalLedger, AuditRepository, VerdictLedger
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +38,13 @@ class MaintenanceService:
         checkpoints: CheckpointStore,
         audit_repo: AuditRepository,
         verdicts: VerdictLedger,
+        *,
+        approvals: ApprovalLedger | None = None,
     ) -> None:
         self._checkpoints = checkpoints
         self._audit = audit_repo
         self._verdicts = verdicts
+        self._approvals = approvals
 
     def purge_finished_trials(self, retention_days: int) -> PurgeReport:
         """Delete checkpoints + verdict claims for trials finished more than ``retention_days`` ago.
@@ -56,6 +59,8 @@ class MaintenanceService:
         for thread_id in purgeable:
             self._checkpoints.delete_thread(thread_id)
             self._verdicts.purge_thread(thread_id)
+            if self._approvals is not None:
+                self._approvals.clear_pending(thread_id)  # no orphaned queue rows
         if purgeable:
             metrics.increment("maintenance.threads_purged", len(purgeable))
         logger.info(
