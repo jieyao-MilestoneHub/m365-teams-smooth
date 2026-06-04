@@ -176,8 +176,29 @@ class CourtService:
         selected_plan: PlanKind = PlanKind.FEASIBLE,
         idempotency_key: str | None = None,
         actor: str = "reviewer",
+        principal: Principal | None = None,
     ) -> CastResult:
-        """Claim and apply a verdict; a duplicate claim returns the recorded result."""
+        """Claim and apply a verdict; a duplicate claim returns the recorded result.
+
+        With an authenticated ``principal`` and a configured approver directory, the caster must
+        pass the same authorization as :meth:`decide` — the legacy verdict path must not bypass
+        separation of duties. Without a principal (local, identity-free runs) the legacy
+        behaviour is unchanged.
+        """
+        if principal is not None and self._directory is not None:
+            trial = self._trial_or_raise(thread_id)
+            requester = trial.change.requester
+            auth = authorize_caster(
+                principal,
+                requester,
+                self._required_roles(trial),
+                self._directory.roles_for(principal),
+            )
+            if not auth.allowed:
+                if requester is not None and principal.same_as(requester):
+                    raise SeparationOfDutiesError(auth.reason)
+                raise UnauthorizedApproverError(auth.reason)
+            actor = principal.upn or principal.key()
         key = idempotency_key or f"{thread_id}:{verdict_type.value}:{selected_plan.value}"
         if not self._ledger.try_claim(thread_id, key):
             audit_id = self._ledger.result_for(thread_id, key)

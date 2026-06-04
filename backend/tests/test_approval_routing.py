@@ -206,3 +206,41 @@ def test_requester_note_uses_the_send_event() -> None:
     assert service.requester_note(s.thread_id) == ""
     service.send_for_approval(s.thread_id, actor=REQUESTER, note="first note")
     assert service.requester_note(s.thread_id) == "first note"
+
+
+# --- cast_verdict must honour the same authorization as decide (no legacy bypass) ---
+
+
+def test_requester_cannot_self_approve_via_cast_verdict() -> None:
+    # The legacy verdict path must not bypass separation of duties for authenticated callers.
+    service = _service()
+    s = service.submit_change(_REQ, requester=REQUESTER)
+    with pytest.raises(SeparationOfDutiesError):
+        service.cast_verdict(s.thread_id, VerdictType.APPROVE, principal=REQUESTER)
+
+
+def test_stranger_cannot_cast_verdict() -> None:
+    service = _service()
+    s = service.submit_change(_REQ, requester=REQUESTER)
+    with pytest.raises(UnauthorizedApproverError):
+        service.cast_verdict(s.thread_id, VerdictType.APPROVE, principal=STRANGER)
+
+
+def test_directory_approver_can_cast_verdict_and_actor_is_the_identity() -> None:
+    service = _service()
+    s = service.submit_change(_REQ, requester=REQUESTER)
+    service.send_for_approval(s.thread_id, actor=REQUESTER, note="please review")
+    result = service.cast_verdict(s.thread_id, VerdictType.APPROVE, principal=APPROVER)
+    assert result.status == "done"
+    trial = service.get_trial(s.thread_id)
+    assert trial is not None and trial.verdict is not None
+    assert trial.verdict.actor == APPROVER.upn
+
+
+def test_cast_verdict_without_principal_keeps_the_legacy_flow() -> None:
+    # Identity-free local runs (no OAuth) stay unchanged — no directory check engages.
+    settings = Settings(force_all_mock=True, db_url="sqlite:///:memory:", dry_run_default=True)
+    service = build_court_service(settings, gatherers={"launch": _gatherer}, packs=[_PACK])
+    s = service.submit_change(_REQ)
+    result = service.cast_verdict(s.thread_id, VerdictType.APPROVE)
+    assert result.status == "done"
