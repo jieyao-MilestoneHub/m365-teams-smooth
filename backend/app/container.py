@@ -34,6 +34,7 @@ from app.adapters.persistence.repositories import (
     SqlAuditRepository,
     SqlVerdictLedger,
 )
+from app.agent.agentic.gatherer import LlmEvidenceGatherer
 from app.agent.gatherers import GATHERERS
 from app.agent.graph import build_court_graph
 from app.agent.nodes.audit import AuditNode
@@ -176,6 +177,16 @@ def build_court_service(
         )
     else:
         parser = DeterministicRequestParser(today=today)
+
+    # Agentic roles engage with a real LLM: the Prosecutor selects additional validated reads on
+    # top of each subject's deterministic gatherer. Offline/mocked runs stay fully deterministic.
+    if llm_is_real:
+        gatherers = {
+            subject: LlmEvidenceGatherer(
+                llm, fallback=gatherer, max_reads=settings.max_agentic_reads
+            )
+            for subject, gatherer in gatherers.items()
+        }
 
     graph = build_court_graph(
         intake=IntakeNode(parser, registry),
