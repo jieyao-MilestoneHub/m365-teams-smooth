@@ -26,5 +26,9 @@ provider "azurerm" {
 }
 
 provider "azuread" {
-  tenant_id = var.entra_tenant_id
+  # When Terraform creates the Entra app, authenticate against the sign-in tenant. When the app is
+  # supplied externally (cross-tenant: the deployer cannot write to that tenant), the provider
+  # creates nothing — point it at the Azure tenant the deployer's identity can actually access so it
+  # still configures cleanly.
+  tenant_id = var.create_entra_app ? var.entra_tenant_id : var.azure_tenant_id
 }
