@@ -14,9 +14,9 @@ from app.adapters.integrations.mock_teams import MockTeamsAdapter
 from app.adapters.integrations.registry import ConfigIntegrationRegistry
 from app.adapters.knowledge.fake_knowledge import FakeKnowledgeProvider
 from app.adapters.llm.fake_llm import FakeLLMProvider
-from app.domain import AuditRecord
+from app.domain import ApprovalDecision, ApprovalEvent, AuditRecord
 from app.ports.integration import IntegrationAdapter
-from app.ports.repository import AuditRepository, VerdictLedger
+from app.ports.repository import ApprovalLedger, AuditRepository, VerdictLedger
 
 
 class InMemoryAuditRepository(AuditRepository):
@@ -63,6 +63,42 @@ class InMemoryVerdictLedger(VerdictLedger):
 
     def purge_thread(self, thread_id: str) -> None:
         self._claims = {k: v for k, v in self._claims.items() if k[0] != thread_id}
+
+
+class InMemoryApprovalLedger(ApprovalLedger):
+    """In-memory approval-event log + pending index for tests (mirrors SqlApprovalLedger)."""
+
+    def __init__(self) -> None:
+        self.events: list[ApprovalEvent] = []
+        self._pending: dict[str, str] = {}  # thread_id -> created_at
+
+    def append(self, event: ApprovalEvent) -> None:
+        self.events.append(event)
+
+    def list_for_thread(self, thread_id: str) -> list[ApprovalEvent]:
+        return [e for e in self.events if e.thread_id == thread_id]
+
+    def thread_ids(self) -> list[str]:
+        seen: list[str] = []
+        for event in self.events:
+            if event.thread_id not in seen:
+                seen.append(event.thread_id)
+        return seen
+
+    def first_note(self, thread_id: str, decision: ApprovalDecision) -> str:
+        for event in self.events:
+            if event.thread_id == thread_id and event.decision is decision:
+                return event.note
+        return ""
+
+    def mark_pending(self, thread_id: str, at: str) -> None:
+        self._pending.setdefault(thread_id, at)
+
+    def clear_pending(self, thread_id: str) -> None:
+        self._pending.pop(thread_id, None)
+
+    def pending_thread_ids(self) -> list[str]:
+        return sorted(self._pending, key=lambda t: self._pending[t])
 
 
 def build_mock_registry(*, planner_fail_on: str | None = None) -> ConfigIntegrationRegistry:
