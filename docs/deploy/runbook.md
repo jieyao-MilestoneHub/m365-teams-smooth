@@ -71,35 +71,34 @@ would mean the wrong app is being served (see Troubleshooting).
 
 ## Phase 2 — Enable the agentic roles and approval enforcement
 
-The base Terraform deploys the **deterministic, fully-mocked** court (reliable demo, zero external
-credentials). To demo the *agentic* capabilities (Prosecutor read-selection, Defender planning,
-precedent memory) and *separation of duties*, set two more env groups on the Container App. The
-Terraform does not yet inject these, so set them post-apply:
+The agentic roles (Prosecutor read-selection, Defender planning, precedent memory) and separation of
+duties are enabled **through Terraform** — set them in `terraform.tfvars` (Phase 1) and they ship
+with the `apply`, no post-deploy `az` step. The key coupling: the agentic roles require
+`force_all_mock = false` (it otherwise disables them), so for a reliable *full-functionality* demo
+keep the integrations mocked via `integration_mode` while turning the LLM on:
 
-```bash
-RG=$(terraform output -raw public_base_url | sed 's|https://||; s|\..*||')-rg   # or your -rg name
-APP=$(terraform output -raw public_base_url | sed 's|https://||; s|\..*||')
-
-# Agentic roles — quickest demo route uses a key; keyless is the hardened route (see note).
-az containerapp update -g "$RG" -n "$APP" --set-env-vars \
-  AZURE_OPENAI_ENDPOINT="https://<your-openai>.openai.azure.com" \
-  AZURE_OPENAI_DEPLOYMENT="<your-gpt4o-deployment>" \
-  LLM_API_KEY="<azure-openai-key>"
-
-# Separation of duties — map the required roles to the approver's identity (oid or UPN).
-az containerapp update -g "$RG" -n "$APP" --set-env-vars \
-  APPROVER_DIRECTORY="eng_lead:<approver-upn>,comms:<approver-upn>,security_lead:<approver-upn>,account_owner:<approver-upn>,manager:<approver-upn>"
+```hcl
+# terraform.tfvars
+force_all_mock          = false              # required — otherwise the agentic roles stay off
+integration_mode        = "github:mock"      # reliable mocks; "github:real" for live blocker evidence
+azure_openai_endpoint   = "https://<your>.openai.azure.com"
+azure_openai_deployment = "gpt-4o"           # must accept the max_tokens parameter
+llm_api_key             = "<azure-openai-key>"   # demo route; omit for keyless (see note)
+approver_directory      = "eng_lead:<approver-upn>,comms:<approver-upn>,security_lead:<approver-upn>,account_owner:<approver-upn>,manager:<approver-upn>"
 ```
 
+Then `terraform apply` (Phase 1 step 3, or re-apply if you set these after the first apply).
+`DRY_RUN_DEFAULT` stays true, so every write is predicted — the demo is safe.
+
 Notes:
-- **Keyless instead of a key** (preferred for production): omit `LLM_API_KEY`, and grant the
+- **Keyless instead of a key** (preferred for production): omit `llm_api_key`, and grant the
   Container App's managed identity the **Cognitive Services OpenAI User** role on the OpenAI account
-  (`AZURE_CLIENT_ID` is already injected by the module, PR #235). The demo route above uses a key to
-  avoid the role-assignment round-trip.
-- **Without these**, agentic roles fall back to deterministic and the legacy single-verdict flow is
-  used — still a valid demo, just not the agentic/2-user one.
-- **Hardening follow-up:** these env vars can be baked into `infra/main.tf` so a single
-  `terraform apply` enables everything (tracked as an infra improvement — ask and I'll do the PR).
+  (`AZURE_CLIENT_ID` is already injected by the module). The key route avoids the role-assignment
+  round-trip for a quick demo.
+- **Leaving these empty** keeps the deterministic, fully-mocked court (still a valid demo, just not
+  the agentic/2-user one).
+- Approver accounts created *after* the first apply: add them to `approver_directory` and re-run
+  `terraform apply` (or `az containerapp update --set-env-vars APPROVER_DIRECTORY=...`).
 
 ---
 
