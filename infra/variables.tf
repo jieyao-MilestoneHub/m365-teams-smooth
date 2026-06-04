@@ -171,3 +171,19 @@ variable "approver_directory" {
   description = "Optional: role->identity map, comma-separated 'role:upn' pairs. Empty = legacy flow."
   default     = ""
 }
+
+# --- Entra app registration (cross-tenant) ---
+# Same-tenant: leave create_entra_app = true and Terraform registers the app. Cross-tenant (the
+# deployer cannot write to the sign-in tenant): set false and supply entra_client_id from an app
+# you register in that tenant separately (see docs/deploy/runbook.md).
+variable "create_entra_app" {
+  type        = bool
+  description = "Whether Terraform creates the Entra app in entra_tenant_id (false = supply it externally)."
+  default     = true
+}
+
+variable "entra_client_id" {
+  type        = string
+  description = "Application (client) id of an externally-registered Entra app (when create_entra_app = false)."
+  default     = ""
+}
