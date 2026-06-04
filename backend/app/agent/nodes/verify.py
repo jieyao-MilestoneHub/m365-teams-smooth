@@ -22,7 +22,9 @@ class VerifyNode:
     """Compares each live step's requested params to its reported after-state."""
 
     def __call__(self, state: CourtState) -> CourtState:
-        if RunMode(state["run_mode"]) is not RunMode.LIVE:
+        # Default to dry-run when the field is somehow absent: skipping verification is safe,
+        # failing the whole post-approval run over a missing key is not.
+        if RunMode(state.get("run_mode", RunMode.DRY_RUN.value)) is not RunMode.LIVE:
             return {}
         options_data = state.get("options")
         if not isinstance(options_data, dict):
@@ -35,9 +37,13 @@ class VerifyNode:
             result = StepResult.model_validate(raw)
             if result.status is not StepStatus.OK or result.after is None:
                 continue
-            verification = verify_effect(
-                result.step_id, params_by_step.get(result.step_id, {}), result.after
-            )
+            params = params_by_step.get(result.step_id)
+            if params is None:
+                # A result for a step the reviewed plan does not contain: nothing legitimate to
+                # compare against, and a vacuous "matched" would be misleading.
+                logger.warning("verify.step_not_in_plan", extra={"step_id": result.step_id})
+                continue
+            verification = verify_effect(result.step_id, params, result.after)
             if not verification.matched:
                 logger.warning(
                     "verify.mismatch",

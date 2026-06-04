@@ -14,6 +14,7 @@ import logging
 
 from pydantic import BaseModel, Field
 
+from app.agent.agentic.precedents import render_precedents
 from app.agent.agentic.structured import extract_json
 from app.agent.nodes.impact import Gatherer
 from app.domain import Capability, CapabilityKind, Change, EvidenceItem, ImpactEvidence
@@ -28,25 +29,6 @@ from app.ports.registry import IntegrationRegistry
 logger = logging.getLogger(__name__)
 
 _MAX_ASSESSMENT_CHARS = 600
-_MAX_PRECEDENT_CHARS = 200
-
-
-def render_precedents(
-    memory: MemoryPort | None, subject: str, tags: list[str], *, top_k: int = 3
-) -> str:
-    """A bounded, citable summary of past rulings for a prompt (empty when none/unavailable)."""
-    if memory is None:
-        return ""
-    try:
-        precedents = memory.find_similar(subject, tags, top_k=top_k)
-    except Exception:  # noqa: BLE001 — missing memory must never block a trial
-        return ""
-    lines = [
-        f"- [{p.thread_id[:8]}] {p.raw_request[:80]} -> {p.verdict_type or p.status}"
-        f" ({p.plan_kind}): {p.rationale}"[:_MAX_PRECEDENT_CHARS]
-        for p in precedents
-    ]
-    return "Past rulings on similar changes:\n" + "\n".join(lines) if lines else ""
 
 
 class _LlmRead(BaseModel):
