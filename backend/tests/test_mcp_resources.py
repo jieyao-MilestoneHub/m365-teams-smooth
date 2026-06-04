@@ -47,3 +47,5 @@ async def test_trial_and_audit_resources(service: CourtService) -> None:
     audit = await _read(mcp, f"court://audit/{cast.audit_id}")
     assert audit["audit_id"] == cast.audit_id
     assert audit["run_mode"] == "dry_run"
+    # The published payload keeps the derived views even though they are no longer stored fields.
+    assert "before_after" in audit and "rollback_hints" in audit

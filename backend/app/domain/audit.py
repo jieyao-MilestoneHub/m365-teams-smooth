@@ -35,7 +35,12 @@ class TrialRecord(BaseModel):
 
 
 class AuditRecord(BaseModel):
-    """An append-only record of a trial. Never updated; corrections are new records."""
+    """An append-only record of a trial. Never updated; corrections are new records.
+
+    The before/after snapshots and rollback hints are *views* derived from the trial's step
+    results, not stored fields — the payload holds each fact once. (Old persisted payloads that
+    carried them as fields still validate; the extras are ignored.)
+    """
 
     audit_id: str
     change_id: str
@@ -43,6 +48,25 @@ class AuditRecord(BaseModel):
     run_mode: RunMode
     status: ChangeStatus
     trial: TrialRecord
-    before_after: list[BeforeAfter] = Field(default_factory=list)
-    rollback_hints: list[RollbackHint] = Field(default_factory=list)
     created_at: str
+
+    @property
+    def before_after(self) -> list[BeforeAfter]:
+        """One before/after pair per step result that captured a snapshot."""
+        options = self.trial.options
+        step_systems = {s.step_id: s.capability.system for s in (options.steps if options else [])}
+        return [
+            BeforeAfter(
+                system=step_systems.get(r.step_id, "unknown"),
+                target=r.step_id,
+                before=r.before or {},
+                after=r.after or {},
+            )
+            for r in self.trial.results
+            if r.before is not None or r.after is not None
+        ]
+
+    @property
+    def rollback_hints(self) -> list[RollbackHint]:
+        """The advisory rollback hints the step results carry (never auto-executed)."""
+        return [r.rollback for r in self.trial.results if r.rollback is not None]

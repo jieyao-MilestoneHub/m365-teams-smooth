@@ -86,3 +86,32 @@ def test_audit_record_is_appended_with_snapshots_and_rollback() -> None:
     assert record.before_after[0].system == "github"
     assert record.rollback_hints[0].instruction == "restore"
     assert record.trial.options is not None
+
+
+def test_snapshots_and_hints_are_derived_not_stored() -> None:
+    repo = _MemAudit()
+    node = AuditNode(repo, clock=lambda: "2026-06-02T00:00:00Z", id_factory=lambda: "a1")
+    node(_state())
+    record = repo.get("a1")
+    assert record is not None
+
+    # The persisted payload carries each fact once: snapshots/hints live in trial.results only.
+    payload = record.model_dump(mode="json")
+    assert "before_after" not in payload
+    assert "rollback_hints" not in payload
+    # The views still derive from the results for any consumer that wants them.
+    assert record.before_after and record.rollback_hints
+
+
+def test_legacy_payloads_with_stored_duplicates_still_validate() -> None:
+    repo = _MemAudit()
+    node = AuditNode(repo, clock=lambda: "2026-06-02T00:00:00Z", id_factory=lambda: "a1")
+    node(_state())
+    record = repo.get("a1")
+    assert record is not None
+
+    legacy = record.model_dump(mode="json")
+    legacy["before_after"] = [b.model_dump(mode="json") for b in record.before_after]
+    legacy["rollback_hints"] = [r.model_dump(mode="json") for r in record.rollback_hints]
+    revived = AuditRecord.model_validate(legacy)  # extras are ignored, views still derive
+    assert revived.before_after[0].system == "github"
