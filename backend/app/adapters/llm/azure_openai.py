@@ -29,9 +29,11 @@ class AzureOpenAILLMProvider(LLMProvider):
         api_version: str,
         api_key: str = "",
         timeout: float | None = None,
+        max_tokens: int | None = None,
         client: Any | None = None,
     ) -> None:
         self._deployment = deployment
+        self._max_tokens = max_tokens
         if client is not None:
             self._client: Any = client
         elif api_key:
@@ -56,6 +58,9 @@ class AzureOpenAILLMProvider(LLMProvider):
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
         response = self._client.chat.completions.create(
-            model=self._deployment, messages=messages, temperature=0
+            model=self._deployment,
+            messages=messages,
+            temperature=0,
+            max_tokens=self._max_tokens,
         )
         return str(response.choices[0].message.content or "")

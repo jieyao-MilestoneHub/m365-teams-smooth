@@ -70,6 +70,11 @@ class Settings(BaseSettings):
     http_timeout_seconds: float = 10.0
     # Closes the OpenAI no-timeout gap on the LLM-backed parser.
     llm_timeout_seconds: float = 30.0
+    # Output ceiling per LLM call (the parser needs a small JSON object, never long text).
+    llm_max_tokens: int = 1024
+    # Boundary cap on a submitted change request. A change request is a sentence or two in chat;
+    # anything past this is rejected (422 / invalid_params), never silently truncated.
+    max_request_chars: int = 1000
     # Overall guard on a single graph run; on expiry the checkpoint is left resumable.
     graph_timeout_seconds: float = 60.0
     # Idempotency-aware retry policy for transient adapter failures (exponential backoff + jitter).

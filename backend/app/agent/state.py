@@ -44,6 +44,18 @@ def serialize(model: BaseModel) -> dict[str, object]:
     return model.model_dump(mode="json")
 
 
+# State is fully serialized on every checkpoint, so accumulating fields must stay bounded.
+MAX_ERRORS = 50
+
+
+def bound_errors(errors: list[str]) -> list[str]:
+    """Cap the error list a node writes back; the overflow is replaced by one marker entry."""
+    if len(errors) <= MAX_ERRORS:
+        return errors
+    dropped = len(errors) - MAX_ERRORS
+    return errors[:MAX_ERRORS] + [f"... {dropped} further errors truncated"]
+
+
 def initial_state(
     *,
     thread_id: str,

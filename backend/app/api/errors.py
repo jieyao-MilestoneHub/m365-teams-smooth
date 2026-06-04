@@ -20,6 +20,7 @@ from app.domain.errors import (
     CapabilityNotFoundError,
     ChangeCourtError,
     IntegrationError,
+    InvalidRequestError,
     NotFoundError,
     SeparationOfDutiesError,
     UnauthorizedApproverError,
@@ -33,6 +34,7 @@ logger = logging.getLogger(__name__)
 # Most-specific first; the base ``ChangeCourtError`` is the catch-all for our own typed errors.
 _MAPPING: list[tuple[type[ChangeCourtError], int, str]] = [
     (NotFoundError, 404, "not_found"),
+    (InvalidRequestError, 422, "invalid_request"),
     (CapabilityNotFoundError, 422, "capability_not_found"),
     (UnsafeChangeError, 409, "unsafe_change"),
     (VerdictConflictError, 409, "verdict_conflict"),
@@ -45,6 +47,7 @@ _MAPPING: list[tuple[type[ChangeCourtError], int, str]] = [
 # JSON-RPC codes for the MCP surface. App-defined errors use the server-reserved -320xx range.
 _MCP_CODES: dict[str, int] = {
     "not_found": -32004,
+    "invalid_request": INVALID_PARAMS,
     "capability_not_found": INVALID_PARAMS,
     "unsafe_change": -32009,
     "verdict_conflict": -32009,
