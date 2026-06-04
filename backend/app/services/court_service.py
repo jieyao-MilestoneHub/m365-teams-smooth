@@ -225,6 +225,7 @@ class CourtService:
             self._resume(thread_id, VerdictType.APPROVE, actor, self._plan_kind(trial))
         else:
             self._runner.update(thread_id, {"status": ChangeStatus.AWAITING_APPROVAL.value})
+            self._require_ledger().mark_pending(thread_id, datetime.now(UTC).isoformat())
         logger.info("approval.sent", extra={"thread_id": thread_id, "actor": actor.key()})
         metrics.increment("approvals.sent")
         return self._summary(thread_id, self._runner.state(thread_id))
@@ -236,6 +237,7 @@ class CourtService:
         self._append(thread_id, actor, ApprovalDecision.WITHDRAW)
         self._resume(thread_id, VerdictType.WITHDRAW, actor, self._plan_kind(trial))
         state = self._runner.update(thread_id, {"status": ChangeStatus.WITHDRAWN.value})
+        self._require_ledger().clear_pending(thread_id)
         logger.info("approval.withdrawn", extra={"thread_id": thread_id, "actor": actor.key()})
         metrics.increment("approvals.withdrawn")
         return self._summary(thread_id, state)
@@ -261,9 +263,11 @@ class CourtService:
         decision = evaluate_quorum(self._events(thread_id), required, self._policy(trial))
         if decision.state is QuorumState.SATISFIED:
             self._resume(thread_id, VerdictType.APPROVE, actor, self._plan_kind(trial))
+            self._require_ledger().clear_pending(thread_id)
         elif decision.state is QuorumState.REJECTED:
             self._resume(thread_id, VerdictType.REJECT, actor, self._plan_kind(trial))
             self._runner.update(thread_id, {"status": ChangeStatus.REJECTED.value})
+            self._require_ledger().clear_pending(thread_id)
         logger.info(
             "approval.decided",
             extra={"thread_id": thread_id, "actor": actor.key(),
@@ -273,10 +277,14 @@ class CourtService:
         return self._summary(thread_id, self._runner.state(thread_id))
 
     def list_pending_approvals(self, principal: Principal) -> list[TrialSummary]:
-        """Trials awaiting approval the principal may decide (authorized, not their own)."""
+        """Trials awaiting approval the principal may decide (authorized, not their own).
+
+        Reads the pending index, so the cost scales with the open queue — never with the full
+        trial history. The per-thread status check stays as a guard against a stale index entry.
+        """
         ledger = self._require_ledger()
         pending: list[TrialSummary] = []
-        for thread_id in ledger.thread_ids():
+        for thread_id in ledger.pending_thread_ids():
             state = self._runner.state(thread_id)
             if str(state.get("status", "")) != ChangeStatus.AWAITING_APPROVAL.value:
                 continue
@@ -305,10 +313,7 @@ class CourtService:
         """The note the requester attached when sending for approval (empty when not sent)."""
         if self._approvals is None:
             return ""
-        for event in self._approvals.list_for_thread(thread_id):
-            if event.decision is ApprovalDecision.SEND:
-                return event.note
-        return ""
+        return self._approvals.first_note(thread_id, ApprovalDecision.SEND)
 
     def _trial_or_raise(self, thread_id: str) -> TrialRecord:
         trial = self.get_trial(thread_id)

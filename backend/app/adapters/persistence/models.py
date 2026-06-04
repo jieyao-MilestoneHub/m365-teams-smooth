@@ -23,7 +23,7 @@ class AuditRecordRow(Base):
     audit_id: Mapped[str] = mapped_column(String, primary_key=True)
     change_id: Mapped[str] = mapped_column(String, index=True)
     thread_id: Mapped[str] = mapped_column(String, index=True)
-    created_at: Mapped[str] = mapped_column(String)
+    created_at: Mapped[str] = mapped_column(String, index=True)
     payload: Mapped[dict[str, object]] = mapped_column(JSON)
 
 
@@ -45,6 +45,20 @@ class ApprovalEventRow(Base):
     event_id: Mapped[str] = mapped_column(String, primary_key=True)
     thread_id: Mapped[str] = mapped_column(String, index=True)
     actor_key: Mapped[str] = mapped_column(String, index=True)
-    decision: Mapped[str] = mapped_column(String)
-    created_at: Mapped[str] = mapped_column(String)
+    decision: Mapped[str] = mapped_column(String, index=True)
+    created_at: Mapped[str] = mapped_column(String, index=True)
     payload: Mapped[dict[str, object]] = mapped_column(JSON)
+
+
+class PendingApprovalRow(Base):
+    """Index of trials currently awaiting an approver, so the queue never scans history.
+
+    Maintained by the service at the transitions: inserted when a trial is sent for approval,
+    deleted when the quorum resolves or the requester withdraws. The append-only event log stays
+    the source of truth; this row is a disposable read-model.
+    """
+
+    __tablename__ = "pending_approvals"
+
+    thread_id: Mapped[str] = mapped_column(String, primary_key=True)
+    created_at: Mapped[str] = mapped_column(String)

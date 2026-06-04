@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from app.domain import ApprovalEvent, AuditRecord
+from app.domain import ApprovalDecision, ApprovalEvent, AuditRecord
 
 
 class AuditRepository(ABC):
@@ -65,3 +65,19 @@ class ApprovalLedger(ABC):
     @abstractmethod
     def thread_ids(self) -> list[str]:
         """Return the distinct thread ids that have at least one approval event (for the queue)."""
+
+    @abstractmethod
+    def first_note(self, thread_id: str, decision: ApprovalDecision) -> str:
+        """The note on the earliest event of ``decision`` for a trial, or empty."""
+
+    @abstractmethod
+    def mark_pending(self, thread_id: str, at: str) -> None:
+        """Add a trial to the pending-approvals index (idempotent)."""
+
+    @abstractmethod
+    def clear_pending(self, thread_id: str) -> None:
+        """Remove a trial from the pending-approvals index (no-op when absent)."""
+
+    @abstractmethod
+    def pending_thread_ids(self) -> list[str]:
+        """Trials currently awaiting an approver — the queue reads this, never the full history."""

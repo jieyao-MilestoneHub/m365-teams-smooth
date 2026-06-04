@@ -6,8 +6,13 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.adapters.persistence.models import ApprovalEventRow, AuditRecordRow, VerdictClaimRow
-from app.domain import ApprovalEvent, AuditRecord
+from app.adapters.persistence.models import (
+    ApprovalEventRow,
+    AuditRecordRow,
+    PendingApprovalRow,
+    VerdictClaimRow,
+)
+from app.domain import ApprovalDecision, ApprovalEvent, AuditRecord
 from app.ports.repository import ApprovalLedger, AuditRepository, VerdictLedger
 
 
@@ -109,4 +114,39 @@ class SqlApprovalLedger(ApprovalLedger):
     def thread_ids(self) -> list[str]:
         with self._session_factory() as session:
             stmt = select(ApprovalEventRow.thread_id).distinct()
+            return list(session.execute(stmt).scalars().all())
+
+    def first_note(self, thread_id: str, decision: ApprovalDecision) -> str:
+        with self._session_factory() as session:
+            stmt = (
+                select(ApprovalEventRow.payload)
+                .where(
+                    ApprovalEventRow.thread_id == thread_id,
+                    ApprovalEventRow.decision == decision.value,
+                )
+                .order_by(ApprovalEventRow.created_at)
+                .limit(1)
+            )
+            payload = session.execute(stmt).scalars().first()
+            return str(payload.get("note", "")) if isinstance(payload, dict) else ""
+
+    def mark_pending(self, thread_id: str, at: str) -> None:
+        with self._session_factory() as session:
+            if session.get(PendingApprovalRow, thread_id) is None:
+                session.add(PendingApprovalRow(thread_id=thread_id, created_at=at))
+                try:
+                    session.commit()
+                except IntegrityError:  # concurrent mark: the row already exists, which is fine
+                    session.rollback()
+
+    def clear_pending(self, thread_id: str) -> None:
+        with self._session_factory() as session:
+            row = session.get(PendingApprovalRow, thread_id)
+            if row is not None:
+                session.delete(row)
+                session.commit()
+
+    def pending_thread_ids(self) -> list[str]:
+        with self._session_factory() as session:
+            stmt = select(PendingApprovalRow.thread_id).order_by(PendingApprovalRow.created_at)
             return list(session.execute(stmt).scalars().all())
