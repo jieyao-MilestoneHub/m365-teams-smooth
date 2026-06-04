@@ -109,12 +109,15 @@ def register_tools(mcp: FastMCP, service: CourtService) -> None:
         actor: str = "reviewer",
     ) -> dict[str, object]:
         """Cast a verdict and resume the trial. Idempotent per (thread_id, idempotency_key)."""
+        # Authorization keys off the authenticated caller, never the spoofable `actor` label —
+        # the service enforces separation of duties whenever approval routing is configured.
         result = service.cast_verdict(
             thread_id,
             VerdictType(verdict_type),
             selected_plan=PlanKind(selected_plan),
             idempotency_key=idempotency_key,
             actor=actor,
+            principal=current_principal(),
         )
         return result.model_dump(mode="json")
 
