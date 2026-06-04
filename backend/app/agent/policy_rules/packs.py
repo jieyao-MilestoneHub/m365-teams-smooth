@@ -2,7 +2,7 @@
 
 Expressed as ``RulePack`` literals (typed, no I/O) — declarative policy the engine interprets, not
 branching code. They can be externalized to YAML later behind ``default_packs`` without touching the
-policy node. Weights and approvers match docs/policy-and-quorum.md.
+policy node. Weights and approvers match docs/reference/policy-and-quorum.md.
 """
 
 from __future__ import annotations

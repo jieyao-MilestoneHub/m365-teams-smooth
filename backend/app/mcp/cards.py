@@ -1,7 +1,7 @@
 """Build the Change Court Adaptive Card payloads from court data.
 
 A pure presentation mapper: it turns a ``TrialRecord`` into an Adaptive Card dict per the contract
-in docs/mcp-and-card-contract.md. No business logic — it reads data the service already produced.
+in docs/reference/mcp-and-card-contract.md. No business logic — it renders what the service made.
 Actions are phase-aware: the requester-review phase posts to ``send_for_approval`` /
 ``withdraw_change``, the approval phase to ``decide``, and the legacy verdict phase posts
 ``{thread_id, verdict_type, selected_plan}`` to the ``cast_verdict`` tool.

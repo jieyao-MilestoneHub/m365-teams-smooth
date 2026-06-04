@@ -43,7 +43,7 @@ refusal, both cite precedents from past rulings, and a verification step checks 
 against the reviewed plan. Offline, every role falls back to its deterministic implementation, so
 the trials stay reproducible. Risk scoring, quorum, and refusal authority are always
 deterministic — the agent's freedom lives in perception and generation, never in the safety
-verdict (see `docs/adr/0009`).
+verdict (see `docs/reference/adr/0009`).
 
 ## What it looks like
 
@@ -131,9 +131,9 @@ docs/        architecture, ADRs, API/contract, trials & test data
 scripts/     developer/demo scripts (verify.sh, seed data)
 ```
 
-A visual tour of every layer is in [`docs/architecture.html`](docs/architecture.html) (self-contained,
+A visual tour of every layer is in [`docs/architecture/architecture.html`](docs/architecture/architecture.html) (self-contained,
 opens offline); the security posture and credential-rotation runbook are in
-[`docs/security.md`](docs/security.md).
+[`docs/deploy/security.md`](docs/deploy/security.md).
 
 ## Getting started (local)
 

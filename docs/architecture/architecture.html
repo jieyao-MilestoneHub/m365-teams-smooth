@@ -263,7 +263,7 @@
 </svg>
 </figure>
 <figcaption>圖② 管線。藍=感知/生成(Prosecutor 選讀、Defender 計畫,均經能力驗證、失敗回退);
-  綠=確定性治理(風險、quorum、執行、驗證、稽核);橘=裁決持久中斷。詳見 <code>adr/0009</code>。</figcaption>
+  綠=確定性治理(風險、quorum、執行、驗證、稽核);橘=裁決持久中斷。詳見 <code>reference/adr/0009</code>。</figcaption>
 
 <!-- ============================================================ 3. APPROVAL SEQUENCE -->
 <h2><span class="n">③</span> 職責分離審批時序</h2>
@@ -410,7 +410,7 @@
   <text x="40" y="320" class="t-lbl">縱深防禦:每一層都假設上一層可能被繞過;prompt injection 的正解在 ④(約束輸出),不是消毒 prompt。</text>
 </svg>
 </figure>
-<figcaption>圖④ 信任邊界。① 認證(MCP)② 服務守門 ③ 能力幻覺守門 ④ adapter 參數驗證,加上不可竄改稽核與 secret 管理。詳見 <code>docs/security.md</code>。</figcaption>
+<figcaption>圖④ 信任邊界。① 認證(MCP)② 服務守門 ③ 能力幻覺守門 ④ adapter 參數驗證,加上不可竄改稽核與 secret 管理。詳見 <code>docs/deploy/security.md</code>。</figcaption>
 
 <!-- ============================================================ 5. DATA MODEL / RETENTION -->
 <h2><span class="n">⑤</span> 持久化與資料模型</h2>
@@ -463,11 +463,11 @@
 </svg>
 </figure>
 <figcaption>圖⑤ 持久化。綠=永久稽核(真相來源,保留策略永不刪);灰虛線=工作儲存(終結後超過保留窗由
-  <code>scripts.purge</code> 清);藍=事件源與讀模型(佇列索引、判例記憶)。詳見 <code>adr/0008</code>。</figcaption>
+  <code>scripts.purge</code> 清);藍=事件源與讀模型(佇列索引、判例記憶)。詳見 <code>reference/adr/0008</code>。</figcaption>
 
 <footer>
   本頁為自包含靜態 HTML,inline SVG、零外部依賴,離線可開。圖中所有元件對應原始碼層級。
-  延伸閱讀:<code>docs/security.md</code> · <code>docs/adr/0008</code>(資源邊界)· <code>docs/adr/0009</code>(agentic 角色)。
+  延伸閱讀:<code>docs/deploy/security.md</code> · <code>docs/reference/adr/0008</code>(資源邊界)· <code>docs/reference/adr/0009</code>(agentic 角色)。
 </footer>
 
 </div>
