@@ -14,17 +14,27 @@ reliable demo with no Microsoft Graph permissions required.
 > **Costs are incurred only when you run `terraform apply`.** Writing/validating this code is free.
 > See *Cost* below, and `terraform destroy` to remove everything.
 
+The runtime resources and the app registration may live in **different tenants** (a common
+enterprise topology): `azure_tenant_id` is the subscription's tenant for `azurerm`, while
+`entra_tenant_id` is the M365 tenant users sign in to — it drives the `azuread` provider and the
+OAuth issuer/JWKS the backend validates. Point both at the same tenant when you have only one.
+
+Optionally, the `knowledge_*` variables wire knowledge grounding (Azure AI Search agentic
+retrieval) into the app: the `KNOWLEDGE_*` env is injected only when set, and the app's managed
+identity is granted the Search/OpenAI data-plane roles via the provided resource ids — keyless auth,
+no secrets.
+
 ## Prerequisites
 
-- Terraform ≥ 1.5, Azure CLI logged in to the **dedicated M365 dev tenant** (`az login --tenant <id>`),
-  and Docker. The signed-in account needs rights to create resources **and** an Entra app
-  registration in that tenant.
+- Terraform ≥ 1.5, Azure CLI logged in to the subscription's tenant (`az login --tenant <id>`),
+  and Docker. The signed-in account needs rights to create resources in the subscription **and** an
+  Entra app registration in the M365 tenant.
 
 ## Apply
 
 ```bash
 cd infra
-cp terraform.tfvars.example terraform.tfvars   # fill in subscription_id + tenant_id
+cp terraform.tfvars.example terraform.tfvars   # fill in subscription_id + both tenant ids
 terraform init
 
 # 1) Create the registry first so the image has somewhere to live.

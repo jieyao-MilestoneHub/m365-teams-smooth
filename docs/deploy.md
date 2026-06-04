@@ -45,6 +45,27 @@ devtunnel host -p 8000 --allow-anonymous  # prints an https://...devtunnels.ms U
 Setting `OAUTH_ISSUER` + `OAUTH_JWKS_URL` automatically switches the MCP server from the local dev
 issuer to **Entra ID JWKS validation** (`app/mcp/security.py`); no code change is needed.
 
+When the subscription's tenant and the M365 sign-in tenant differ (a common enterprise topology),
+the Terraform module separates them: `azure_tenant_id` places the runtime resources, while
+`entra_tenant_id` drives the app registration and the `OAUTH_ISSUER`/`OAUTH_JWKS_URL` values above.
+
+### Optional: knowledge grounding (Azure AI Search)
+
+The impact node can ground its evidence in a knowledge base served by Azure AI Search agentic
+retrieval (see [`foundry-iq.md`](foundry-iq.md)). In the deployed app this is wired keylessly:
+
+| Variable | Value |
+| --- | --- |
+| `KNOWLEDGE_SEARCH_ENDPOINT` | `https://<search>.search.windows.net` |
+| `KNOWLEDGE_BASE_NAME` | The knowledge base (agent) name |
+| `KNOWLEDGE_SOURCE_NAME` | The knowledge source name |
+
+The Terraform `knowledge_*` variables inject these only when set and grant the Container App's
+managed identity **Search Index Data Reader** on the search service and **Cognitive Services OpenAI
+User** on the answering OpenAI account (`knowledge_search_resource_id` /
+`knowledge_openai_resource_id`) — `DefaultAzureCredential` then authenticates without any secret.
+Leave them unset and the backend keeps its offline fallback.
+
 ## 2. Register the Entra ID application
 
 In the same tenant (a dedicated **Microsoft 365 dev tenant** with custom-app upload enabled — see

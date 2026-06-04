@@ -1,7 +1,8 @@
 # Copy to terraform.tfvars and fill in. Never commit terraform.tfvars (it is gitignored).
 
 subscription_id = "00000000-0000-0000-0000-000000000000"
-tenant_id       = "00000000-0000-0000-0000-000000000000" # the dedicated M365 dev tenant
+azure_tenant_id = "00000000-0000-0000-0000-000000000000" # tenant of the Azure subscription (runtime resources)
+entra_tenant_id = "00000000-0000-0000-0000-000000000000" # M365 tenant for the app registration / sign-in (may differ)
 location        = "eastus"
 
 # Optional overrides:
@@ -20,3 +21,11 @@ location        = "eastus"
 # graph_client_secret  = ""          # app secret (stored as a Container App secret)
 # outlook_calendar_upn = ""          # UPN whose calendar holds the security-review event
 # sharepoint_site_id   = ""          # site id whose library holds the ProjectX folders
+
+# Knowledge grounding (Azure AI Search agentic retrieval; all optional — omit to stay on the
+# offline fallback). The resource ids grant the Container App's identity its data-plane roles.
+# knowledge_search_endpoint    = ""  # https://<search>.search.windows.net
+# knowledge_base_name          = ""  # knowledge base (agent) name
+# knowledge_source_name        = ""  # knowledge source name
+# knowledge_search_resource_id = ""  # /subscriptions/.../searchServices/<name>
+# knowledge_openai_resource_id = ""  # /subscriptions/.../accounts/<name>

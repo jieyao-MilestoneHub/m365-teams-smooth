@@ -41,12 +41,12 @@ output "oauth_audience" {
 
 output "oauth_issuer" {
   description = "OAUTH_ISSUER for the backend."
-  value       = "https://login.microsoftonline.com/${var.tenant_id}/v2.0"
+  value       = "https://login.microsoftonline.com/${var.entra_tenant_id}/v2.0"
 }
 
 output "oauth_jwks_url" {
   description = "OAUTH_JWKS_URL for the backend."
-  value       = "https://login.microsoftonline.com/${var.tenant_id}/discovery/v2.0/keys"
+  value       = "https://login.microsoftonline.com/${var.entra_tenant_id}/discovery/v2.0/keys"
 }
 
 output "court_scope" {
