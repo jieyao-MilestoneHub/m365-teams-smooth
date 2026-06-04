@@ -17,6 +17,7 @@ from app.mcp.security import (
     DevTokenVerifier,
     JwksTokenVerifier,
     build_auth_settings,
+    build_transport_security,
     current_principal,
     mint_dev_token,
     principal_from_claims,
@@ -118,6 +119,23 @@ async def test_jwks_rejection_logs_the_reason(caplog: pytest.LogCaptureFixture) 
     with caplog.at_level("WARNING"):
         assert await verifier.verify_token(token) is None
     assert any(r.message == "mcp.token_rejected" for r in caplog.records)
+
+
+def test_transport_security_allows_the_public_host() -> None:
+    # Behind an ingress the Host header is the public FQDN; the DNS-rebinding guard must
+    # allow it (and keep local dev hosts working) instead of answering 421.
+    ts = build_transport_security(
+        Settings(public_base_url="https://change-court.example.com")
+    )
+    assert "change-court.example.com" in ts.allowed_hosts
+    assert "https://change-court.example.com" in ts.allowed_origins
+    assert "localhost:*" in ts.allowed_hosts
+
+
+def test_transport_security_defaults_to_local_hosts() -> None:
+    ts = build_transport_security(Settings())
+    assert "localhost:*" in ts.allowed_hosts
+    assert ts.enable_dns_rebinding_protection
 
 
 def test_server_builds_with_auth_enabled() -> None:

@@ -15,7 +15,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from app.api.deps import get_court_service
 from app.config import Settings
 from app.main import create_app
-from app.mcp.security import build_auth_settings, build_token_verifier
+from app.mcp.security import build_auth_settings, build_token_verifier, build_transport_security
 from app.mcp.server import MCP_PATH, build_mcp_server
 from app.observability import configure_logging, configure_metrics
 from app.services.court_service import CourtService
@@ -49,6 +49,7 @@ def create_full_app(service: CourtService | None = None) -> FastAPI:
         service or get_court_service(),
         token_verifier=build_token_verifier(settings),
         auth_settings=build_auth_settings(settings),
+        transport_security=build_transport_security(settings),
     )
 
     @asynccontextmanager

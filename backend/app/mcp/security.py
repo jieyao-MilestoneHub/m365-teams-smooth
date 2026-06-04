@@ -17,6 +17,7 @@ from jwt import PyJWKClient
 from mcp.server.auth.middleware.auth_context import get_access_token
 from mcp.server.auth.provider import AccessToken, TokenVerifier
 from mcp.server.auth.settings import AuthSettings
+from mcp.server.transport_security import TransportSecuritySettings
 from pydantic import AnyHttpUrl
 
 from app.config import Settings
@@ -205,6 +206,29 @@ def build_token_verifier(settings: Settings) -> TokenVerifier:
             audience=settings.oauth_audience or DEV_AUDIENCE,
         )
     return DevTokenVerifier()
+
+
+def build_transport_security(settings: Settings) -> TransportSecuritySettings:
+    """Allow the public host through the SDK's DNS-rebinding guard.
+
+    The streamable-HTTP transport rejects requests whose Host header is not allow-listed (421).
+    Behind an ingress the Host is the public FQDN, so derive it from ``PUBLIC_BASE_URL``; local
+    dev hosts stay allowed on any port.
+    """
+    from urllib.parse import urlparse
+
+    allowed_hosts = ["localhost", "localhost:*", "127.0.0.1", "127.0.0.1:*"]
+    allowed_origins = ["http://localhost:*", "http://127.0.0.1:*"]
+    if settings.public_base_url:
+        parsed = urlparse(settings.public_base_url)
+        if parsed.netloc:
+            allowed_hosts.extend([parsed.netloc, f"{parsed.netloc}:443"])
+            allowed_origins.append(f"{parsed.scheme}://{parsed.netloc}")
+    return TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=allowed_hosts,
+        allowed_origins=allowed_origins,
+    )
 
 
 def build_auth_settings(settings: Settings) -> AuthSettings:
