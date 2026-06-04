@@ -89,10 +89,10 @@ def test_decide_notifies_the_requester_with_the_outcome() -> None:
 
 
 class _ExplodingNotifier(ApprovalNotifier):
-    def approval_requested(self, **_: object) -> None:  # type: ignore[override]
+    def approval_requested(self, **_: object) -> None:
         raise RuntimeError("graph down")
 
-    def decided(self, **_: object) -> None:  # type: ignore[override]
+    def decided(self, **_: object) -> None:
         raise RuntimeError("graph down")
 
 
