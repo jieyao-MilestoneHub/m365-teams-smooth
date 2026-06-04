@@ -35,6 +35,12 @@ class InMemoryAuditRepository(AuditRepository):
         matches = [r for r in self.records if r.change_id == change_id]
         return matches[-1] if matches else None
 
+    def thread_ids_completed_before(self, cutoff: str) -> list[str]:
+        latest: dict[str, str] = {}
+        for r in self.records:
+            latest[r.thread_id] = max(latest.get(r.thread_id, ""), r.created_at)
+        return [tid for tid, at in latest.items() if at < cutoff]
+
 
 class InMemoryVerdictLedger(VerdictLedger):
     """In-memory exactly-once verdict ledger for tests."""
@@ -54,6 +60,9 @@ class InMemoryVerdictLedger(VerdictLedger):
 
     def result_for(self, thread_id: str, idempotency_key: str) -> str | None:
         return self._claims.get((thread_id, idempotency_key))
+
+    def purge_thread(self, thread_id: str) -> None:
+        self._claims = {k: v for k, v in self._claims.items() if k[0] != thread_id}
 
 
 def build_mock_registry(*, planner_fail_on: str | None = None) -> ConfigIntegrationRegistry:

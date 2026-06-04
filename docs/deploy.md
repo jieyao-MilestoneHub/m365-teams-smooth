@@ -86,6 +86,21 @@ With the host URL and the values above, build the app package and upload it — 
 [`../m365/README.md`](../m365/README.md) (`make package`). Then walk the three trials in Copilot Chat
 and tick off the *Pending tenant* checks in [`../verify.md`](../verify.md).
 
+## Retention maintenance
+
+Finished trials keep working storage they no longer need: LangGraph checkpoints (one full state
+snapshot per node transition) and verdict-claim rows. A retention pass reclaims both — the
+append-only audit log is the permanent record and is never touched:
+
+```bash
+cd backend && uv run python -m scripts.purge          # uses RETENTION_DAYS (default 30)
+uv run python -m scripts.purge --retention-days 7     # explicit window
+```
+
+Schedule it (e.g. nightly cron / a Container Apps job) on any deployment that accumulates trials.
+The pass is idempotent and bounded: only threads that still hold checkpoints are candidates, so a
+cleared backlog costs nothing to re-check.
+
 ## Reliability fallback
 
 Real integrations depend on tenant state and quotas. Keep the per-system real/mock toggle

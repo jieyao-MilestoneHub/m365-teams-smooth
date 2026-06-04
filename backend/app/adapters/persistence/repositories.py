@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -51,6 +51,16 @@ class SqlAuditRepository(AuditRepository):
             row = session.execute(stmt).scalars().first()
             return AuditRecord.model_validate(row.payload) if row is not None else None
 
+    def thread_ids_completed_before(self, cutoff: str) -> list[str]:
+        # ISO-8601 UTC strings compare lexicographically, so the index on created_at applies.
+        with self._session_factory() as session:
+            stmt = (
+                select(AuditRecordRow.thread_id)
+                .group_by(AuditRecordRow.thread_id)
+                .having(func.max(AuditRecordRow.created_at) < cutoff)
+            )
+            return list(session.execute(stmt).scalars().all())
+
 
 class SqlVerdictLedger(VerdictLedger):
     """Exactly-once verdict ledger. A duplicate claim hits the composite PK and is rejected."""
@@ -79,6 +89,11 @@ class SqlVerdictLedger(VerdictLedger):
         with self._session_factory() as session:
             row = session.get(VerdictClaimRow, (thread_id, idempotency_key))
             return row.audit_id if row is not None else None
+
+    def purge_thread(self, thread_id: str) -> None:
+        with self._session_factory() as session:
+            session.execute(delete(VerdictClaimRow).where(VerdictClaimRow.thread_id == thread_id))
+            session.commit()
 
 
 class SqlApprovalLedger(ApprovalLedger):

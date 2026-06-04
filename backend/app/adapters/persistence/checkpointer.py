@@ -36,3 +36,11 @@ class SqliteCheckpointStore(CheckpointStore):
 
     def saver(self) -> object:
         return self._saver
+
+    def thread_ids(self) -> list[str]:
+        # The saver owns the checkpoint tables; this adapter is the one place that may query them.
+        cursor = self._conn.execute("SELECT DISTINCT thread_id FROM checkpoints")
+        return [str(row[0]) for row in cursor.fetchall()]
+
+    def delete_thread(self, thread_id: str) -> None:
+        self._saver.delete_thread(thread_id)

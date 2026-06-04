@@ -78,6 +78,9 @@ class Settings(BaseSettings):
     retry_backoff_max_seconds: float = 2.0
     # Toggles collection/exposure of the in-process metrics registry.
     metrics_enabled: bool = True
+    # Retention window for finished trials' working storage (checkpoints + verdict claims);
+    # the audit log is permanent and never purged. See app/services/maintenance.py.
+    retention_days: int = 30
 
     # --- Approvals (separation of duties) ---
     # Map approver roles to identities (UPN or oid), comma-separated "role:identity" (a role may
