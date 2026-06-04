@@ -75,6 +75,8 @@ class Settings(BaseSettings):
     # Boundary cap on a submitted change request. A change request is a sentence or two in chat;
     # anything past this is rejected (422 / invalid_params), never silently truncated.
     max_request_chars: int = 1000
+    # Cap on the additional reads the agentic evidence loop may execute per trial.
+    max_agentic_reads: int = 5
     # Overall guard on a single graph run; on expiry the checkpoint is left resumable.
     graph_timeout_seconds: float = 60.0
     # Idempotency-aware retry policy for transient adapter failures (exponential backoff + jitter).
