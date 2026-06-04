@@ -185,9 +185,15 @@ resource "azurerm_container_app" "this" {
         value = var.sharepoint_site_id
       }
 
+      # Every keyless dependency (Azure OpenAI, AI Search) authenticates as the user-assigned
+      # identity; DefaultAzureCredential needs its client id explicitly, so it is always injected.
+      env {
+        name  = "AZURE_CLIENT_ID"
+        value = azurerm_user_assigned_identity.app.client_id
+      }
+
       # Knowledge grounding (Azure AI Search agentic retrieval). Injected only when configured so
-      # the backend's provider selection stays on its offline fallback otherwise. AZURE_CLIENT_ID
-      # points DefaultAzureCredential at the user-assigned identity holding the data-plane roles.
+      # the backend's provider selection stays on its offline fallback otherwise.
       dynamic "env" {
         for_each = var.knowledge_search_endpoint == "" ? [] : [1]
         content {
@@ -207,13 +213,6 @@ resource "azurerm_container_app" "this" {
         content {
           name  = "KNOWLEDGE_SOURCE_NAME"
           value = var.knowledge_source_name
-        }
-      }
-      dynamic "env" {
-        for_each = var.knowledge_search_endpoint == "" ? [] : [1]
-        content {
-          name  = "AZURE_CLIENT_ID"
-          value = azurerm_user_assigned_identity.app.client_id
         }
       }
     }
