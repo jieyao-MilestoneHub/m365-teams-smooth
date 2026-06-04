@@ -15,6 +15,10 @@ class NotFoundError(ChangeCourtError):
     """A requested entity (trial, change, or audit record) does not exist."""
 
 
+class InvalidRequestError(ChangeCourtError):
+    """A submitted request fails boundary validation (empty, oversized, malformed)."""
+
+
 class CapabilityNotFoundError(ChangeCourtError):
     """A requested action has no matching registered capability (hallucination guard)."""
 

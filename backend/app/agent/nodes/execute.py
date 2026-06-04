@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 
-from app.agent.state import CourtState, serialize
+from app.agent.state import CourtState, bound_errors, serialize
 from app.domain import (
     ChangeStatus,
     ExecutionPlan,
@@ -87,6 +87,6 @@ class ExecuteNode:
         update: CourtState = {
             "results": [serialize(r) for r in results],
             "status": status.value,
-            "errors": errors,
+            "errors": bound_errors(errors),
         }
         return update

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from app.agent.state import CourtState, serialize
+from app.agent.state import CourtState, bound_errors, serialize
 from app.domain import Change, ChangeStatus, EvidenceItem, ImpactEvidence
 from app.ports.knowledge import KnowledgePort
 from app.ports.registry import IntegrationRegistry
@@ -60,7 +60,13 @@ class ImpactNode:
         if gatherer is not None:
             _merge(evidence, gatherer(change, self._registry, self._knowledge, errors))
 
-        facts = self._knowledge.ground(change.raw_request)
+        # Grounding degrades gracefully (like a failed gatherer read): a slow or down knowledge
+        # service costs the trial its citations, never the trial itself.
+        try:
+            facts = self._knowledge.ground(change.raw_request)
+        except Exception as exc:  # noqa: BLE001 — any provider failure becomes evidence-level
+            facts = []
+            errors.append(f"knowledge grounding unavailable: {exc}")
         if facts:
             evidence.items.append(
                 EvidenceItem(
@@ -74,5 +80,5 @@ class ImpactNode:
         return {
             "impact": serialize(evidence),
             "status": ChangeStatus.EVALUATING.value,
-            "errors": errors,
+            "errors": bound_errors(errors),
         }

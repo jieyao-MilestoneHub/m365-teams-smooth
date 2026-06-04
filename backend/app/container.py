@@ -163,6 +163,7 @@ def build_court_service(
             api_version=settings.azure_openai_api_version,
             api_key=settings.llm_api_key,
             timeout=settings.llm_timeout_seconds,
+            max_tokens=settings.llm_max_tokens,
         )
 
     # Anchor year-less natural dates ("June 17") to the current year at the composition root.
@@ -194,6 +195,7 @@ def build_court_service(
         approvals=approvals,
         directory=directory,
         dry_run_default=settings.dry_run_default,
+        max_request_chars=settings.max_request_chars,
     )
 
 

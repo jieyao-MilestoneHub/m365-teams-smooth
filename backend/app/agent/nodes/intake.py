@@ -8,7 +8,7 @@ excluded from the change, so it is neither planned nor executed.
 
 from __future__ import annotations
 
-from app.agent.state import CourtState, serialize
+from app.agent.state import CourtState, bound_errors, serialize
 from app.domain import ChangeStatus, RequestedAction
 from app.domain.errors import CapabilityNotFoundError
 from app.ports.registry import IntegrationRegistry
@@ -47,6 +47,6 @@ class IntakeNode:
         update: CourtState = {
             "change": serialize(change),
             "status": change.status.value,
-            "errors": errors,
+            "errors": bound_errors(errors),
         }
         return update

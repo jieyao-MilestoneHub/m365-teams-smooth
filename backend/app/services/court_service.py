@@ -42,6 +42,7 @@ from app.domain import (
     evaluate_quorum,
 )
 from app.domain.errors import (
+    InvalidRequestError,
     NotFoundError,
     SeparationOfDutiesError,
     UnauthorizedApproverError,
@@ -75,6 +76,7 @@ class CourtService:
         approvals: ApprovalLedger | None = None,
         directory: ApproverDirectory | None = None,
         dry_run_default: bool = True,
+        max_request_chars: int = 1000,
         id_factory: Callable[[], str] = lambda: uuid4().hex,
     ) -> None:
         self._runner = runner
@@ -84,6 +86,7 @@ class CourtService:
         self._approvals = approvals
         self._directory = directory
         self._dry_run_default = dry_run_default
+        self._max_request_chars = max_request_chars
         self._id = id_factory
 
     def capabilities(self) -> list[Capability]:
@@ -109,6 +112,14 @@ class CourtService:
         :meth:`send_for_approval` or :meth:`withdraw_change`. Without a requester (legacy/local
         flow) a low-risk change is auto-approved so it completes without a human verdict.
         """
+        # Boundary validation: a change request is a sentence or two; reject (never truncate)
+        # anything else so the court only ever deliberates on exactly what was asked.
+        if not raw_request.strip():
+            raise InvalidRequestError("a change request is required")
+        if len(raw_request) > self._max_request_chars:
+            raise InvalidRequestError(
+                f"change request exceeds {self._max_request_chars} characters"
+            )
         mode = run_mode or (RunMode.DRY_RUN if self._dry_run_default else RunMode.LIVE)
         thread_id = self._id()
         change_id = self._id()
