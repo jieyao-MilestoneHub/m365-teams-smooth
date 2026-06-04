@@ -34,6 +34,7 @@ from app.domain.principal import Principal
 from app.domain.quorum import Approver, Quorum, VerdictOption
 from app.domain.risk import RiskFactor, RiskResult
 from app.domain.verdict import Verdict
+from app.domain.verification import EffectVerification
 
 __all__ = [
     "ApprovalDecision",
@@ -48,6 +49,7 @@ __all__ = [
     "CapabilityRef",
     "Change",
     "ChangeStatus",
+    "EffectVerification",
     "EvidenceItem",
     "ExecutionPlan",
     "ExecutionStep",

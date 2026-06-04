@@ -11,6 +11,7 @@ from app.domain.plan import ExecutionPlan, RollbackHint, StepResult
 from app.domain.quorum import Quorum
 from app.domain.risk import RiskResult
 from app.domain.verdict import Verdict
+from app.domain.verification import EffectVerification
 
 
 class BeforeAfter(BaseModel):
@@ -32,6 +33,7 @@ class TrialRecord(BaseModel):
     quorum: Quorum | None = None
     verdict: Verdict | None = None
     results: list[StepResult] = Field(default_factory=list)
+    verifications: list[EffectVerification] = Field(default_factory=list)
 
 
 class AuditRecord(BaseModel):

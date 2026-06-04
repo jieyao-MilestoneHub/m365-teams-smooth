@@ -18,6 +18,7 @@ from app.agent.nodes.impact import ImpactNode
 from app.agent.nodes.intake import IntakeNode
 from app.agent.nodes.options import OptionsNode
 from app.agent.nodes.policy import PolicyNode
+from app.agent.nodes.verify import VerifyNode
 from app.agent.policy_rules.models import (
     MatchRules,
     RiskBands,
@@ -71,6 +72,7 @@ def _build(audit_repo: InMemoryAuditRepository, store: SqliteCheckpointStore) ->
         options=OptionsNode({}),
         policy=PolicyNode([_PACK]),
         execute=ExecuteNode(registry),
+        verify=VerifyNode(),
         audit=AuditNode(audit_repo),
         checkpointer=store.saver(),
     )
