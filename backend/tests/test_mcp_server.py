@@ -45,3 +45,12 @@ def test_full_app_serves_health_with_mcp_mounted(service: CourtService) -> None:
     # The composed app runs the MCP session-manager lifespan and still serves REST health.
     with TestClient(create_full_app(service)) as client:
         assert client.get("/api/health").status_code == 200
+
+
+def test_mcp_accepts_bare_mount_path_without_redirect(service: CourtService) -> None:
+    # MCP clients do not follow redirects: POST /mcp must reach the server directly (no 307),
+    # whichever way the manifest spells the endpoint.
+    with TestClient(create_full_app(service)) as client:
+        for path in ("/mcp", "/mcp/"):
+            response = client.post(path, follow_redirects=False)
+            assert response.status_code != 307, path
