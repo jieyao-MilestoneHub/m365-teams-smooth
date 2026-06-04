@@ -49,6 +49,7 @@ from app.domain.errors import (
     UnauthorizedApproverError,
 )
 from app.observability import metrics
+from app.ports.notifier import ApprovalNotifier
 from app.ports.registry import IntegrationRegistry
 from app.ports.repository import ApprovalLedger, AuditRepository, VerdictLedger
 from app.services.approver_directory import ApproverDirectory
@@ -76,6 +77,7 @@ class CourtService:
         registry: IntegrationRegistry | None = None,
         approvals: ApprovalLedger | None = None,
         directory: ApproverDirectory | None = None,
+        notifier: ApprovalNotifier | None = None,
         dry_run_default: bool = True,
         max_request_chars: int = 1000,
         id_factory: Callable[[], str] = lambda: uuid4().hex,
@@ -86,6 +88,7 @@ class CourtService:
         self._registry = registry
         self._approvals = approvals
         self._directory = directory
+        self._notifier = notifier
         self._dry_run_default = dry_run_default
         self._max_request_chars = max_request_chars
         self._id = id_factory
@@ -263,6 +266,7 @@ class CourtService:
         else:
             self._runner.update(thread_id, {"status": ChangeStatus.AWAITING_APPROVAL.value})
             self._require_ledger().mark_pending(thread_id, datetime.now(UTC).isoformat())
+            self._notify_approval_requested(thread_id, trial, actor, note, required)
         logger.info("approval.sent", extra={"thread_id": thread_id, "actor": actor.key()})
         metrics.increment("approvals.sent")
         return self._summary(thread_id, self._runner.state(thread_id))
@@ -301,10 +305,12 @@ class CourtService:
         if decision.state is QuorumState.SATISFIED:
             self._resume(thread_id, VerdictType.APPROVE, actor, self._plan_kind(trial))
             self._require_ledger().clear_pending(thread_id)
+            self._notify_decided(thread_id, trial, actor, approved=True, note=note)
         elif decision.state is QuorumState.REJECTED:
             self._resume(thread_id, VerdictType.REJECT, actor, self._plan_kind(trial))
             self._runner.update(thread_id, {"status": ChangeStatus.REJECTED.value})
             self._require_ledger().clear_pending(thread_id)
+            self._notify_decided(thread_id, trial, actor, approved=False, note=note)
         logger.info(
             "approval.decided",
             extra={"thread_id": thread_id, "actor": actor.key(),
@@ -409,6 +415,59 @@ class CourtService:
     @staticmethod
     def _plan_kind(trial: TrialRecord) -> PlanKind:
         return trial.options.kind if trial.options else PlanKind.FEASIBLE
+
+    def _notify_approval_requested(
+        self,
+        thread_id: str,
+        trial: TrialRecord,
+        actor: Principal,
+        note: str,
+        required: list[ApproverRole],
+    ) -> None:
+        """Best-effort push to everyone who can decide; never fails the send itself."""
+        if self._notifier is None or self._directory is None:
+            return
+        own_keys = {actor.oid.strip().lower(), actor.upn.strip().lower()} - {""}
+        approvers = sorted(self._directory.identities_for(required) - own_keys)
+        if not approvers:
+            return
+        try:
+            self._notifier.approval_requested(
+                thread_id=thread_id,
+                title=trial.change.raw_request[:80],
+                requester_upn=actor.upn or actor.key(),
+                approver_upns=approvers,
+                note=note,
+            )
+            metrics.increment("notify.sent")
+        except Exception:
+            logger.warning(
+                "notify.failed", extra={"thread_id": thread_id, "event": "approval_requested"}
+            )
+            metrics.increment("notify.failed")
+
+    def _notify_decided(
+        self, thread_id: str, trial: TrialRecord, actor: Principal, *, approved: bool, note: str
+    ) -> None:
+        """Best-effort push of the outcome to the requester; never fails the decision itself."""
+        if self._notifier is None:
+            return
+        requester = trial.change.requester
+        if requester is None:
+            return
+        try:
+            self._notifier.decided(
+                thread_id=thread_id,
+                title=trial.change.raw_request[:80],
+                requester_upn=requester.upn or requester.key(),
+                approved=approved,
+                decider_upn=actor.upn or actor.key(),
+                note=note,
+            )
+            metrics.increment("notify.sent")
+        except Exception:
+            logger.warning("notify.failed", extra={"thread_id": thread_id, "event": "decided"})
+            metrics.increment("notify.failed")
 
     def _resume(
         self, thread_id: str, verdict_type: VerdictType, actor: Principal, selected_plan: PlanKind
