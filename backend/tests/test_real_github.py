@@ -105,3 +105,15 @@ def test_http_error_is_contained_as_failed() -> None:
     result = _adapter().execute(step, RunMode.LIVE)  # must not raise
     assert result.status is StepStatus.FAILED
     assert result.error is not None
+
+
+def test_injected_repo_param_is_rejected_before_any_call() -> None:
+    # A planner/LLM-supplied traversal in the repo param must never reach the API.
+    step = ExecutionStep(
+        step_id="s1",
+        capability=CapabilityRef(system="github", name="github.update_milestone_due"),
+        params={"milestone": "Launch", "due_on": "2026-06-17", "repo": "../victim/repo"},
+    )
+    result = _adapter().execute(step, RunMode.LIVE)
+    assert result.status is StepStatus.FAILED
+    assert result.error is not None and "invalid repository" in result.error
