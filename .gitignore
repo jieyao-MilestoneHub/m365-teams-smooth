@@ -12,9 +12,6 @@ infra/.terraform.lock.hcl
 infra/terraform.tfvars
 crash.log
 
-# Internal engineering guidance kept out of the public repo
-.claude/rules/competition.md
-
 # --- Python ---
 __pycache__/
 *.py[cod]

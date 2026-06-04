@@ -15,7 +15,7 @@ League, the competition, judging, scoring, bonus points, prizes, deadlines, or s
 ### Does NOT apply to
 
 - files under `.claude/rules/` — internal engineering guidance, where
-  [competition.md](./competition.md) intentionally captures the competition context.
+  [hackathon.md](./hackathon.md) intentionally captures the competition context.
 
 ### How to phrase things
 
