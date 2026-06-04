@@ -69,6 +69,24 @@ def test_submit_with_requester_holds_for_self_review() -> None:
     assert trial.change.requester.same_as(REQUESTER)
 
 
+def test_requester_without_directory_keeps_the_legacy_flow() -> None:
+    # No approver directory configured: holding the trial would leave it undecidable, so a
+    # requester identity alone must not engage enforcement.
+    settings = Settings(force_all_mock=True, db_url="sqlite:///:memory:", dry_run_default=True)
+    service = build_court_service(settings, gatherers={"launch": _gatherer}, packs=[_PACK])
+    assert service.approvals_configured() is False
+    summary = service.submit_change(_REQ, requester=REQUESTER)
+    assert summary.status != ChangeStatus.AWAITING_REQUESTER_REVIEW.value
+
+
+def test_requester_note_reads_back_the_send_note() -> None:
+    service = _service()
+    s = service.submit_change(_REQ, requester=REQUESTER)
+    assert service.requester_note(s.thread_id) == ""
+    service.send_for_approval(s.thread_id, actor=REQUESTER, note="ready for your call")
+    assert service.requester_note(s.thread_id) == "ready for your call"
+
+
 def test_requester_cannot_self_approve() -> None:
     service = _service()
     s = service.submit_change(_REQ, requester=REQUESTER)

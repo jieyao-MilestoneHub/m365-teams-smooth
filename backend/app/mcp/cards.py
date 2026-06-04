@@ -2,12 +2,14 @@
 
 A pure presentation mapper: it turns a ``TrialRecord`` into an Adaptive Card dict per the contract
 in docs/mcp-and-card-contract.md. No business logic — it reads data the service already produced.
-Verdict buttons post back ``{thread_id, verdict_type, selected_plan}`` to the ``cast_verdict`` tool.
+Actions are phase-aware: the requester-review phase posts to ``send_for_approval`` /
+``withdraw_change``, the approval phase to ``decide``, and the legacy verdict phase posts
+``{thread_id, verdict_type, selected_plan}`` to the ``cast_verdict`` tool.
 """
 
 from __future__ import annotations
 
-from app.domain import EvidenceItem, PlanKind, TrialRecord, VerdictType
+from app.domain import ChangeStatus, EvidenceItem, PlanKind, TrialRecord, VerdictType
 
 _SCHEMA = "http://adaptivecards.io/schemas/adaptive-card.json"
 
@@ -34,8 +36,48 @@ def _evidence_rows(items: list[EvidenceItem], *, emphasize: bool) -> list[dict[s
     return rows
 
 
-def build_change_court_card(thread_id: str, trial: TrialRecord) -> dict[str, object]:
-    """Render the Change Court card: change, impact, plan, approvers, and verdict actions."""
+def _note_input(placeholder: str, *, required: bool) -> dict[str, object]:
+    """The note input the requester/approver fills in alongside the card's actions."""
+    field: dict[str, object] = {
+        "type": "Input.Text",
+        "id": "note",
+        "isMultiline": True,
+        "placeholder": placeholder,
+    }
+    if required:
+        field["isRequired"] = True
+        field["errorMessage"] = "A note is required."
+    return field
+
+
+def _submit(title: str, data: dict[str, object]) -> dict[str, object]:
+    return {"type": "Action.Submit", "title": title, "data": data}
+
+
+def _requester_review_actions(thread_id: str) -> tuple[list[dict[str, object]], dict[str, object]]:
+    """Self-review phase: send on with a mandatory note, or give the change up."""
+    note = _note_input("Why should this be approved? (required to send)", required=True)
+    actions = [
+        _submit("Send for approval", {"tool": "send_for_approval", "thread_id": thread_id}),
+        _submit("Give up", {"tool": "withdraw_change", "thread_id": thread_id}),
+    ]
+    return actions, note
+
+
+def _approval_actions(thread_id: str) -> tuple[list[dict[str, object]], dict[str, object]]:
+    """Approver phase: approve, or reject with a note (enforced by the service)."""
+    note = _note_input("Reason (required when rejecting)", required=False)
+    actions = [
+        _submit("Approve", {"tool": "decide", "thread_id": thread_id, "approve": True}),
+        _submit("Reject", {"tool": "decide", "thread_id": thread_id, "approve": False}),
+    ]
+    return actions, note
+
+
+def build_change_court_card(
+    thread_id: str, trial: TrialRecord, *, status: str = "", requester_note: str = ""
+) -> dict[str, object]:
+    """Render the Change Court card: change, impact, plan, approvers, and phase-aware actions."""
     change = trial.change
     body: list[dict[str, object]] = [
         _text("AI Change Court", weight="Bolder"),
@@ -81,22 +123,34 @@ def build_change_court_card(thread_id: str, trial: TrialRecord) -> dict[str, obj
         roles = ", ".join(a.role.value for a in quorum.required_approvers)
         body.append(_text(f"Approvers required ({quorum.policy}): {roles}"))
 
-    selected_plan = options.kind.value if options is not None else "feasible"
-    actions: list[dict[str, object]] = []
-    if quorum is not None:
-        for option in quorum.verdict_options:
-            actions.append(
-                {
-                    "type": "Action.Submit",
-                    "title": option.label or option.type.value,
-                    "data": {
-                        "tool": "cast_verdict",
-                        "thread_id": thread_id,
-                        "verdict_type": option.type.value,
-                        "selected_plan": selected_plan,
-                    },
-                }
-            )
+    if requester_note:
+        body.append(_text(f"Requester's note: {requester_note}"))
+
+    # Phase-aware actions: the identity-aware statuses get their gate's buttons; every other
+    # status keeps the legacy verdict buttons so the identity-free flow renders unchanged.
+    actions: list[dict[str, object]]
+    if status == ChangeStatus.AWAITING_REQUESTER_REVIEW.value:
+        actions, note_input = _requester_review_actions(thread_id)
+        body.append(note_input)
+    elif status == ChangeStatus.AWAITING_APPROVAL.value:
+        actions, note_input = _approval_actions(thread_id)
+        body.append(note_input)
+    else:
+        selected_plan = options.kind.value if options is not None else "feasible"
+        actions = []
+        if quorum is not None:
+            for option in quorum.verdict_options:
+                actions.append(
+                    _submit(
+                        option.label or option.type.value,
+                        {
+                            "tool": "cast_verdict",
+                            "thread_id": thread_id,
+                            "verdict_type": option.type.value,
+                            "selected_plan": selected_plan,
+                        },
+                    )
+                )
 
     return {
         "type": "AdaptiveCard",

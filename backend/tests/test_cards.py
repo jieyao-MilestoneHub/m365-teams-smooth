@@ -82,3 +82,53 @@ def test_verdict_result_card_lists_steps_and_predicted() -> None:
     blob = _texts(build_verdict_result_card(trial, status=cast.status, audit_id=cast.audit_id))
     assert "Verdict recorded" in blob
     assert "predicted" in blob  # dry-run steps are labelled predicted
+
+
+def _trial(service: CourtService, raw: str):  # type: ignore[no-untyped-def]
+    summary = service.submit_change(raw)
+    trial = service.get_trial(summary.thread_id)
+    assert trial is not None
+    return summary.thread_id, trial
+
+
+def test_requester_review_card_offers_send_and_give_up() -> None:
+    thread_id, trial = _trial(_service(), "slip the launch from 2026-06-10 to 2026-06-17")
+    card = build_change_court_card(thread_id, trial, status="awaiting_requester_review")
+
+    actions = card["actions"]
+    assert isinstance(actions, list)
+    tools = [a["data"]["tool"] for a in actions]
+    assert tools == ["send_for_approval", "withdraw_change"]
+    # The mandatory note travels with the Send action via the card's input field.
+    body = card["body"]
+    assert isinstance(body, list)
+    inputs = [b for b in body if isinstance(b, dict) and b.get("type") == "Input.Text"]
+    assert inputs and inputs[0]["id"] == "note" and inputs[0]["isRequired"] is True
+
+
+def test_approval_card_offers_decide_and_shows_requester_note() -> None:
+    thread_id, trial = _trial(_service(), "slip the launch from 2026-06-10 to 2026-06-17")
+    card = build_change_court_card(
+        thread_id, trial, status="awaiting_approval", requester_note="please review by Friday"
+    )
+
+    blob = _texts(card)
+    assert "Requester's note: please review by Friday" in blob
+    actions = card["actions"]
+    assert isinstance(actions, list)
+    assert [a["data"]["tool"] for a in actions] == ["decide", "decide"]
+    assert [a["data"]["approve"] for a in actions] == [True, False]
+    # The note input exists for the reject reason but does not block Approve.
+    body = card["body"]
+    assert isinstance(body, list)
+    inputs = [b for b in body if isinstance(b, dict) and b.get("type") == "Input.Text"]
+    assert inputs and "isRequired" not in inputs[0]
+
+
+def test_legacy_statuses_keep_cast_verdict_actions() -> None:
+    thread_id, trial = _trial(_service(), "slip the launch from 2026-06-10 to 2026-06-17")
+    for status in ("", "awaiting_verdict"):
+        card = build_change_court_card(thread_id, trial, status=status)
+        actions = card["actions"]
+        assert isinstance(actions, list) and actions
+        assert all(a["data"]["tool"] == "cast_verdict" for a in actions)
