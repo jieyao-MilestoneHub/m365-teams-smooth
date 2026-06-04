@@ -25,6 +25,7 @@ from app.adapters.knowledge.fake_knowledge import FakeKnowledgeProvider
 from app.adapters.knowledge.foundry_iq import FoundryIqKnowledgeProvider
 from app.adapters.llm.azure_openai import AzureOpenAILLMProvider
 from app.adapters.llm.fake_llm import FakeLLMProvider
+from app.adapters.notifiers.teams_activity import TeamsActivityNotifier
 from app.adapters.parsers.deterministic import DeterministicRequestParser
 from app.adapters.parsers.llm_backed import LlmRequestParser
 from app.adapters.persistence.checkpointer import SqliteCheckpointStore
@@ -54,6 +55,7 @@ from app.config import Settings
 from app.ports.integration import IntegrationAdapter
 from app.ports.knowledge import KnowledgePort
 from app.ports.llm import LLMProvider
+from app.ports.notifier import ApprovalNotifier
 from app.ports.registry import IntegrationRegistry
 from app.ports.request_parser import RequestParser
 from app.services.approver_directory import ApproverDirectory
@@ -69,6 +71,7 @@ def build_court_service(
     packs: list[RulePack] | None = None,
     registry: IntegrationRegistry | None = None,
     request_parser: RequestParser | None = None,
+    notifier: ApprovalNotifier | None = None,
 ) -> CourtService:
     """Wire the registry, providers, persistence, graph, and runner into a CourtService.
 
@@ -150,6 +153,23 @@ def build_court_service(
     directory = ApproverDirectory.from_settings(settings)
     memory = SqlPrecedentStore(session_factory)
 
+    # Approval notifications: Teams activity feed when configured, else none (workflow unchanged).
+    if (
+        notifier is None
+        and settings.notify_mode == "teams"
+        and settings.graph_tenant_id
+        and settings.graph_client_id
+        and settings.graph_client_secret
+    ):
+        notifier = TeamsActivityNotifier(
+            GraphClient(
+                settings.graph_tenant_id,
+                settings.graph_client_id,
+                settings.graph_client_secret,
+            ),
+            link_url=settings.notify_link_url,
+        )
+
     store = SqliteCheckpointStore.from_db_url(settings.db_url)
     store.setup()
 
@@ -216,6 +236,7 @@ def build_court_service(
         registry=registry,
         approvals=approvals,
         directory=directory,
+        notifier=notifier,
         dry_run_default=settings.dry_run_default,
         max_request_chars=settings.max_request_chars,
     )

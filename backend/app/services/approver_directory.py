@@ -40,3 +40,12 @@ class ApproverDirectory:
     def is_authorized(self, principal: Principal, required: Iterable[ApproverRole]) -> bool:
         """True when the principal holds at least one of the required roles."""
         return bool(self.roles_for(principal) & set(required))
+
+    def identities_for(self, roles: Iterable[ApproverRole]) -> set[str]:
+        """Identity keys (oid or upn, lowercased) of everyone holding any of ``roles``."""
+        wanted = {role.value for role in roles}
+        identities: set[str] = set()
+        for role, ids in self._members.items():
+            if role in wanted:
+                identities |= ids
+        return identities

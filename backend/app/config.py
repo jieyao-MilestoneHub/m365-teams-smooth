@@ -95,6 +95,14 @@ class Settings(BaseSettings):
     # so identity-aware enforcement stays off and the legacy single-verdict path is used.
     approver_directory: str = ""
 
+    # --- Notifications (approval channel) ---
+    # "off" (default) or "teams" — push approval events to Teams activity feeds via Microsoft
+    # Graph (app-only TeamsActivity.Send; reuses the GRAPH_* credentials; the activity types are
+    # declared in the Teams app manifest). Delivery is best-effort and never blocks the workflow.
+    notify_mode: str = "off"
+    # Click-through target of the notification toast (a Teams deep link).
+    notify_link_url: str = "https://teams.microsoft.com"
+
     # --- Deployment ---
     # Public HTTPS origin this backend is reachable at (e.g. https://change-court.example.com).
     # The MCP resource-server URL is derived as "{public_base_url}/mcp"; empty -> localhost default.

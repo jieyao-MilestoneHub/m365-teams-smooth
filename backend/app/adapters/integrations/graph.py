@@ -1,9 +1,10 @@
-"""Microsoft Graph client: app-only (client-credentials) token + GET helper.
+"""Microsoft Graph client: app-only (client-credentials) token + GET/POST helpers.
 
-Shared by the read-only real Graph adapters (Outlook calendar, SharePoint folders). App-only auth
-keeps the backend free of a user-delegated flow: with admin-consented *application* permissions it
-reads a specific user's calendar and a specific site's drive. Writes are out of scope here — the
-real adapters predict effects under DRY_RUN and never mutate — so this client only does GET.
+Shared by the read-only real Graph adapters (Outlook calendar, SharePoint folders) and the Teams
+activity notifier. App-only auth keeps the backend free of a user-delegated flow: with
+admin-consented *application* permissions it reads a specific user's calendar and a specific
+site's drive. Integration adapters stay read-only — they predict effects under DRY_RUN and never
+mutate; POST exists solely for non-mutating signalling such as activity-feed notifications.
 
 Errors surface as raised exceptions; ``BaseIntegrationAdapter`` maps them to ``IntegrationError`` at
 the boundary, so a Graph failure is contained like any other adapter error.
@@ -70,3 +71,12 @@ class GraphClient:
         )
         resp.raise_for_status()
         return dict(resp.json())
+
+    def post(self, path: str, payload: dict[str, object]) -> None:
+        """POST a JSON payload to a Graph path; raises on any non-success status."""
+        resp = self._http.post(
+            f"{self._graph_url}{path}",
+            headers={"Authorization": f"Bearer {self._bearer()}"},
+            json=payload,
+        )
+        resp.raise_for_status()
