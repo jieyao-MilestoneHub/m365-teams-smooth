@@ -29,3 +29,15 @@ location        = "eastus"
 # knowledge_source_name        = ""  # knowledge source name
 # knowledge_search_resource_id = ""  # /subscriptions/.../searchServices/<name>
 # knowledge_openai_resource_id = ""  # /subscriptions/.../accounts/<name>
+
+# --- Full-functionality demo (agentic roles + separation of duties) ---
+# To demo agentic reasoning and the two-gate approval flow on the deployed app:
+#   1) force_all_mock MUST be false (it otherwise disables the agentic roles)
+#   2) keep integrations mocked for a reliable demo via integration_mode (or go real per system)
+#   3) provide an Azure OpenAI endpoint + deployment; DRY_RUN stays the default so writes are predicted
+# force_all_mock          = false
+# integration_mode        = "github:mock"   # "github:real" for live blocker evidence (needs github_token/repo)
+# azure_openai_endpoint   = "https://<your>.openai.azure.com"
+# azure_openai_deployment = "gpt-4o"        # must accept the max_tokens parameter
+# llm_api_key             = ""              # demo: an Azure OpenAI key; omit for keyless (managed identity)
+# approver_directory      = "eng_lead:<approver-upn>,comms:<approver-upn>,security_lead:<approver-upn>,account_owner:<approver-upn>,manager:<approver-upn>"

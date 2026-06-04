@@ -96,6 +96,14 @@ resource "azurerm_container_app" "this" {
     }
   }
 
+  dynamic "secret" {
+    for_each = var.llm_api_key == "" ? [] : [1]
+    content {
+      name  = "llm-api-key"
+      value = var.llm_api_key
+    }
+  }
+
   ingress {
     external_enabled = true
     target_port      = 8000
@@ -213,6 +221,41 @@ resource "azurerm_container_app" "this" {
         content {
           name  = "KNOWLEDGE_SOURCE_NAME"
           value = var.knowledge_source_name
+        }
+      }
+
+      # Agentic roles (Prosecutor read-selection, Defender planning). Injected only when an Azure
+      # OpenAI endpoint is set; with force_all_mock = false this turns the roles agentic, otherwise
+      # they stay deterministic. LLM_API_KEY is optional — omit it for keyless (managed identity).
+      dynamic "env" {
+        for_each = var.azure_openai_endpoint == "" ? [] : [1]
+        content {
+          name  = "AZURE_OPENAI_ENDPOINT"
+          value = var.azure_openai_endpoint
+        }
+      }
+      dynamic "env" {
+        for_each = var.azure_openai_deployment == "" ? [] : [1]
+        content {
+          name  = "AZURE_OPENAI_DEPLOYMENT"
+          value = var.azure_openai_deployment
+        }
+      }
+      dynamic "env" {
+        for_each = var.llm_api_key == "" ? [] : [1]
+        content {
+          name        = "LLM_API_KEY"
+          secret_name = "llm-api-key"
+        }
+      }
+
+      # Separation of duties: role → approver identity map. Empty leaves the legacy single-verdict
+      # flow; set it to enforce the two-gate approval workflow.
+      dynamic "env" {
+        for_each = var.approver_directory == "" ? [] : [1]
+        content {
+          name  = "APPROVER_DIRECTORY"
+          value = var.approver_directory
         }
       }
     }

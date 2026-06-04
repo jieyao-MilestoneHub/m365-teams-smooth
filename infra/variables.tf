@@ -141,3 +141,33 @@ variable "knowledge_openai_resource_id" {
   description = "Optional: resource id of the Azure OpenAI account the knowledge base answers with; grants the app's identity Cognitive Services OpenAI User."
   default     = ""
 }
+
+# --- Agentic roles (Azure OpenAI) ---
+# Set endpoint + deployment AND force_all_mock = false to make the Prosecutor/Defender agentic;
+# otherwise the roles stay deterministic. llm_api_key is optional (omit for keyless via the app's
+# managed identity, which then needs the Cognitive Services OpenAI User role on the account).
+variable "azure_openai_endpoint" {
+  type        = string
+  description = "Optional: Azure OpenAI endpoint, e.g. https://<name>.openai.azure.com."
+  default     = ""
+}
+
+variable "azure_openai_deployment" {
+  type        = string
+  description = "Optional: Azure OpenAI chat deployment name (GPT-4o-class; must accept max_tokens)."
+  default     = ""
+}
+
+variable "llm_api_key" {
+  type        = string
+  description = "Optional: Azure OpenAI API key. Stored as a Container App secret. Omit for keyless."
+  default     = ""
+  sensitive   = true
+}
+
+# --- Separation of duties ---
+variable "approver_directory" {
+  type        = string
+  description = "Optional: role->identity map, comma-separated 'role:upn' pairs. Empty = legacy flow."
+  default     = ""
+}
