@@ -67,7 +67,11 @@ def _principal(account: ChannelAccount | None) -> Principal | None:
     name = getattr(account, "name", "") or ""
     if not (oid or name):
         return None
-    return Principal(oid=oid, upn=name, display_name=name)
+    # A Teams activity carries the Entra object id and the display name, but NOT the UPN. Leave
+    # upn empty rather than mislabel the display name as one — identity then keys on the reliable
+    # oid (Principal.key()), which is what the conversation store and the approver directory must
+    # match on for proactive card delivery. ``name`` stays as the display label.
+    return Principal(oid=oid, upn="", display_name=name)
 
 # Bounded memory of processed activity ids: enough to absorb channel redeliveries within a
 # Playground session without growing unbounded across long-running processes.
