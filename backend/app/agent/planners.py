@@ -35,11 +35,17 @@ def _evidence_field(impact: ImpactEvidence, kind: str, field: str) -> str | None
     return str(value) if value is not None else None
 
 
+def _as_day(value: str) -> date:
+    """The calendar day of an ISO date or timestamp — live evidence carries full timestamps
+    (GitHub returns ``2026-06-10T00:00:00Z``), while parsed requests carry plain dates."""
+    return date.fromisoformat(value[:10])
+
+
 def plan_launch(change: Change, impact: ImpactEvidence) -> ExecutionPlan:
     """Feasible: move the milestone and ripple into calendar, planner, and the announcement."""
     new_due = change.due_by or "2026-06-17"
     old_due = _evidence_field(impact, "milestone", "due_on") or "2026-06-10"
-    delta = (date.fromisoformat(new_due) - date.fromisoformat(old_due)).days
+    delta = (_as_day(new_due) - _as_day(old_due)).days
     steps = [
         _step(
             "s1",

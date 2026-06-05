@@ -35,6 +35,24 @@ def test_launch_plan_is_feasible_and_ripples() -> None:
     assert shift.params["delta_days"] == 7  # 2026-06-10 -> 2026-06-17
 
 
+def test_launch_plan_accepts_timestamped_evidence_dates() -> None:
+    # Live evidence carries full timestamps (GitHub returns 2026-06-10T00:00:00Z), not plain dates.
+    impact = ImpactEvidence(
+        items=[
+            EvidenceItem(
+                system="github",
+                kind="milestone",
+                summary="",
+                data={"due_on": "2026-06-10T00:00:00Z"},
+            )
+        ],
+        tags=["schedule.milestone_move"],
+    )
+    plan = plan_launch(Change(change_id="c1", raw_request="x", due_by="2026-06-17"), impact)
+    shift = next(s for s in plan.steps if s.capability.name == "planner.shift_task_dates")
+    assert shift.params["delta_days"] == 7
+
+
 def test_sso_ga_plan_is_a_safe_alternative_with_all_artifacts() -> None:
     impact = ImpactEvidence(
         items=[

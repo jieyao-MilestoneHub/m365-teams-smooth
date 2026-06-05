@@ -76,6 +76,11 @@ def test_live_update_milestone_due() -> None:
     result = _adapter().execute(_update_step(), RunMode.LIVE)
     assert result.status is StepStatus.OK
     assert patch.called
+    # Plans carry plain dates; the GitHub API requires a full timestamp.
+    import json
+
+    sent = json.loads(patch.calls.last.request.content)
+    assert sent["due_on"].endswith("T00:00:00Z")
 
 
 @respx.mock
