@@ -138,6 +138,65 @@ def test_authorized_approver_approves_and_executes() -> None:
     assert again.status == ChangeStatus.DONE.value
 
 
+# --- multi-role quorum: a single approver wearing several hats completes it in one click ---------
+
+_TWO_ROLE_PACK = RulePack(
+    id="launch_slip",
+    match=MatchRules(any_action_capability=["github.update_milestone_due"]),
+    risk_factors=[RiskFactorRule(id="m", when_tag="schedule.milestone_move", weight=80)],
+    risk_bands=RiskBands(low=0, medium=30, high=60),
+    quorum=QuorumRules(
+        approvers=[
+            ApproverRule(role=ApproverRole.ENG_LEAD, when_tag="schedule.milestone_move"),
+            ApproverRule(role=ApproverRole.COMMS, when_tag="schedule.milestone_move"),
+        ],
+        policy="all",
+    ),
+    verdict_options=VerdictOptionRules(default=[VerdictType.APPROVE, VerdictType.REJECT]),
+)
+
+
+def _two_role_service(directory: str) -> CourtService:
+    settings = Settings(
+        force_all_mock=True,
+        db_url="sqlite:///:memory:",
+        dry_run_default=True,
+        approver_directory=directory,
+    )
+    return build_court_service(
+        settings, gatherers={"launch": _gatherer}, packs=[_TWO_ROLE_PACK]
+    )
+
+
+def test_single_approver_holding_all_roles_completes_quorum_in_one_click() -> None:
+    # The deployed shape: one approver mapped to every role. A single approve must satisfy the
+    # eng_lead AND comms quorum and execute — not deadlock at "pending".
+    service = _two_role_service(
+        "eng_lead:joel@agentleague.onmicrosoft.com,comms:joel@agentleague.onmicrosoft.com"
+    )
+    s = service.submit_change(_REQ, requester=REQUESTER)
+    service.send_for_approval(s.thread_id, actor=REQUESTER, note="ready")
+    result = service.decide(s.thread_id, actor=APPROVER, approve=True)
+    assert result.status == ChangeStatus.DONE.value
+    # Idempotent: a re-click does not re-execute.
+    again = service.decide(s.thread_id, actor=APPROVER, approve=True)
+    assert again.status == ChangeStatus.DONE.value
+
+
+def test_two_distinct_approvers_each_supply_their_own_role() -> None:
+    # Anti-collusion path is preserved: distinct people each hold one role and both must approve.
+    approver2 = Principal(oid="comms-1", upn="comms@agentleague.onmicrosoft.com")
+    service = _two_role_service(
+        "eng_lead:joel@agentleague.onmicrosoft.com,comms:comms@agentleague.onmicrosoft.com"
+    )
+    s = service.submit_change(_REQ, requester=REQUESTER)
+    service.send_for_approval(s.thread_id, actor=REQUESTER, note="ready")
+    pending = service.decide(s.thread_id, actor=APPROVER, approve=True)  # eng_lead only
+    assert pending.status == ChangeStatus.AWAITING_APPROVAL.value
+    done = service.decide(s.thread_id, actor=approver2, approve=True)  # comms completes it
+    assert done.status == ChangeStatus.DONE.value
+
+
 def test_reject_requires_note_and_is_terminal() -> None:
     service = _service()
     s = service.submit_change(_REQ, requester=REQUESTER)
