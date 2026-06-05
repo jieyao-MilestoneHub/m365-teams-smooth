@@ -15,6 +15,7 @@ from app.adapters.integrations.registry import ConfigIntegrationRegistry
 from app.adapters.knowledge.fake_knowledge import FakeKnowledgeProvider
 from app.adapters.llm.fake_llm import FakeLLMProvider
 from app.domain import ApprovalDecision, ApprovalEvent, AuditRecord
+from app.ports.conversation_store import ConversationStore
 from app.ports.integration import IntegrationAdapter
 from app.ports.repository import ApprovalLedger, AuditRepository, VerdictLedger
 
@@ -99,6 +100,21 @@ class InMemoryApprovalLedger(ApprovalLedger):
 
     def pending_thread_ids(self) -> list[str]:
         return sorted(self._pending, key=lambda t: self._pending[t])
+
+
+class InMemoryConversationStore(ConversationStore):
+    """In-memory conversation references for tests (mirrors SqlConversationStore keying)."""
+
+    def __init__(self) -> None:
+        self.references: dict[str, dict[str, object]] = {}
+
+    def save(self, *, oid: str, upn: str, reference: dict[str, object]) -> None:
+        for key in {k for k in (oid.strip(), upn.strip().lower()) if k}:
+            self.references[key] = reference
+
+    def get(self, identity: str) -> dict[str, object] | None:
+        key = identity.strip()
+        return self.references.get(key) or self.references.get(key.lower())
 
 
 def build_mock_registry(*, planner_fail_on: str | None = None) -> ConfigIntegrationRegistry:

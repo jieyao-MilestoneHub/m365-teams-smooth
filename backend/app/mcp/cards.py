@@ -2,9 +2,11 @@
 
 A pure presentation mapper: it turns a ``TrialRecord`` into an Adaptive Card dict per the contract
 in docs/reference/mcp-and-card-contract.md. No business logic — it renders what the service made.
-Actions are phase-aware: the requester-review phase posts to ``send_for_approval`` /
-``withdraw_change``, the approval phase to ``decide``, and the legacy verdict phase posts
-``{thread_id, verdict_type, selected_plan}`` to the ``cast_verdict`` tool.
+Actions are phase-aware ``Action.Execute`` buttons (universal actions, so a bot can refresh the
+card in place): the requester-review phase routes to ``send_for_approval`` / ``withdraw_change``,
+the approval phase to ``decide``, and the legacy verdict phase carries
+``{thread_id, verdict_type, selected_plan}`` for the ``cast_verdict`` tool. Each action's ``data``
+keeps the ``tool`` key so ``Action.Submit``-style value routing resolves identically.
 """
 
 from __future__ import annotations
@@ -50,16 +52,18 @@ def _note_input(placeholder: str, *, required: bool) -> dict[str, object]:
     return field
 
 
-def _submit(title: str, data: dict[str, object]) -> dict[str, object]:
-    return {"type": "Action.Submit", "title": title, "data": data}
+def _execute(title: str, verb: str, data: dict[str, object]) -> dict[str, object]:
+    """An ``Action.Execute`` button: ``verb`` routes the bot's invoke handler, and ``data`` keeps
+    the ``tool`` key so legacy ``Action.Submit``-style value routing resolves identically."""
+    return {"type": "Action.Execute", "title": title, "verb": verb, "data": {"tool": verb, **data}}
 
 
 def _requester_review_actions(thread_id: str) -> tuple[list[dict[str, object]], dict[str, object]]:
     """Self-review phase: send on with a mandatory note, or give the change up."""
     note = _note_input("Why should this be approved? (required to send)", required=True)
     actions = [
-        _submit("Send for approval", {"tool": "send_for_approval", "thread_id": thread_id}),
-        _submit("Give up", {"tool": "withdraw_change", "thread_id": thread_id}),
+        _execute("Send for approval", "send_for_approval", {"thread_id": thread_id}),
+        _execute("Give up", "withdraw_change", {"thread_id": thread_id}),
     ]
     return actions, note
 
@@ -68,8 +72,8 @@ def _approval_actions(thread_id: str) -> tuple[list[dict[str, object]], dict[str
     """Approver phase: approve, or reject with a note (enforced by the service)."""
     note = _note_input("Reason (required when rejecting)", required=False)
     actions = [
-        _submit("Approve", {"tool": "decide", "thread_id": thread_id, "approve": True}),
-        _submit("Reject", {"tool": "decide", "thread_id": thread_id, "approve": False}),
+        _execute("Approve", "decide", {"thread_id": thread_id, "approve": True}),
+        _execute("Reject", "decide", {"thread_id": thread_id, "approve": False}),
     ]
     return actions, note
 
@@ -141,10 +145,10 @@ def build_change_court_card(
         if quorum is not None:
             for option in quorum.verdict_options:
                 actions.append(
-                    _submit(
+                    _execute(
                         option.label or option.type.value,
+                        "cast_verdict",
                         {
-                            "tool": "cast_verdict",
                             "thread_id": thread_id,
                             "verdict_type": option.type.value,
                             "selected_plan": selected_plan,

@@ -41,9 +41,12 @@ The card renders a `TrialRecord` (+ its `TrialSummary`). Field bindings:
   row per `options.steps[]` (`capability.name`, `params` summary). When `options.supersedes_request`
   is set, the card states the request was replaced by a safer plan.
 - **Approvers** — `quorum.required_approvers[]` (`role`, `reason`).
-- **Verdict actions** — one button per `quorum.verdict_options[]`; each `Action.Submit` posts back
-  `{ thread_id, verdict_type, selected_plan }` to `cast_verdict`. The safe-alternative case offers
-  *accept alternative* rather than a plain *approve*.
+- **Verdict actions** — one button per `quorum.verdict_options[]`; each `Action.Execute` carries
+  the tool name as its `verb` and posts back `{ thread_id, verdict_type, selected_plan }` to
+  `cast_verdict` (the payload also keeps `tool`, so `Action.Submit`-style value routing resolves
+  identically). The safe-alternative case offers *accept alternative* rather than a plain
+  *approve*. When the card is delivered by the bot, the invoke response re-renders the card in
+  place — the buttons reflect the trial's new phase.
 
 ### Verdict-result card
 

@@ -37,6 +37,8 @@ PLACEHOLDERS = {
     "OAUTH_CONNECTION_ID": "OAUTH_CONNECTION_ID",
     # Entra app that sends Graph activity-feed notifications (manifest webApplicationInfo).
     "GRAPH_CLIENT_ID": "GRAPH_CLIENT_ID",
+    # The Azure Bot's app registration (manifest bots[].botId) — the approval-card surface.
+    "BOT_APP_ID": "BOT_APP_ID",
 }
 _TOKEN = re.compile(r"\$\{\{\s*(\w+)\s*\}\}")
 

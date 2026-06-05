@@ -18,6 +18,8 @@ are not committed:
 - `${{MCP_HOST_DOMAIN}}` / `${{MCP_SERVER_URL}}` — the public HTTPS host of the MCP server
   (a dev tunnel locally; see `app/asgi.py`, endpoint `/mcp`).
 - `${{OAUTH_CONNECTION_ID}}` — the reference id of the Teams OAuth connection (Entra ID).
+- `${{GRAPH_CLIENT_ID}}` — the Entra app behind `webApplicationInfo` (activity-feed notifications).
+- `${{BOT_APP_ID}}` — the Azure Bot's app registration (`bots[].botId`, the approval-card surface).
 - `color.png` (192×192) and `outline.png` (32×32) icons — add to `m365/` before packaging.
 
 ## Packaging

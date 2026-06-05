@@ -1,0 +1,130 @@
+"""The bot-chat card notifier enqueues actionable cards only for reachable recipients."""
+
+from __future__ import annotations
+
+from typing import Any
+
+from app.adapters.notifiers.bot_card_notifier import BotCardNotifier
+from app.config import Settings
+from app.container import build_court_service
+from app.domain import RunMode
+from app.domain.principal import Principal
+from app.services.court_service import CourtService
+from tests.conftest import InMemoryConversationStore
+
+_DIRECTORY = (
+    "eng_lead:approver@example.com,comms:approver@example.com,"
+    "security_lead:approver@example.com,account_owner:approver@example.com,"
+    "manager:approver@example.com"
+)
+_REQUESTER = Principal(oid="oid-req", upn="requester@example.com", display_name="req")
+_REFERENCE: dict[str, object] = {
+    "conversation": {"id": "conv-approver"},
+    "service_url": "https://example.test",
+}
+
+
+def _service() -> CourtService:
+    return build_court_service(
+        Settings(
+            force_all_mock=True,
+            db_url="sqlite:///:memory:",
+            dry_run_default=True,
+            approver_directory=_DIRECTORY,
+        )
+    )
+
+
+def _notifier(
+    service: CourtService, store: InMemoryConversationStore, jobs: list[tuple[Any, ...]]
+) -> BotCardNotifier:
+    return BotCardNotifier(
+        conversation_store=store,
+        submit_job=lambda ref, card, thread_id: jobs.append((ref, card, thread_id)),
+        trial_reader=service.get_trial,
+        note_reader=service.requester_note,
+        status_reader=service.get_status,
+    )
+
+
+def _awaiting_approval_thread(service: CourtService) -> str:
+    summary = service.submit_change(
+        "slip the launch from 2026-06-10 to 2026-06-17",
+        source="test",
+        run_mode=RunMode.DRY_RUN,
+        requester=_REQUESTER,
+    )
+    return summary.thread_id
+
+
+def test_approval_requested_enqueues_decide_card_per_reachable_approver() -> None:
+    service = _service()
+    store = InMemoryConversationStore()
+    store.save(oid="oid-app", upn="approver@example.com", reference=_REFERENCE)
+    jobs: list[tuple[Any, ...]] = []
+    thread_id = _awaiting_approval_thread(service)
+
+    _notifier(service, store, jobs).approval_requested(
+        thread_id=thread_id,
+        title="slip the launch",
+        requester_upn="requester@example.com",
+        approver_upns=["approver@example.com", "offline@example.com"],
+        note="please review",
+    )
+
+    # One job for the installed approver; the offline one is skipped silently.
+    assert len(jobs) == 1
+    reference, card, job_thread = jobs[0]
+    assert reference == _REFERENCE and job_thread == thread_id
+    verbs = [a["verb"] for a in card["actions"]]
+    assert verbs == ["decide", "decide"]  # the actionable approval card, not a toast
+    assert "please review" in str(card)
+
+
+def test_decided_enqueues_result_card_for_requester() -> None:
+    service = _service()
+    store = InMemoryConversationStore()
+    store.save(oid="oid-req", upn="requester@example.com", reference=_REFERENCE)
+    jobs: list[tuple[Any, ...]] = []
+    thread_id = _awaiting_approval_thread(service)
+    service.send_for_approval(thread_id, actor=_REQUESTER, note="please review")
+    approver = Principal(oid="oid-app", upn="approver@example.com", display_name="app")
+    service.decide(thread_id, actor=approver, approve=True)
+
+    _notifier(service, store, jobs).decided(
+        thread_id=thread_id,
+        title="slip the launch",
+        requester_upn="requester@example.com",
+        approved=True,
+        decider_upn="approver@example.com",
+        note="",
+    )
+
+    assert len(jobs) == 1
+    _, card, _ = jobs[0]
+    assert "actions" not in card  # terminal result card — nothing further to click
+
+
+def test_unreachable_recipients_enqueue_nothing() -> None:
+    service = _service()
+    jobs: list[tuple[Any, ...]] = []
+    thread_id = _awaiting_approval_thread(service)
+    notifier = _notifier(service, InMemoryConversationStore(), jobs)
+
+    notifier.approval_requested(
+        thread_id=thread_id,
+        title="t",
+        requester_upn="requester@example.com",
+        approver_upns=["approver@example.com"],
+        note="n",
+    )
+    notifier.decided(
+        thread_id=thread_id,
+        title="t",
+        requester_upn="requester@example.com",
+        approved=False,
+        decider_upn="approver@example.com",
+        note="no",
+    )
+
+    assert jobs == []

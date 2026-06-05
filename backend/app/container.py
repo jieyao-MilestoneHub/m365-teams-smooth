@@ -33,6 +33,7 @@ from app.adapters.persistence.db import init_db, make_engine, make_session_facto
 from app.adapters.persistence.repositories import (
     SqlApprovalLedger,
     SqlAuditRepository,
+    SqlConversationStore,
     SqlPrecedentStore,
     SqlVerdictLedger,
 )
@@ -52,6 +53,7 @@ from app.agent.policy_rules.models import RulePack
 from app.agent.policy_rules.packs import default_packs
 from app.agent.runner import CourtRunner
 from app.config import Settings
+from app.ports.conversation_store import ConversationStore
 from app.ports.integration import IntegrationAdapter
 from app.ports.knowledge import KnowledgePort
 from app.ports.llm import LLMProvider
@@ -61,6 +63,32 @@ from app.ports.request_parser import RequestParser
 from app.services.approver_directory import ApproverDirectory
 from app.services.court_service import CourtService
 from app.services.maintenance import MaintenanceService
+
+
+def build_teams_notifier(settings: Settings) -> ApprovalNotifier | None:
+    """The Teams activity-feed notifier, when notifications are configured; else ``None``."""
+    if (
+        settings.notify_mode == "teams"
+        and settings.graph_tenant_id
+        and settings.graph_client_id
+        and settings.graph_client_secret
+    ):
+        return TeamsActivityNotifier(
+            GraphClient(
+                settings.graph_tenant_id,
+                settings.graph_client_id,
+                settings.graph_client_secret,
+            ),
+            link_url=settings.notification_link_url(),
+        )
+    return None
+
+
+def build_conversation_store(settings: Settings) -> ConversationStore:
+    """The conversation-reference store over the same database the court uses."""
+    engine = make_engine(settings.db_url)
+    init_db(engine)
+    return SqlConversationStore(make_session_factory(engine))
 
 
 def build_court_service(
@@ -154,21 +182,8 @@ def build_court_service(
     memory = SqlPrecedentStore(session_factory)
 
     # Approval notifications: Teams activity feed when configured, else none (workflow unchanged).
-    if (
-        notifier is None
-        and settings.notify_mode == "teams"
-        and settings.graph_tenant_id
-        and settings.graph_client_id
-        and settings.graph_client_secret
-    ):
-        notifier = TeamsActivityNotifier(
-            GraphClient(
-                settings.graph_tenant_id,
-                settings.graph_client_id,
-                settings.graph_client_secret,
-            ),
-            link_url=settings.notify_link_url,
-        )
+    if notifier is None:
+        notifier = build_teams_notifier(settings)
 
     store = SqliteCheckpointStore.from_db_url(settings.db_url)
     store.setup()

@@ -59,3 +59,15 @@ output "entra_client_secret" {
   value       = var.create_entra_app ? azuread_application_password.court[0].value : ""
   sensitive   = true
 }
+
+# --- Bot surface ---
+
+output "bot_app_id" {
+  description = "BOT_APP_ID placeholder for m365/manifest.json's bots section (empty when create_bot = false)."
+  value       = local.bot_app_id
+}
+
+output "bot_messaging_endpoint" {
+  description = "The Bot Framework messaging endpoint the Azure Bot resource points at."
+  value       = var.create_bot ? "${local.public_base_url}/api/messages" : ""
+}

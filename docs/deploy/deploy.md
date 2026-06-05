@@ -97,7 +97,39 @@ In the same tenant (a dedicated **Microsoft 365 dev tenant** with custom-app upl
    permissions** (e.g. `Calendars.ReadWrite`, `Sites.ReadWrite.All`, `User.Invite.All`) and grant
    admin consent. Mocks need no Graph permissions.
 
-## 3. Package and sideload the agent
+## 3. Bot surface (native approval buttons)
+
+The backend ships a Bot Framework endpoint at `POST {PUBLIC_BASE_URL}/api/messages`. Registered
+behind **Azure Bot Service** with a Teams channel, it gives the Change Court card native
+`Action.Execute` buttons: the bot proactively delivers the approval card into each approver's
+personal chat, the activity-feed toast deep-links onto it, and a click refreshes the card in place
+through the same service gates the MCP tools use. Without this registration the flow still works —
+approvals just stay narrated text in Copilot Chat.
+
+Terraform automates it (`create_bot = true` in `infra/`); the equivalent manual steps:
+
+1. **Bot app registration** — a **multi-tenant** app (`AzureADMultipleOrgs`) with a client secret.
+   Multi-tenant matters in a cross-tenant topology: the Azure Bot resource lives in the
+   subscription's tenant while users sign in from the Microsoft 365 tenant. Register it in either
+   tenant; note the *Application (client) ID*. (Keep it separate from the court app of step 2 —
+   that one is the MCP resource server.)
+2. **Azure Bot resource** (in the subscription) — type *Azure Bot*, SKU F0, *Microsoft App ID* =
+   the bot app's client id, app type *Multi Tenant*, **messaging endpoint**
+   `{PUBLIC_BASE_URL}/api/messages`. Then enable the **Microsoft Teams channel**.
+3. **Backend env** — set on the Container App: `BOT_APP_ID`, `BOT_APP_PASSWORD`,
+   `BOT_APP_TYPE=MultiTenant` (and `BOT_APP_TENANT_ID` only for a single-tenant bot). Empty
+   `BOT_APP_ID` keeps the endpoint in anonymous mode for local Playground use.
+4. **Manifest** — export `BOT_APP_ID` before `make package` so the `bots` section resolves, and
+   re-upload the app package. On first install in the M365 tenant, Teams prompts consent for the
+   multi-tenant bot app — accept it once.
+5. **Notifications onto the card** — with `NOTIFY_MODE=teams`, leave `NOTIFY_LINK_URL` empty: the
+   toast then deep-links to the bot chat, where the proactive card already sits. Successive
+   notifications for the same trial share a `chainId`, so they override rather than stack.
+
+Approvers must have the app installed (so the bot can record where to reach them); anyone who has
+not installed it still gets the activity-feed toast and can act from the bot's `queue` command.
+
+## 4. Package and sideload the agent
 
 With the host URL and the values above, build the app package and upload it — see
 [`../m365/README.md`](../../m365/README.md) (`make package`). Then walk the three trials in Copilot Chat
