@@ -20,6 +20,8 @@ from __future__ import annotations
 
 from hashlib import sha256
 
+import httpx
+
 from app.adapters.integrations.graph import GraphClient
 from app.ports.notifier import ApprovalNotifier
 
@@ -50,7 +52,12 @@ class TeamsActivityNotifier(ApprovalNotifier):
         }
         if self._teams_app_id:
             payload["teamsAppId"] = self._teams_app_id
-        self._graph.post(f"/users/{upn}/teamwork/sendActivityNotification", payload)
+        try:
+            self._graph.post(f"/users/{upn}/teamwork/sendActivityNotification", payload)
+        except httpx.HTTPStatusError as err:
+            # Surface Graph's error body — the status line alone ("400 Bad Request") hides the
+            # actionable reason (e.g. an activity-type/template mismatch with the installed app).
+            raise RuntimeError(f"{err} — {err.response.text[:300]}") from err
 
     def approval_requested(
         self,

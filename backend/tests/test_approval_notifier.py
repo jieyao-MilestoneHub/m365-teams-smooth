@@ -88,6 +88,34 @@ def test_decide_notifies_the_requester_with_the_outcome() -> None:
     assert event["decider_upn"] == APPROVER.upn
 
 
+def test_cast_verdict_notifies_the_requester() -> None:
+    # The legacy verdict gate is terminal too — the requester must hear the outcome from it
+    # exactly as they would from decide().
+    notifier = FakeNotifier()
+    service = _service(notifier)
+    s = service.submit_change(_REQ, requester=REQUESTER)
+    service.send_for_approval(s.thread_id, actor=REQUESTER, note="ready")
+    result = service.cast_verdict(s.thread_id, VerdictType.APPROVE, principal=APPROVER)
+    assert result.status == "done"
+    assert len(notifier.decisions) == 1
+    event = notifier.decisions[0]
+    assert event["requester_upn"] == REQUESTER.upn
+    assert event["approved"] is True
+    assert event["decider_upn"] == APPROVER.upn
+
+
+def test_duplicate_cast_verdict_does_not_renotify() -> None:
+    notifier = FakeNotifier()
+    service = _service(notifier)
+    s = service.submit_change(_REQ, requester=REQUESTER)
+    service.send_for_approval(s.thread_id, actor=REQUESTER, note="ready")
+    first = service.cast_verdict(s.thread_id, VerdictType.APPROVE, principal=APPROVER)
+    replay = service.cast_verdict(s.thread_id, VerdictType.APPROVE, principal=APPROVER)
+    assert replay.idempotent is True
+    assert replay.audit_id == first.audit_id
+    assert len(notifier.decisions) == 1  # the replay must not push a second toast
+
+
 class _ExplodingNotifier(ApprovalNotifier):
     def approval_requested(self, **_: object) -> None:
         raise RuntimeError("graph down")
@@ -103,6 +131,41 @@ def test_notifier_failure_never_blocks_the_workflow() -> None:
     assert summary.status == "awaiting_approval"
     result = service.decide(s.thread_id, actor=APPROVER, approve=True)
     assert result.status == "done"
+
+
+def test_notifier_failure_never_blocks_cast_verdict() -> None:
+    service = _service(_ExplodingNotifier())
+    s = service.submit_change(_REQ, requester=REQUESTER)
+    service.send_for_approval(s.thread_id, actor=REQUESTER, note="ready")
+    result = service.cast_verdict(s.thread_id, VerdictType.APPROVE, principal=APPROVER)
+    assert result.status == "done"
+
+
+def test_graph_error_body_is_surfaced() -> None:
+    # The status line alone hides the actionable reason; the raised error must carry the body.
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/oauth2/v2.0/token"):
+            return httpx.Response(200, json={"access_token": "t", "expires_in": 3600})
+        return httpx.Response(
+            400, json={"error": {"code": "BadRequest", "message": "template mismatch"}}
+        )
+
+    graph = GraphClient(
+        "tenant", "client", "secret", client=httpx.Client(transport=httpx.MockTransport(handler))
+    )
+    notifier = TeamsActivityNotifier(graph, link_url="https://teams.microsoft.com")
+    try:
+        notifier.decided(
+            thread_id="t1",
+            title="slip",
+            requester_upn="lowpriv@x",
+            approved=True,
+            decider_upn="a@x",
+            note="",
+        )
+        raise AssertionError("expected the Graph 400 to raise")
+    except RuntimeError as err:
+        assert "template mismatch" in str(err)
 
 
 def test_teams_activity_notifier_posts_per_approver() -> None:

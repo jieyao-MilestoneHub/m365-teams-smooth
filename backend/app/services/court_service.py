@@ -250,6 +250,15 @@ class CourtService:
             },
         )
         metrics.increment("verdicts.cast")
+        # The verdict gate is terminal however the trial got here — push the outcome to the
+        # requester just like decide() does, so a trial never concludes silently. Best-effort:
+        # _notify_decided swallows delivery failures, and the duplicate-claim path above never
+        # reaches this, so a replay cannot re-notify.
+        trial_after = self.get_trial(thread_id)
+        if trial_after is not None:
+            decider = principal if principal is not None else Principal(upn=actor)
+            approved = verdict_type in (VerdictType.APPROVE, VerdictType.APPROVE_INTERNAL_ONLY)
+            self._notify_decided(thread_id, trial_after, decider, approved=approved, note="")
         return CastResult(
             thread_id=thread_id,
             status=str(state.get("status", "")),
@@ -448,6 +457,14 @@ class CourtService:
                 approver_upns=approvers,
                 note=note,
             )
+            logger.info(
+                "notify.sent",
+                extra={
+                    "thread_id": thread_id,
+                    "event": "approval_requested",
+                    "recipients": len(approvers),
+                },
+            )
             metrics.increment("notify.sent")
         except Exception as err:
             logger.warning(
@@ -477,6 +494,10 @@ class CourtService:
                 approved=approved,
                 decider_upn=actor.upn or actor.key(),
                 note=note,
+            )
+            logger.info(
+                "notify.sent",
+                extra={"thread_id": thread_id, "event": "decided", "approved": approved},
             )
             metrics.increment("notify.sent")
         except Exception as err:
