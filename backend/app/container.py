@@ -80,6 +80,7 @@ def build_teams_notifier(settings: Settings) -> ApprovalNotifier | None:
                 settings.graph_client_secret,
             ),
             link_url=settings.notification_link_url(),
+            teams_app_id=settings.notify_teams_app_id,
         )
     return None
 

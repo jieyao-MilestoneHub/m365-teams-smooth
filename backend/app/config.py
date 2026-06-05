@@ -100,10 +100,12 @@ class Settings(BaseSettings):
     # Graph (app-only TeamsActivity.Send; reuses the GRAPH_* credentials; the activity types are
     # declared in the Teams app manifest). Delivery is best-effort and never blocks the workflow.
     notify_mode: str = "off"
-    # Click-through target of the notification toast (a Teams deep link). Empty -> derived from
-    # the bot app id (the bot chat, where the proactive approval card lands), falling back to the
-    # Teams home when no bot is configured.
+    # Click-through target of the notification toast (a Teams deep link, "…/l/…" — Graph rejects
+    # a bare domain). Empty -> derived from the bot app id (the bot chat, where the proactive
+    # approval card lands), falling back to the Teams home when no bot is configured.
     notify_link_url: str = ""
+    # The catalog app id of the Teams app (disambiguates the installed app for notifications).
+    notify_teams_app_id: str = ""
 
     # --- Bot surface (POST /api/messages) ---
     # The Azure Bot's app registration. Empty bot_app_id -> anonymous Bot Framework auth, which is
@@ -133,12 +135,15 @@ class Settings(BaseSettings):
         """The toast's click-through deep link.
 
         An explicit ``notify_link_url`` wins; otherwise the bot chat (where the proactive approval
-        card lands) when a bot is configured, else the Teams home as a safe default.
+        card lands) when a bot is configured, then the installed app, then the Teams home.
+        Graph requires a deep link ("…/l/…"), so the derived forms are preferred.
         """
         if self.notify_link_url:
             return self.notify_link_url
         if self.bot_app_id:
             return f"https://teams.microsoft.com/l/chat/0/0?users=28:{self.bot_app_id}"
+        if self.notify_teams_app_id:
+            return f"https://teams.microsoft.com/l/app/{self.notify_teams_app_id}"
         return "https://teams.microsoft.com"
 
     def approver_map(self) -> dict[str, set[str]]:
