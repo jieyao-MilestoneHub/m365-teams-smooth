@@ -25,9 +25,16 @@ from app.ports.integration import ReadQuery, ReadResult
 class _ProbeAdapter(BaseIntegrationAdapter):
     """Records whether the real-mutation hook ran, and can be told to fail on apply."""
 
-    def __init__(self, *, system: str = "probe", fail_apply: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        system: str = "probe",
+        fail_apply: bool = False,
+        value_pattern: str | None = None,
+    ) -> None:
         self._system = system
         self._fail_apply = fail_apply
+        self._value_pattern = value_pattern
         self.applied = False
         self.store: dict[str, object] = {"value": 1}
 
@@ -36,12 +43,15 @@ class _ProbeAdapter(BaseIntegrationAdapter):
         return self._system
 
     def _capabilities(self) -> list[Capability]:
+        schema: dict[str, object] = {"required": ["value"]}
+        if self._value_pattern:
+            schema["properties"] = {"value": {"pattern": self._value_pattern}}
         return [
             Capability(
                 system=self._system,
                 name=f"{self._system}.set_value",
                 kind=CapabilityKind.WRITE,
-                params_schema={"required": ["value"]},
+                params_schema=schema,
             )
         ]
 
@@ -111,6 +121,20 @@ def test_validate_rejects_unknown_and_missing_params() -> None:
         )
     adapter.validate(
         RequestedAction(system="probe", capability_name="probe.set_value", params={"value": 1})
+    )
+
+
+def test_validate_rejects_malformed_param_values() -> None:
+    # The schema's value constraints are enforced at validate, not discovered at execution.
+    adapter = _ProbeAdapter(value_pattern="^[0-9]+$")
+    with pytest.raises(CapabilityNotFoundError):
+        adapter.validate(
+            RequestedAction(
+                system="probe", capability_name="probe.set_value", params={"value": "not-a-number"}
+            )
+        )
+    adapter.validate(
+        RequestedAction(system="probe", capability_name="probe.set_value", params={"value": 7})
     )
 
 

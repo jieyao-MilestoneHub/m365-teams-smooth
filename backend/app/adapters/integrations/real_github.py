@@ -70,7 +70,10 @@ class RealGitHubAdapter(BaseIntegrationAdapter):
                 system=_SYSTEM,
                 name="github.update_milestone_due",
                 kind=CapabilityKind.WRITE,
-                params_schema={"required": ["milestone", "due_on"]},
+                params_schema={
+                    "required": ["milestone", "due_on"],
+                    "properties": {"due_on": {"format": "date"}},
+                },
             ),
             Capability(
                 system=_SYSTEM,
@@ -82,7 +85,10 @@ class RealGitHubAdapter(BaseIntegrationAdapter):
                 system=_SYSTEM,
                 name="github.comment_issue",
                 kind=CapabilityKind.WRITE,
-                params_schema={"required": ["issue", "body"]},
+                params_schema={
+                    "required": ["issue", "body"],
+                    "properties": {"issue": {"pattern": "^[0-9]+$"}},
+                },
             ),
         ]
 

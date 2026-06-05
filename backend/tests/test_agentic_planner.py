@@ -39,8 +39,18 @@ class _Registry:
         return None
 
 
-def _write_cap(system: str, name: str, *, required: list[str] | None = None) -> Capability:
-    schema: dict[str, object] = {"required": required} if required else {}
+def _write_cap(
+    system: str,
+    name: str,
+    *,
+    required: list[str] | None = None,
+    properties: dict[str, object] | None = None,
+) -> Capability:
+    schema: dict[str, object] = {}
+    if required:
+        schema["required"] = required
+    if properties:
+        schema["properties"] = properties
     return Capability(
         system=system, name=name, kind=CapabilityKind.WRITE, description="d", params_schema=schema
     )
@@ -121,6 +131,52 @@ def test_missing_required_params_rejects_the_plan() -> None:
     plan = _planner(response, PlanKind.FEASIBLE, caps)(_CHANGE, _IMPACT)
 
     assert plan.rationale == "baseline rationale"
+
+
+def test_malformed_param_value_rejects_the_plan() -> None:
+    # Present-but-unusable values (a non-numeric issue ref) fall back instead of reaching
+    # execution and failing there (issue #268).
+    caps = [
+        _write_cap(
+            "github",
+            "github.comment_issue",
+            required=["issue", "body"],
+            properties={"issue": {"pattern": "^[0-9]+$"}},
+        )
+    ]
+    response = _plan_json(
+        [
+            {
+                "system": "github",
+                "name": "github.comment_issue",
+                "params": {"issue": "Milestone 'Launch'", "body": "moved"},
+            }
+        ]
+    )
+    plan = _planner(response, PlanKind.FEASIBLE, caps)(_CHANGE, _IMPACT)
+
+    assert plan.rationale == "baseline rationale"  # full fallback, no partial plan
+
+
+def test_prompt_renders_value_constraint_hints() -> None:
+    caps = [
+        _write_cap(
+            "github",
+            "github.update_milestone_due",
+            required=["milestone", "due_on"],
+            properties={"due_on": {"format": "date"}},
+        )
+    ]
+    llm = _ScriptedLLM(_plan_json([]))
+    planner = LlmPlanner(
+        llm,
+        _Registry(caps),  # type: ignore[arg-type]
+        fallback=lambda change, impact: _baseline(PlanKind.FEASIBLE),
+    )
+    planner(_CHANGE, _IMPACT)
+
+    _, system = llm.prompts[0]
+    assert "due_on is an ISO date" in system
 
 
 def test_empty_or_oversized_plans_fall_back() -> None:

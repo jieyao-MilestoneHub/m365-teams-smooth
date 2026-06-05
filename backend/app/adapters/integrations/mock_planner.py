@@ -51,7 +51,10 @@ class MockPlannerAdapter(BaseIntegrationAdapter):
                 system=_SYSTEM,
                 name="planner.shift_task_dates",
                 kind=CapabilityKind.WRITE,
-                params_schema={"required": ["delta_days"]},
+                params_schema={
+                    "required": ["delta_days"],
+                    "properties": {"delta_days": {"pattern": "^-?[0-9]+$"}},
+                },
             ),
         ]
 

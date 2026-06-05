@@ -23,6 +23,7 @@ from app.domain import (
     RunMode,
     StepResult,
     StepStatus,
+    param_violations,
 )
 from app.domain.errors import CapabilityNotFoundError, IntegrationError
 from app.ports.integration import IntegrationAdapter, ReadQuery, ReadResult
@@ -49,13 +50,9 @@ class BaseIntegrationAdapter(IntegrationAdapter):
             raise CapabilityNotFoundError(
                 f"{self.system}: no capability '{action.capability_name}'"
             )
-        required = cap.params_schema.get("required", []) if cap.params_schema else []
-        if isinstance(required, list):
-            missing = [k for k in required if k not in action.params]
-            if missing:
-                raise CapabilityNotFoundError(
-                    f"{cap.name}: missing required params {missing}"
-                )
+        violations = param_violations(cap, action.params)
+        if violations:
+            raise CapabilityNotFoundError(f"{cap.name}: {'; '.join(violations)}")
 
     def read(self, query: ReadQuery) -> ReadResult:
         # Reads are idempotent — retry any transient error.

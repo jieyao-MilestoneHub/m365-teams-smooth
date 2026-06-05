@@ -50,7 +50,10 @@ class RealOutlookAdapter(BaseIntegrationAdapter):
                 system=_SYSTEM,
                 name="outlook.create_event",
                 kind=CapabilityKind.WRITE,
-                params_schema={"required": ["title", "start"]},
+                params_schema={
+                    "required": ["title", "start"],
+                    "properties": {"start": {"format": "date"}},
+                },
             ),
             Capability(
                 system=_SYSTEM,
