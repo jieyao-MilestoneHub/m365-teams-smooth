@@ -55,6 +55,12 @@ variable "integration_mode" {
   default     = "github:real"
 }
 
+variable "dry_run_default" {
+  type        = bool
+  description = "Whether new decisions default to dry-run. Set false to run approved plans live."
+  default     = true
+}
+
 variable "github_token" {
   type        = string
   description = "Optional: token for the real GitHub adapter (only when github runs real). Stored as a Container App secret."

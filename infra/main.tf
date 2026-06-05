@@ -139,7 +139,7 @@ resource "azurerm_container_app" "this" {
       }
       env {
         name  = "DRY_RUN_DEFAULT"
-        value = "true"
+        value = tostring(var.dry_run_default)
       }
       env {
         name  = "INTEGRATION_MODE"
