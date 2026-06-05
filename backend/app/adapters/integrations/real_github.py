@@ -131,8 +131,11 @@ class RealGitHubAdapter(BaseIntegrationAdapter):
             number = self._find_milestone(repo, title).get("number")
             if number is None:
                 raise IntegrationError(f"{_SYSTEM}: milestone '{title}' not found")
+            due_on = str(step.params["due_on"])
+            if len(due_on) == 10:  # plans carry plain dates; the API wants a full timestamp
+                due_on = f"{due_on}T00:00:00Z"
             resp = self._client.patch(
-                f"/repos/{repo}/milestones/{number}", json={"due_on": step.params["due_on"]}
+                f"/repos/{repo}/milestones/{number}", json={"due_on": due_on}
             )
             resp.raise_for_status()
             return {"milestone": resp.json()}
