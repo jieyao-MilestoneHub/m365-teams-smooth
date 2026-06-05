@@ -168,6 +168,7 @@ def build_court_service(
                 settings.graph_client_secret,
             ),
             link_url=settings.notify_link_url,
+            teams_app_id=settings.notify_teams_app_id,
         )
 
     store = SqliteCheckpointStore.from_db_url(settings.db_url)

@@ -440,9 +440,14 @@ class CourtService:
                 note=note,
             )
             metrics.increment("notify.sent")
-        except Exception:
+        except Exception as err:
             logger.warning(
-                "notify.failed", extra={"thread_id": thread_id, "event": "approval_requested"}
+                "notify.failed",
+                extra={
+                    "thread_id": thread_id,
+                    "event": "approval_requested",
+                    "reason": str(err)[:200],
+                },
             )
             metrics.increment("notify.failed")
 
@@ -465,8 +470,11 @@ class CourtService:
                 note=note,
             )
             metrics.increment("notify.sent")
-        except Exception:
-            logger.warning("notify.failed", extra={"thread_id": thread_id, "event": "decided"})
+        except Exception as err:
+            logger.warning(
+                "notify.failed",
+                extra={"thread_id": thread_id, "event": "decided", "reason": str(err)[:200]},
+            )
             metrics.increment("notify.failed")
 
     def _resume(

@@ -2,8 +2,15 @@
 
 Uses Microsoft Graph ``sendActivityNotification`` (app-only, ``TeamsActivity.Send``): the recipient
 gets a toast + activity-feed entry that deep-links back into Teams, so approvers act on a push
-instead of polling the queue. Activity types here must be declared in the Teams app manifest's
-``activities`` section. Failures raise; the service treats notification delivery as best-effort.
+instead of polling the queue. Failures raise; the service treats notification delivery as
+best-effort.
+
+Graph contract, verified live against the deployed tenant:
+- ``topic.webUrl`` must be a Teams deep link ("…/l/…"); a bare domain is rejected (400).
+- Custom activity types declared in the manifest were accepted (204) but silently dropped by the
+  feed, while the reserved ``systemDefault`` type — free-form text via the ``systemDefaultText``
+  template parameter — delivers reliably, so that is what this adapter sends.
+- ``teamsAppId`` (the *catalog* app id, not the manifest id) disambiguates the installed app.
 """
 
 from __future__ import annotations
@@ -17,20 +24,21 @@ _TOPIC_VALUE = "AI Change Court"
 class TeamsActivityNotifier(ApprovalNotifier):
     """Delivers approval notifications to users' Teams activity feeds via Graph."""
 
-    def __init__(self, graph: GraphClient, *, link_url: str) -> None:
+    def __init__(self, graph: GraphClient, *, link_url: str, teams_app_id: str = "") -> None:
         self._graph = graph
         self._link_url = link_url
+        self._teams_app_id = teams_app_id
 
-    def _send(self, upn: str, activity_type: str, preview: str, actor: str) -> None:
-        self._graph.post(
-            f"/users/{upn}/teamwork/sendActivityNotification",
-            {
-                "topic": {"source": "text", "value": _TOPIC_VALUE, "webUrl": self._link_url},
-                "activityType": activity_type,
-                "previewText": {"content": preview[:150]},
-                "templateParameters": [{"name": "actor", "value": actor}],
-            },
-        )
+    def _send(self, upn: str, text: str) -> None:
+        payload: dict[str, object] = {
+            "topic": {"source": "text", "value": _TOPIC_VALUE, "webUrl": self._link_url},
+            "activityType": "systemDefault",
+            "previewText": {"content": text[:150]},
+            "templateParameters": [{"name": "systemDefaultText", "value": text[:150]}],
+        }
+        if self._teams_app_id:
+            payload["teamsAppId"] = self._teams_app_id
+        self._graph.post(f"/users/{upn}/teamwork/sendActivityNotification", payload)
 
     def approval_requested(
         self,
@@ -41,9 +49,9 @@ class TeamsActivityNotifier(ApprovalNotifier):
         approver_upns: list[str],
         note: str,
     ) -> None:
-        preview = f"{title} — {note}" if note else title
+        text = f"Approval needed — {requester_upn}: {title}" + (f" — {note}" if note else "")
         for upn in approver_upns:
-            self._send(upn, "approvalRequired", preview, requester_upn or _TOPIC_VALUE)
+            self._send(upn, text)
 
     def decided(
         self,
@@ -58,5 +66,5 @@ class TeamsActivityNotifier(ApprovalNotifier):
         if not requester_upn:
             return
         outcome = "approved" if approved else "rejected"
-        preview = f"{title} — {outcome}" + (f": {note}" if note else "")
-        self._send(requester_upn, "trialDecided", preview, decider_upn or _TOPIC_VALUE)
+        text = f"{decider_upn} {outcome}: {title}" + (f" — {note}" if note else "")
+        self._send(requester_upn, text)

@@ -100,8 +100,10 @@ class Settings(BaseSettings):
     # Graph (app-only TeamsActivity.Send; reuses the GRAPH_* credentials; the activity types are
     # declared in the Teams app manifest). Delivery is best-effort and never blocks the workflow.
     notify_mode: str = "off"
-    # Click-through target of the notification toast (a Teams deep link).
+    # Click-through target of the notification toast (a Teams deep link, "…/l/…").
     notify_link_url: str = "https://teams.microsoft.com"
+    # The catalog app id of the Teams app (disambiguates the installed app for notifications).
+    notify_teams_app_id: str = ""
 
     # --- Deployment ---
     # Public HTTPS origin this backend is reachable at (e.g. https://change-court.example.com).

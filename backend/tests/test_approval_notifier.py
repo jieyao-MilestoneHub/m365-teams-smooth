@@ -133,5 +133,8 @@ def test_teams_activity_notifier_posts_per_approver() -> None:
         "/v1.0/users/b@x/teamwork/sendActivityNotification",
     ]
     body = calls[0][1]
-    assert body["activityType"] == "approvalRequired"
+    assert body["activityType"] == "systemDefault"
     assert "slip the launch" in str(body["previewText"])
+    params = body["templateParameters"]
+    assert isinstance(params, list)
+    assert any(p["name"] == "systemDefaultText" for p in params)
