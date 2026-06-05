@@ -93,7 +93,7 @@ def test_legacy_cast_verdict_clears_the_pending_index(service: CourtService) -> 
 
     # The legacy verdict path bypasses decide(); it must still clean the queue.
     result = service.cast_verdict(s.thread_id, VerdictType.APPROVE)
-    assert result.status == ChangeStatus.DONE.value
+    assert result.execution_status == ChangeStatus.DONE.value
     assert s.thread_id not in ledger.pending_thread_ids()
 
 

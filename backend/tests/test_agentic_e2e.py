@@ -113,7 +113,7 @@ def test_full_agentic_chain_and_precedent_citation(db_path: str) -> None:
     assert trial.options.rationale == "drafted by the defender"
 
     cast = service.cast_verdict(first.thread_id, VerdictType.APPROVE)
-    assert cast.status == "done" and cast.audit_id is not None
+    assert cast.execution_status == "done" and cast.audit_id is not None
     audit = service.get_audit(cast.audit_id)
     assert audit is not None
     assert audit.trial.options is not None
@@ -146,4 +146,4 @@ def test_hallucinated_selections_are_contained_mid_chain(db_path: str) -> None:
     )
 
     cast = service.cast_verdict(summary.thread_id, VerdictType.APPROVE)
-    assert cast.status == "done"  # governance completed despite the hostile LLM output
+    assert cast.execution_status == "done"  # governance completed despite the hostile LLM output

@@ -23,7 +23,7 @@ def test_live_trial_verifications_reach_get_trial_and_card() -> None:
         "slip the launch from 2026-06-10 to 2026-06-17", run_mode=RunMode.LIVE
     )
     cast = service.cast_verdict(summary.thread_id, VerdictType.APPROVE)
-    assert cast.status == "done"
+    assert cast.execution_status == "done"
 
     trial = service.get_trial(summary.thread_id)
     assert trial is not None
@@ -40,7 +40,7 @@ def test_live_trial_verifications_reach_get_trial_and_card() -> None:
     ]
 
     # A mismatch (if any) renders on the result card; a clean run renders without crashing.
-    card = build_verdict_result_card(trial, status=cast.status, audit_id=cast.audit_id)
+    card = build_verdict_result_card(trial, status=cast.execution_status, audit_id=cast.audit_id)
     json.dumps(card)  # serializable
 
 

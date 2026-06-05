@@ -50,7 +50,8 @@ def test_submit_pauses_for_verdict_then_cast_completes_idempotently() -> None:
     assert "approve" in summary.verdict_options
 
     cast = service.cast_verdict(summary.thread_id, VerdictType.APPROVE)
-    assert cast.status == ChangeStatus.DONE.value
+    assert cast.verdict_recorded is True
+    assert cast.execution_status == ChangeStatus.DONE.value
     assert cast.audit_id is not None
 
     # Casting the same verdict again is a no-op (same default idempotency key).

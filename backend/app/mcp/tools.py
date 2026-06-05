@@ -108,7 +108,14 @@ def register_tools(mcp: FastMCP, service: CourtService) -> None:
         idempotency_key: str | None = None,
         actor: str = "reviewer",
     ) -> dict[str, object]:
-        """Cast a verdict and resume the trial. Idempotent per (thread_id, idempotency_key)."""
+        """Cast a verdict and resume the trial. Idempotent per (thread_id, idempotency_key).
+
+        The result keeps the two outcomes separate: ``verdict_recorded`` confirms the verdict was
+        persisted, and ``execution_status`` reports the resumed run (``done``, ``failed``, …).
+        ``execution_status: "failed"`` means one or more plan steps failed *after* a successfully
+        recorded verdict — explain it as a partial execution failure (see the audit record), never
+        as a failed approval, and do not ask the caller to cast again.
+        """
         # Authorization keys off the authenticated caller, never the spoofable `actor` label —
         # the service enforces separation of duties whenever approval routing is configured.
         result = service.cast_verdict(

@@ -21,9 +21,16 @@ class TrialSummary(BaseModel):
 
 
 class CastResult(BaseModel):
-    """The outcome of casting a verdict."""
+    """The outcome of casting a verdict.
+
+    Verdict persistence and run outcome are separate facts: ``verdict_recorded`` says the verdict
+    itself was persisted (a failing plan step never undoes it), while ``execution_status`` carries
+    the resumed run's lifecycle status (``done``, ``failed``, …). A failed execution therefore
+    never means a failed approval — re-casting is idempotent but pointless.
+    """
 
     thread_id: str
-    status: str
+    verdict_recorded: bool = True
+    execution_status: str
     audit_id: str | None = None
     idempotent: bool = False
