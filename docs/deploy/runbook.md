@@ -200,6 +200,22 @@ The three trials and their expected outcomes are in [`trials.md`](../reference/t
 | `make package` errors on placeholders | One of `TEAMS_APP_ID` / `MCP_HOST_DOMAIN` / `MCP_SERVER_URL` / `OAUTH_CONNECTION_ID` is unset (Phase 4), or icons are missing (Phase 0). |
 | First call after idle is slow | Cold start from `min_replicas = 0`; set `min_replicas = 1` for the demo window. |
 
+## Known issues (open — plan around these)
+
+- **The activity-feed toast's "Open with Copilot" action is inert.** The notification deep link
+  (`NOTIFY_LINK_URL`) targets the app, but a declarative agent has no in-Teams surface to land on,
+  so the button does nothing. Workaround: the approver opens Copilot Chat and runs
+  `list_pending_approvals`. Fix tracked in
+  [#256](https://github.com/jieyao-MilestoneHub/m365-teams-smooth/issues/256) (bot surface with
+  actionable cards).
+- **An updated app package does not reach users until they remove and re-add the agent.** Copilot
+  caches the installed manifest and the plugin's auth state; after a catalog update users may see
+  stale tools or silent auth failures (MCP calls sent without a token, no sign-in prompt). Per user:
+  remove the app, fully quit and reopen Teams, re-add it from "Built for your org", and complete the
+  sign-in on the first tool call. Platform behaviour, not ours — see Microsoft's
+  [Copilot extensibility known issues](https://learn.microsoft.com/en-us/microsoft-365/copilot/extensibility/known-issues).
+  Never ship a package update on demo day.
+
 ---
 
 ## The machine question
