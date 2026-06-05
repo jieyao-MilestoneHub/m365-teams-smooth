@@ -224,6 +224,23 @@ The three trials and their expected outcomes are in [`trials.md`](../reference/t
   also works for the toast (`/users/{oid}/…`) and verdict authorization. Alternatively, grant the
   Graph app `User.Read.All` and resolve the UPN in the bot. Tracked in
   [#276](https://github.com/jieyao-MilestoneHub/m365-teams-smooth/issues/276).
+- **A user's agent silently won't call the tool ("the tool didn't return any data").** The agent
+  confabulates a failure and offers a manual fallback, but the backend logs **zero `POST /mcp`** for
+  the attempt — the call never left the client. Backend, OAuth, and manifest are fine (a known-good
+  account on the same package still works). Diagnose and fix per the playbook in
+  [#273](https://github.com/jieyao-MilestoneHub/m365-teams-smooth/issues/273):
+  - **Confirm it's client-side:** the attempt produces no `POST /mcp` line
+    (`az containerapp logs show -n changecourt -g changecourt-rg --type console`); a healthy call
+    logs `POST /mcp/ 200` then `trial.submitted source="mcp"`.
+  - **Verify with developer mode:** type `-developer on` in Copilot, retry, expand the debug card's
+    **Actions** — tools missing ⇒ the client hasn't loaded the plugin; an OAuth error string ⇒ map it
+    via Microsoft's [MCP troubleshooting](https://learn.microsoft.com/en-us/microsoft-365/copilot/extensibility/plugin-mcp-apps-troubleshooting).
+  - **Mind the surface:** `trial.submitted source="playground"` is the **bot** path; `source="mcp"`
+    is the **Copilot plugin** path — a bot success does not prove the plugin works.
+  - **Fix (lightest first):** (1) stale client cache → remove app, *fully quit* Teams, re-add,
+    new chat; (2) persisted OAuth token (reinstall does **not** clear it) → Graph
+    `revokeSignInSessions` or remove the user's consent in Entra, then sign in again; (3) a locked
+    bot compose box is a per-user Teams messaging policy / incomplete consent, not a license gap.
 
 ---
 
