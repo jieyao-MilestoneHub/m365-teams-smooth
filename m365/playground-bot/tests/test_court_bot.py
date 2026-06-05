@@ -13,7 +13,7 @@ from typing import Any
 import pytest
 from app.config import Settings
 from app.container import build_court_service
-from app.domain import PlanKind, RunMode, VerdictType
+from app.domain import PlanKind, VerdictType
 from app.domain.principal import Principal
 from app.services.court_service import CourtService
 
@@ -87,7 +87,7 @@ class _FakeService:
         self.calls: list[tuple[Any, ...]] = []
 
     def submit_change(
-        self, raw: str, *, source: str, run_mode: Any, requester: Any = None
+        self, raw: str, *, source: str, run_mode: Any = None, requester: Any = None
     ) -> _Summary:
         self.calls.append(("submit", raw, source, run_mode, requester))
         return _Summary()
@@ -140,7 +140,8 @@ def test_text_opens_trial_and_renders_request_card() -> None:
     bot, fake = _bot_with_fake()
     card = bot.respond(text="slip the launch", value=None)
     assert card["_req"] == ["thread-1", {"trial_for": "thread-1"}]
-    assert fake.calls[0] == ("submit", "slip the launch", "playground", RunMode.DRY_RUN, None)
+    # run_mode is None: the bot defers to the deployment's DRY_RUN_DEFAULT (see #279).
+    assert fake.calls[0] == ("submit", "slip the launch", "playground", None, None)
 
 
 def test_verdict_value_casts_and_renders_result_card() -> None:
