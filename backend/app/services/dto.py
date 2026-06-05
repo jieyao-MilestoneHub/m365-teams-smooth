@@ -17,6 +17,7 @@ class TrialSummary(BaseModel):
     plan_kind: str | None = None
     verdict_options: list[str] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
+    acknowledged: bool = False  # requester confirmed the concluded outcome
 
 
 class CastResult(BaseModel):

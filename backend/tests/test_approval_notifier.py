@@ -146,6 +146,100 @@ class _ExplodingNotifier(ApprovalNotifier):
     def decided(self, **_: object) -> None:
         raise RuntimeError("graph down")
 
+    def acknowledged(self, **_: object) -> None:
+        raise RuntimeError("graph down")
+
+
+def test_requester_ack_closes_the_loop() -> None:
+    # change → notify → ack: the requester's confirmation reaches the decider and is recorded.
+    notifier = FakeNotifier()
+    service = _service(notifier)
+    s = service.submit_change(_REQ, requester=REQUESTER)
+    service.send_for_approval(s.thread_id, actor=REQUESTER, note="ready")
+    service.decide(s.thread_id, actor=APPROVER, approve=True)
+    summary = service.acknowledge(s.thread_id, actor=REQUESTER)
+    assert summary.acknowledged is True
+    assert len(notifier.acks) == 1
+    ack = notifier.acks[0]
+    assert ack["requester_upn"] == REQUESTER.upn
+    assert APPROVER.upn in str(ack["approver_upns"])
+
+
+def test_repeat_ack_is_a_noop() -> None:
+    notifier = FakeNotifier()
+    service = _service(notifier)
+    s = service.submit_change(_REQ, requester=REQUESTER)
+    service.send_for_approval(s.thread_id, actor=REQUESTER, note="ready")
+    service.decide(s.thread_id, actor=APPROVER, approve=True)
+    service.acknowledge(s.thread_id, actor=REQUESTER)
+    again = service.acknowledge(s.thread_id, actor=REQUESTER)
+    assert again.acknowledged is True
+    assert len(notifier.acks) == 1  # no second push
+
+
+def test_only_the_requester_may_acknowledge() -> None:
+    from app.domain.errors import SeparationOfDutiesError
+
+    service = _service(FakeNotifier())
+    s = service.submit_change(_REQ, requester=REQUESTER)
+    service.send_for_approval(s.thread_id, actor=REQUESTER, note="ready")
+    service.decide(s.thread_id, actor=APPROVER, approve=True)
+    try:
+        service.acknowledge(s.thread_id, actor=APPROVER)
+        raise AssertionError("expected the approver's ack to be refused")
+    except SeparationOfDutiesError:
+        pass
+
+
+def test_ack_requires_a_concluded_trial() -> None:
+    from app.domain.errors import InvalidRequestError
+
+    service = _service(FakeNotifier())
+    s = service.submit_change(_REQ, requester=REQUESTER)
+    service.send_for_approval(s.thread_id, actor=REQUESTER, note="ready")
+    try:
+        service.acknowledge(s.thread_id, actor=REQUESTER)
+        raise AssertionError("expected ack on a pending trial to be refused")
+    except InvalidRequestError:
+        pass
+
+
+def test_ack_after_cast_verdict_notifies_the_caster() -> None:
+    # The cast_verdict path records no APPROVE event — the ack must still reach the caster.
+    notifier = FakeNotifier()
+    service = _service(notifier)
+    s = service.submit_change(_REQ, requester=REQUESTER)
+    service.send_for_approval(s.thread_id, actor=REQUESTER, note="ready")
+    service.cast_verdict(s.thread_id, VerdictType.APPROVE, principal=APPROVER)
+    service.acknowledge(s.thread_id, actor=REQUESTER)
+    assert len(notifier.acks) == 1
+    assert APPROVER.upn in str(notifier.acks[0]["approver_upns"])
+
+
+def test_ack_event_does_not_disturb_quorum() -> None:
+    from app.domain.approval import (
+        ApprovalDecision,
+        ApprovalEvent,
+        QuorumState,
+        evaluate_quorum,
+    )
+    from app.domain.enums import ApproverRole
+
+    events = [
+        ApprovalEvent(
+            event_id="e1",
+            thread_id="t",
+            actor=APPROVER,
+            decision=ApprovalDecision.APPROVE,
+            role=ApproverRole.ENG_LEAD,
+        ),
+        ApprovalEvent(
+            event_id="e2", thread_id="t", actor=REQUESTER, decision=ApprovalDecision.ACK
+        ),
+    ]
+    decision = evaluate_quorum(events, [ApproverRole.ENG_LEAD], "all")
+    assert decision.state is QuorumState.SATISFIED
+
 
 def test_notifier_failure_never_blocks_the_workflow() -> None:
     service = _service(_ExplodingNotifier())

@@ -39,3 +39,14 @@ class ApprovalNotifier(ABC):
         note: str,
     ) -> None:
         """Notify the requester that their trial was approved or rejected."""
+
+    @abstractmethod
+    def acknowledged(
+        self,
+        *,
+        thread_id: str,
+        title: str,
+        requester_upn: str,
+        approver_upns: list[str],
+    ) -> None:
+        """Notify the deciders that the requester confirmed the concluded outcome."""

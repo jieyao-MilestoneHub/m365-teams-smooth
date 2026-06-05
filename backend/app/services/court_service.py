@@ -341,6 +341,30 @@ class CourtService:
         metrics.increment("approvals.decided")
         return self._summary(thread_id, self._runner.state(thread_id))
 
+    def acknowledge(self, thread_id: str, *, actor: Principal) -> TrialSummary:
+        """Requester confirms the concluded outcome — the last sync point of the trial.
+
+        Recorded as an append-only ACK event (visible alongside the audit trail) and pushed to the
+        deciders, so requester and approver demonstrably agree on what the agent changed. Only the
+        requester may acknowledge, only a concluded trial can be acknowledged, and a repeat ack is
+        a no-op.
+        """
+        trial = self._trial_or_raise(thread_id)
+        self._require_is_requester(trial, actor, "acknowledge their change's outcome")
+        status = str(self._runner.state(thread_id).get("status", ""))
+        if status not in (ChangeStatus.DONE.value, ChangeStatus.REJECTED.value):
+            raise InvalidRequestError(
+                f"trial is '{status}' — only a concluded trial can be acknowledged"
+            )
+        if not self._already(thread_id, actor, ApprovalDecision.ACK):
+            self._append(thread_id, actor, ApprovalDecision.ACK)
+            self._notify_acknowledged(thread_id, trial, actor)
+            logger.info(
+                "approval.acknowledged", extra={"thread_id": thread_id, "actor": actor.key()}
+            )
+            metrics.increment("approvals.acknowledged")
+        return self._summary(thread_id, self._runner.state(thread_id))
+
     def list_pending_approvals(self, principal: Principal) -> list[TrialSummary]:
         """Trials awaiting approval the principal may decide (authorized, not their own).
 
@@ -535,6 +559,48 @@ class CourtService:
             )
             metrics.increment("notify.failed")
 
+    def _notify_acknowledged(self, thread_id: str, trial: TrialRecord, actor: Principal) -> None:
+        """Best-effort push of the requester's ack to whoever decided; never fails the ack."""
+        if self._notifier is None:
+            return
+        # Whoever actually decided: approval-ledger voters, plus the verdict's caster (the
+        # cast_verdict path records no APPROVE event). Falls back to the directory.
+        deciders = {
+            (e.actor.upn or e.actor.key())
+            for e in self._events(thread_id)
+            if e.decision in (ApprovalDecision.APPROVE, ApprovalDecision.REJECT)
+        }
+        if trial.verdict is not None and trial.verdict.actor:
+            deciders.add(trial.verdict.actor)
+        own = {actor.oid.strip().lower(), actor.upn.strip().lower()} - {""}
+        deciders = {d for d in deciders if d.strip().lower() not in own}
+        if not deciders and self._directory is not None:
+            deciders = self._directory.identities_for(self._required_roles(trial)) - own
+        if not deciders:
+            return
+        try:
+            self._notifier.acknowledged(
+                thread_id=thread_id,
+                title=trial.change.raw_request[:80],
+                requester_upn=actor.upn or actor.key(),
+                approver_upns=sorted(deciders),
+            )
+            logger.info(
+                "notify.sent",
+                extra={
+                    "thread_id": thread_id,
+                    "event": "acknowledged",
+                    "recipients": len(deciders),
+                },
+            )
+            metrics.increment("notify.sent")
+        except Exception as err:
+            logger.warning(
+                "notify.failed",
+                extra={"thread_id": thread_id, "event": "acknowledged", "reason": str(err)[:300]},
+            )
+            metrics.increment("notify.failed")
+
     def _resume(
         self, thread_id: str, verdict_type: VerdictType, actor: Principal, selected_plan: PlanKind
     ) -> None:
@@ -586,4 +652,8 @@ class CourtService:
                 [o.type.value for o in quorum.verdict_options] if isinstance(quorum, Quorum) else []
             ),
             errors=list(state.get("errors", [])),
+            acknowledged=(
+                self._approvals is not None
+                and any(e.decision is ApprovalDecision.ACK for e in self._events(thread_id))
+            ),
         )

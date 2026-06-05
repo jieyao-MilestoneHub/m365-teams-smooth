@@ -93,3 +93,15 @@ class BotCardNotifier(ApprovalNotifier):
         status = self._status_reader(thread_id) or ("approved" if approved else "rejected")
         card = self._result_card(trial, status=status, audit_id=None)
         self._submit_job(reference, card, thread_id)
+
+    def acknowledged(
+        self,
+        *,
+        thread_id: str,
+        title: str,
+        requester_upn: str,
+        approver_upns: list[str],
+    ) -> None:
+        # The ack reaches deciders through the activity-feed channel; the deciders' bot chat
+        # already shows the result card, so there is no new card to deliver here.
+        return
