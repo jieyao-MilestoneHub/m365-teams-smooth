@@ -3,7 +3,7 @@
   "schema_version": "v2.4",
   "name_for_human": "AI Change Court",
   "description_for_human": "Put a risky change on trial: impact, a plan or safe alternative, approvers, audit trail.",
-  "description_for_model": "Use to open and review a governed-execution trial for a risky enterprise change. submit_change opens a trial and returns the impact, risk, plan (or safe alternative), and required approvers; get_trial returns the full record; cast_verdict records a decision (use accept_alternative for the safe alternative); send_for_approval/withdraw_change/decide drive the separation-of-duties approval flow; list_pending_approvals is the approver's queue; get_status returns the lifecycle state.",
+  "description_for_model": "Use to open and review a governed-execution trial for a risky enterprise change. submit_change opens a trial and returns the impact, risk, plan (or safe alternative), and required approvers; get_trial returns the full record; cast_verdict records a decision (use accept_alternative for the safe alternative); send_for_approval/withdraw_change/decide drive the separation-of-duties approval flow; list_pending_approvals is the approver's queue; acknowledge_outcome lets the requester confirm a concluded trial's outcome; get_status returns the lifecycle state.",
   "namespace": "changecourt",
   "functions": [
     {
@@ -37,6 +37,10 @@
     {
       "name": "list_pending_approvals",
       "description": "List trials awaiting the caller's approval (authorized role, not their own requests)."
+    },
+    {
+      "name": "acknowledge_outcome",
+      "description": "Requester confirms the concluded outcome so requester, approver, and audit trail are demonstrably synced."
     }
   ],
   "runtimes": [
@@ -54,7 +58,8 @@
         "send_for_approval",
         "withdraw_change",
         "decide",
-        "list_pending_approvals"
+        "list_pending_approvals",
+        "acknowledge_outcome"
       ],
       "spec": {
         "url": "${{MCP_SERVER_URL}}",
@@ -200,6 +205,20 @@
               "inputSchema": {
                 "type": "object",
                 "properties": {}
+              }
+            },
+            {
+              "name": "acknowledge_outcome",
+              "description": "Requester confirms the concluded outcome so requester, approver, and audit trail are demonstrably synced.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "thread_id": {
+                    "type": "string",
+                    "description": "The trial's thread id."
+                  }
+                },
+                "required": ["thread_id"]
               }
             }
           ]

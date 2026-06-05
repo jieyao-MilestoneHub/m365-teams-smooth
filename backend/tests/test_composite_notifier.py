@@ -13,6 +13,9 @@ class _ExplodingNotifier(ApprovalNotifier):
     def decided(self, **_: object) -> None:
         raise RuntimeError("channel down")
 
+    def acknowledged(self, **_: object) -> None:
+        raise RuntimeError("channel down")
+
 
 def test_fans_out_to_every_channel() -> None:
     first, second = FakeNotifier(), FakeNotifier()

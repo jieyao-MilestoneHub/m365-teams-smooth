@@ -26,6 +26,7 @@ class ApprovalDecision(StrEnum):
     WITHDRAW = "withdraw"  # requester gives up; terminal, nothing executes
     APPROVE = "approve"  # an authorized approver approves
     REJECT = "reject"  # an authorized approver rejects (note required)
+    ACK = "ack"  # requester confirms they saw the concluded outcome (post-execution, no effect)
 
 
 class ApprovalEvent(BaseModel):

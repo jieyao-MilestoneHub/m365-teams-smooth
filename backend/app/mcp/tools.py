@@ -154,3 +154,11 @@ def register_tools(mcp: FastMCP, service: CourtService) -> None:
         """Trials awaiting the caller's approval (authorized role, not their own requests)."""
         summaries = service.list_pending_approvals(_require_principal())
         return {"pending": [summary.model_dump(mode="json") for summary in summaries]}
+
+    @mcp.tool()
+    @correlate
+    @_translate_errors
+    def acknowledge_outcome(thread_id: str) -> dict[str, object]:
+        """Requester gate: confirm the concluded outcome so all parties are demonstrably synced."""
+        summary = service.acknowledge(thread_id, actor=_require_principal())
+        return summary.model_dump(mode="json")

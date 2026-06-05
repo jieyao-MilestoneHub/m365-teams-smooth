@@ -87,3 +87,16 @@ class TeamsActivityNotifier(ApprovalNotifier):
         outcome = "approved" if approved else "rejected"
         text = f"{decider_upn} {outcome}: {title}" + (f" — {note}" if note else "")
         self._send(requester_upn, text, thread_id)
+
+    def acknowledged(
+        self,
+        *,
+        thread_id: str,
+        title: str,
+        requester_upn: str,
+        approver_upns: list[str],
+    ) -> None:
+        # Same chainId as the trial's earlier toasts, so the ack overrides rather than stacks.
+        text = f"{requester_upn} acknowledged the outcome: {title}"
+        for upn in approver_upns:
+            self._send(upn, text, thread_id)
