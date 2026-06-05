@@ -52,7 +52,7 @@ def test_accepting_grants_scoped_access_and_schedules_revoke() -> None:
     cast = service.cast_verdict(
         summary.thread_id, VerdictType.ACCEPT_ALTERNATIVE, selected_plan=PlanKind.SAFE_ALTERNATIVE
     )
-    assert cast.status == ChangeStatus.DONE.value
+    assert cast.execution_status == ChangeStatus.DONE.value
 
     trial = service.get_trial(summary.thread_id)
     assert trial is not None

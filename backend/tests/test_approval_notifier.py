@@ -123,7 +123,7 @@ def test_cast_verdict_notifies_the_requester() -> None:
     s = service.submit_change(_REQ, requester=REQUESTER)
     service.send_for_approval(s.thread_id, actor=REQUESTER, note="ready")
     result = service.cast_verdict(s.thread_id, VerdictType.APPROVE, principal=APPROVER)
-    assert result.status == "done"
+    assert result.execution_status == "done"
     assert len(notifier.decisions) == 1
     event = notifier.decisions[0]
     assert event["requester_upn"] == REQUESTER.upn
@@ -313,7 +313,7 @@ def test_notifier_failure_never_blocks_cast_verdict() -> None:
     s = service.submit_change(_REQ, requester=REQUESTER)
     service.send_for_approval(s.thread_id, actor=REQUESTER, note="ready")
     result = service.cast_verdict(s.thread_id, VerdictType.APPROVE, principal=APPROVER)
-    assert result.status == "done"
+    assert result.execution_status == "done"
 
 
 def test_graph_error_body_is_surfaced() -> None:

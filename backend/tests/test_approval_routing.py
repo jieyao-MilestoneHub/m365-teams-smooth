@@ -290,7 +290,8 @@ def test_directory_approver_can_cast_verdict_and_actor_is_the_identity() -> None
     s = service.submit_change(_REQ, requester=REQUESTER)
     service.send_for_approval(s.thread_id, actor=REQUESTER, note="please review")
     result = service.cast_verdict(s.thread_id, VerdictType.APPROVE, principal=APPROVER)
-    assert result.status == "done"
+    assert result.verdict_recorded is True
+    assert result.execution_status == "done"
     trial = service.get_trial(s.thread_id)
     assert trial is not None and trial.verdict is not None
     assert trial.verdict.actor == APPROVER.upn
@@ -302,4 +303,4 @@ def test_cast_verdict_without_principal_keeps_the_legacy_flow() -> None:
     service = build_court_service(settings, gatherers={"launch": _gatherer}, packs=[_PACK])
     s = service.submit_change(_REQ)
     result = service.cast_verdict(s.thread_id, VerdictType.APPROVE)
-    assert result.status == "done"
+    assert result.execution_status == "done"

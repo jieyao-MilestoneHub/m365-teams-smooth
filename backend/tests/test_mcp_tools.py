@@ -83,7 +83,8 @@ async def test_submit_then_cast_via_tools(mcp: Any) -> None:
             "selected_plan": "safe_alternative",
         },
     )
-    assert result["status"] == "done"
+    assert result["verdict_recorded"] is True
+    assert result["execution_status"] == "done"
     assert result["audit_id"]
 
 

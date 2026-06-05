@@ -76,7 +76,8 @@ class _Summary:
 
 
 class _Result:
-    status = "done"
+    verdict_recorded = True
+    execution_status = "done"
     audit_id = "audit-1"
 
 

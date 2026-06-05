@@ -67,7 +67,9 @@ def test_verdict_result_card_for_accepted_alternative_reads_as_refusal() -> None
     trial = service.get_trial(summary.thread_id)
     assert trial is not None
 
-    blob = _texts(build_verdict_result_card(trial, status=cast.status, audit_id=cast.audit_id))
+    blob = _texts(
+        build_verdict_result_card(trial, status=cast.execution_status, audit_id=cast.audit_id)
+    )
     assert "Safe alternative executed" in blob
     assert "Refused the request as posed" in blob
 
@@ -79,7 +81,9 @@ def test_verdict_result_card_lists_steps_and_predicted() -> None:
     trial = service.get_trial(summary.thread_id)
     assert trial is not None
 
-    blob = _texts(build_verdict_result_card(trial, status=cast.status, audit_id=cast.audit_id))
+    blob = _texts(
+        build_verdict_result_card(trial, status=cast.execution_status, audit_id=cast.audit_id)
+    )
     assert "Verdict recorded" in blob
     assert "predicted" in blob  # dry-run steps are labelled predicted
 

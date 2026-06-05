@@ -64,7 +64,7 @@ def test_dry_run_then_approve_completes_and_audits_dry_run() -> None:
     summary = service.submit_change(_REQUEST)
 
     cast = service.cast_verdict(summary.thread_id, VerdictType.APPROVE)
-    assert cast.status == ChangeStatus.DONE.value
+    assert cast.execution_status == ChangeStatus.DONE.value
     assert cast.audit_id is not None
 
     trial = service.get_trial(summary.thread_id)

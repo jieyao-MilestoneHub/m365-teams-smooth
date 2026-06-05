@@ -222,7 +222,10 @@ class CourtService:
             )
             metrics.increment("verdicts.duplicate")
             return CastResult(
-                thread_id=thread_id, status=status, audit_id=audit_id, idempotent=True
+                thread_id=thread_id,
+                execution_status=status,
+                audit_id=audit_id,
+                idempotent=True,
             )
 
         verdict = Verdict(
@@ -262,7 +265,7 @@ class CourtService:
             self._notify_decided(thread_id, trial_after, decider, approved=approved, note="")
         return CastResult(
             thread_id=thread_id,
-            status=str(state.get("status", "")),
+            execution_status=str(state.get("status", "")),
             audit_id=audit_id if isinstance(audit_id, str) else None,
         )
 
