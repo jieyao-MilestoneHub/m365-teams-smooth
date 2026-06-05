@@ -35,7 +35,7 @@ from botbuilder.schema import (
     ChannelAccount,
 )
 
-from app.domain import PlanKind, RunMode, VerdictType
+from app.domain import PlanKind, VerdictType
 from app.domain.errors import ChangeCourtError
 from app.domain.principal import Principal
 from app.mcp.cards import build_change_court_card, build_verdict_result_card
@@ -128,8 +128,11 @@ class CourtBot(ActivityHandler):  # type: ignore[misc]  # SDK base is untyped (A
         return _text_card(WELCOME)
 
     def _on_request(self, raw_request: str, actor: Principal | None) -> Card:
+        # Honor the deployment's DRY_RUN_DEFAULT instead of forcing dry-run: passing run_mode=None
+        # lets the service apply the configured default, so an operator can run the bot-card flow
+        # live (real downstream execution) by setting DRY_RUN_DEFAULT=false.
         summary = self._service.submit_change(
-            raw_request, source="playground", run_mode=RunMode.DRY_RUN, requester=actor
+            raw_request, source="playground", requester=actor
         )
         return self._trial_card(summary.thread_id, status=summary.status)
 
