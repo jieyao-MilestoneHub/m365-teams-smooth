@@ -23,7 +23,12 @@ from app.bot.proactive import ProactiveJob, ProactiveSender
 from app.config import Settings
 from app.container import build_conversation_store, build_teams_notifier
 from app.main import create_app
-from app.mcp.security import build_auth_settings, build_token_verifier, build_transport_security
+from app.mcp.security import (
+    build_auth_settings,
+    build_token_verifier,
+    build_transport_security,
+    protected_resource_metadata,
+)
 from app.mcp.server import MCP_PATH, build_mcp_server
 from app.observability import configure_logging, configure_metrics
 from app.ports.notifier import ApprovalNotifier
@@ -102,6 +107,17 @@ def create_full_app(service: CourtService | None = None) -> FastAPI:
 
     app = create_app(lifespan=lifespan)
     app.include_router(build_bot_router(bot, bot_adapter))
+
+    # RFC 9728: the mounted MCP server's 401 advertises its protected-resource metadata at the
+    # ROOT path (``/.well-known/oauth-protected-resource/mcp``), but the SDK only serves it under
+    # the ``/mcp`` mount — so the advertised URL 404s and clients can't discover the auth server
+    # to start sign-in. Serve the document at the advertised root path too.
+    metadata_path = f"/.well-known/oauth-protected-resource{MCP_PATH}"
+
+    @app.get(metadata_path)
+    def oauth_protected_resource() -> dict[str, object]:
+        return protected_resource_metadata(settings)
+
     app.mount(MCP_PATH, mcp.streamable_http_app())
     app.add_middleware(MountPathNormalizer, mount_path=MCP_PATH)
     return app
