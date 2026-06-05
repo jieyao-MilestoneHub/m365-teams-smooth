@@ -43,7 +43,10 @@ class MockEntraAdapter(BaseIntegrationAdapter):
                 system=_SYSTEM,
                 name="entra.schedule_access_revoke",
                 kind=CapabilityKind.WRITE,
-                params_schema={"required": ["principal", "revoke_on"]},
+                params_schema={
+                    "required": ["principal", "revoke_on"],
+                    "properties": {"revoke_on": {"format": "date"}},
+                },
             ),
         ]
 

@@ -25,6 +25,7 @@ from app.domain import (
     ExecutionStep,
     ImpactEvidence,
     PlanKind,
+    param_violations,
 )
 from app.observability import metrics
 from app.ports.llm import LLMProvider
@@ -96,9 +97,10 @@ class LlmPlanner:
         steps: list[ExecutionStep] = []
         for index, step in enumerate(result.steps, start=1):
             capability = catalog.get((step.system, step.name))
-            if capability is None or self._missing_params(capability, step.params):
-                # One hallucinated or underspecified step invalidates the whole plan: a partial
-                # plan could execute a different change than the one reviewed.
+            if capability is None or param_violations(capability, step.params):
+                # One hallucinated, underspecified, or malformed step invalidates the whole plan:
+                # a partial plan could execute a different change than the one reviewed, and an
+                # unusable value (e.g. a non-numeric issue ref) would fail at execution instead.
                 logger.warning(
                     "agentic.plan_fallback",
                     extra={"reason": "invalid_step", "step": f"{step.system}.{step.name}"},
@@ -122,11 +124,21 @@ class LlmPlanner:
         )
 
     @staticmethod
-    def _missing_params(capability: Capability, params: dict[str, object]) -> list[str]:
-        required = capability.params_schema.get("required", []) if capability.params_schema else []
-        if not isinstance(required, list):
+    def _constraint_hints(capability: Capability) -> list[str]:
+        """Render the catalog's value constraints so the Defender drafts usable params."""
+        properties = capability.params_schema.get("properties", {})
+        if not isinstance(properties, dict):
             return []
-        return [str(k) for k in required if k not in params]
+        hints: list[str] = []
+        for key, constraint in properties.items():
+            if not isinstance(constraint, dict):
+                continue
+            if constraint.get("format") == "date":
+                hints.append(f"{key} is an ISO date")
+            pattern = constraint.get("pattern")
+            if isinstance(pattern, str):
+                hints.append(f"{key} matches {pattern}")
+        return hints
 
     def _user_prompt(
         self, change: Change, impact: ImpactEvidence, baseline: ExecutionPlan
@@ -151,6 +163,8 @@ class LlmPlanner:
             required = cap.params_schema.get("required", []) if cap.params_schema else []
             names = [str(k) for k in required] if isinstance(required, list) else []
             req = f" (required params: {', '.join(names)})" if names else ""
+            hints = self._constraint_hints(cap)
+            req += f" [{'; '.join(hints)}]" if hints else ""
             lines.append(f"- {system} :: {name}: {cap.description or 'no description'}{req}")
         if kind is PlanKind.SAFE_ALTERNATIVE:
             stance = (

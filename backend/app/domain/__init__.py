@@ -10,7 +10,7 @@ from app.domain.approval import (
     evaluate_quorum,
 )
 from app.domain.audit import AuditRecord, BeforeAfter, TrialRecord
-from app.domain.capability import Capability, CapabilityRef
+from app.domain.capability import Capability, CapabilityRef, param_violations
 from app.domain.change import Change, RequestedAction
 from app.domain.enums import (
     ApproverRole,
@@ -75,4 +75,5 @@ __all__ = [
     "VerdictType",
     "authorize_caster",
     "evaluate_quorum",
+    "param_violations",
 ]
