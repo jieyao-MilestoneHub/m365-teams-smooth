@@ -68,7 +68,11 @@ class TeamsActivityNotifier(ApprovalNotifier):
         approver_upns: list[str],
         note: str,
     ) -> None:
-        text = f"Approval needed — {requester_upn}: {title}" + (f" — {note}" if note else "")
+        # Lead with the requester's note — it is their (required) justification and the most useful
+        # content. The 150-char activity-feed cap would truncate it off the end if it trailed the
+        # title; the full title/impact live on the bot card the toast links to.
+        summary = note or title
+        text = f"Approval needed — {requester_upn}: {summary}"
         for upn in approver_upns:
             self._send(upn, text, thread_id)
 
@@ -85,7 +89,10 @@ class TeamsActivityNotifier(ApprovalNotifier):
         if not requester_upn:
             return
         outcome = "approved" if approved else "rejected"
-        text = f"{decider_upn} {outcome}: {title}" + (f" — {note}" if note else "")
+        # Lead with the note (it carries the decider's reason and the execution outcome summary),
+        # which would otherwise be truncated off the end behind the title.
+        summary = note or title
+        text = f"{decider_upn} {outcome}: {summary}"
         self._send(requester_upn, text, thread_id)
 
     def acknowledged(

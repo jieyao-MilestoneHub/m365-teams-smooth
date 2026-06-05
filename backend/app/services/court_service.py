@@ -451,6 +451,14 @@ class CourtService:
         )
 
     @staticmethod
+    def _display(principal: Principal) -> str:
+        """A human-friendly label for notification text — the display name, else the UPN/key.
+
+        Only for the *text* of a notification; delivery still addresses the real UPN/oid.
+        """
+        return principal.display_name or principal.upn or principal.key()
+
+    @staticmethod
     def _required_roles(trial: TrialRecord) -> list[ApproverRole]:
         return [a.role for a in trial.quorum.required_approvers] if trial.quorum else []
 
@@ -481,7 +489,7 @@ class CourtService:
             self._notifier.approval_requested(
                 thread_id=thread_id,
                 title=trial.change.raw_request[:80],
-                requester_upn=actor.upn or actor.key(),
+                requester_upn=self._display(actor),  # text label; approver_upns address delivery
                 approver_upns=approvers,
                 note=note,
             )
@@ -542,9 +550,9 @@ class CourtService:
             self._notifier.decided(
                 thread_id=thread_id,
                 title=trial.change.raw_request[:80],
-                requester_upn=requester.upn or requester.key(),
+                requester_upn=requester.upn or requester.key(),  # delivery target — keep the UPN
                 approved=approved,
-                decider_upn=actor.upn or actor.key(),
+                decider_upn=self._display(actor),  # text label only
                 note=combined,
             )
             logger.info(
@@ -582,7 +590,7 @@ class CourtService:
             self._notifier.acknowledged(
                 thread_id=thread_id,
                 title=trial.change.raw_request[:80],
-                requester_upn=actor.upn or actor.key(),
+                requester_upn=self._display(actor),  # text label; approver_upns address delivery
                 approver_upns=sorted(deciders),
             )
             logger.info(

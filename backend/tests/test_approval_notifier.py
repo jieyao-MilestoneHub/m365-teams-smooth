@@ -25,8 +25,12 @@ from app.ports.notifier import ApprovalNotifier
 from app.ports.registry import IntegrationRegistry
 from app.services.court_service import CourtService
 
-REQUESTER = Principal(oid="low-1", upn="lowpriv@agentleague.onmicrosoft.com")
-APPROVER = Principal(oid="joel-1", upn="joel@agentleague.onmicrosoft.com")
+REQUESTER = Principal(
+    oid="low-1", upn="lowpriv@agentleague.onmicrosoft.com", display_name="Robin Requester"
+)
+APPROVER = Principal(
+    oid="joel-1", upn="joel@agentleague.onmicrosoft.com", display_name="Alex Approver"
+)
 
 _PACK = RulePack(
     id="launch_slip",
@@ -70,9 +74,9 @@ def test_send_for_approval_notifies_the_approvers() -> None:
     assert len(notifier.requested) == 1
     event = notifier.requested[0]
     assert event["thread_id"] == s.thread_id
-    assert event["approver_upns"] == ["joel@agentleague.onmicrosoft.com"]
+    assert event["approver_upns"] == ["joel@agentleague.onmicrosoft.com"]  # delivery: real UPN
     assert event["note"] == "one more week"
-    assert event["requester_upn"] == REQUESTER.upn
+    assert event["requester_upn"] == REQUESTER.display_name  # text label: the display name
 
 
 def test_decide_notifies_the_requester_with_the_outcome() -> None:
@@ -85,7 +89,7 @@ def test_decide_notifies_the_requester_with_the_outcome() -> None:
     event = notifier.decisions[0]
     assert event["requester_upn"] == REQUESTER.upn
     assert event["approved"] is True
-    assert event["decider_upn"] == APPROVER.upn
+    assert event["decider_upn"] == APPROVER.display_name
 
 
 def test_decided_note_carries_the_execution_outcome() -> None:
@@ -124,7 +128,7 @@ def test_cast_verdict_notifies_the_requester() -> None:
     event = notifier.decisions[0]
     assert event["requester_upn"] == REQUESTER.upn
     assert event["approved"] is True
-    assert event["decider_upn"] == APPROVER.upn
+    assert event["decider_upn"] == APPROVER.display_name
 
 
 def test_duplicate_cast_verdict_does_not_renotify() -> None:
@@ -161,7 +165,7 @@ def test_requester_ack_closes_the_loop() -> None:
     assert summary.acknowledged is True
     assert len(notifier.acks) == 1
     ack = notifier.acks[0]
-    assert ack["requester_upn"] == REQUESTER.upn
+    assert ack["requester_upn"] == REQUESTER.display_name
     assert APPROVER.upn in str(ack["approver_upns"])
 
 
@@ -214,6 +218,60 @@ def test_ack_after_cast_verdict_notifies_the_caster() -> None:
     service.acknowledge(s.thread_id, actor=REQUESTER)
     assert len(notifier.acks) == 1
     assert APPROVER.upn in str(notifier.acks[0]["approver_upns"])
+
+
+def _capturing_graph() -> tuple[GraphClient, list[dict[str, object]]]:
+    """A GraphClient over a MockTransport that records each notification payload."""
+    calls: list[dict[str, object]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/oauth2/v2.0/token"):
+            return httpx.Response(200, json={"access_token": "t", "expires_in": 3600})
+        import json
+
+        calls.append(json.loads(request.content))
+        return httpx.Response(204)
+
+    graph = GraphClient(
+        "tenant", "client", "secret", client=httpx.Client(transport=httpx.MockTransport(handler))
+    )
+    return graph, calls
+
+
+def _system_default_text(payload: dict[str, object]) -> str:
+    params = payload.get("templateParameters", [])
+    assert isinstance(params, list)
+    return next(str(p["value"]) for p in params if p["name"] == "systemDefaultText")
+
+
+def test_approval_toast_keeps_the_note_despite_a_long_title() -> None:
+    # The note is the requester's required justification — it must survive the 150-char cap even
+    # behind a long UPN and a long title (regression: it used to trail the title and get cut off).
+    graph, calls = _capturing_graph()
+    notifier = TeamsActivityNotifier(graph, link_url="https://teams.microsoft.com")
+    notifier.approval_requested(
+        thread_id="t1",
+        title="Slip the launch date from 2026-06-17 to 2026-06-24 across every dependent system",
+        requester_upn="requester@agentleague.onmicrosoft.com",
+        approver_upns=["approver@agentleague.onmicrosoft.com"],
+        note="UNIQUE_NOTE_MARKER please approve, security review is complete",
+    )
+    text = _system_default_text(calls[0])
+    assert "UNIQUE_NOTE_MARKER" in text
+
+
+def test_decided_toast_keeps_the_outcome_note() -> None:
+    graph, calls = _capturing_graph()
+    notifier = TeamsActivityNotifier(graph, link_url="https://teams.microsoft.com")
+    notifier.decided(
+        thread_id="t1",
+        title="Slip the launch date from 2026-06-17 to 2026-06-24 across every dependent system",
+        requester_upn="requester@agentleague.onmicrosoft.com",
+        approved=True,
+        decider_upn="approver@agentleague.onmicrosoft.com",
+        note="UNIQUE_OUTCOME_MARKER 4/8 step(s) applied",
+    )
+    assert "UNIQUE_OUTCOME_MARKER" in _system_default_text(calls[0])
 
 
 def test_ack_event_does_not_disturb_quorum() -> None:
@@ -314,7 +372,7 @@ def test_teams_activity_notifier_posts_per_approver() -> None:
     ]
     body = calls[0][1]
     assert body["activityType"] == "systemDefault"
-    assert "slip the launch" in str(body["previewText"])
+    assert "please" in str(body["previewText"])  # the note leads the preview
     params = body["templateParameters"]
     assert isinstance(params, list)
     assert any(p["name"] == "systemDefaultText" for p in params)
