@@ -242,3 +242,21 @@ def build_auth_settings(settings: Settings) -> AuthSettings:
         resource_server_url=AnyHttpUrl(settings.mcp_resource_url()),
         required_scopes=DEFAULT_SCOPES,
     )
+
+
+def protected_resource_metadata(settings: Settings) -> dict[str, object]:
+    """The RFC 9728 protected-resource-metadata document for the MCP resource.
+
+    Mirrors what the FastMCP SDK serves *under its mount* — but the SDK's 401
+    ``WWW-Authenticate`` advertises this document at the **root** path
+    ``/.well-known/oauth-protected-resource/mcp`` (the resource path appended after the
+    well-known segment). When the server is mounted at ``/mcp`` the SDK's own copy answers only at
+    ``/mcp/.well-known/...``, so the advertised root URL 404s and OAuth discovery (the client's
+    sign-in trigger) breaks. ``create_full_app`` serves this at the advertised root path.
+    """
+    return {
+        "resource": settings.mcp_resource_url(),
+        "authorization_servers": [settings.oauth_issuer or DEV_ISSUER],
+        "scopes_supported": DEFAULT_SCOPES,
+        "bearer_methods_supported": ["header"],
+    }
