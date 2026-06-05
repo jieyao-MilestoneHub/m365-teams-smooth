@@ -63,6 +63,20 @@ Other requests work too, e.g. `give the vendor access to Project X until the cam
 (ambiguous → least-privilege alternative) or `slip the launch from 2026-06-10 to 2026-06-17`
 (coordinated multi-system plan).
 
+### Two-identity approval flow (with proactive cards)
+
+The Playground's **user switcher** exercises the full button-driven approval flow, including the
+proactive push the deployed bot performs in Teams. It engages when the engine has an approver
+directory — start the bot with e.g. `APPROVER_DIRECTORY="eng_lead:<approver display name>"` (the
+Playground identifies users by their switcher name):
+
+1. As the **approver** user, say anything to the bot once (e.g. `queue`) — this records where the
+   approver can be reached (a conversation reference, persisted in the bot's database).
+2. Switch to the **requester**, type a change request, fill in the note, click **Send for
+   approval**.
+3. The bot **proactively posts the approval card** — with native **Approve** / **Reject** buttons —
+   into the approver's chat; switch back to the approver and decide from that card.
+
 ## Capture the card visual (no tenant)
 
 The Agents Playground renders the **real** Change Court Adaptive Card, so it is the tenant-free way
@@ -99,7 +113,8 @@ uv run pytest
 
 The test suite drives the real engine fully mocked (the same path as `backend/scripts/demo.py`):
 a request renders the refusal card and a verdict button resumes the run to the result card, plus
-fake-backed routing tests.
+fake-backed routing tests. The proactive path is covered end to end — real SQL conversation store,
+real sender, faked Bot Framework adapter — in `tests/test_proactive_local.py`.
 
 ## Scope
 

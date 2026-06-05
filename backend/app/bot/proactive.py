@@ -67,7 +67,15 @@ class ProactiveSender:
                 )
 
     async def stop(self) -> None:
-        await self._queue.put(None)
+        """Schedule the shutdown sentinel behind any already-submitted jobs.
+
+        The sentinel takes the same ``call_soon_threadsafe`` path as ``submit`` so it cannot jump
+        the queue ahead of jobs whose enqueue callbacks are still pending on the loop.
+        """
+        loop = self._loop
+        if loop is None or loop.is_closed():
+            return
+        loop.call_soon_threadsafe(self._queue.put_nowait, None)
 
     async def _deliver(self, job: ProactiveJob) -> None:
         reference = deserializer_helper(ConversationReference, dict(job.reference))
