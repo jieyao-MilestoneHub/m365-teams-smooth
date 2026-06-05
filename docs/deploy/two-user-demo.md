@@ -67,3 +67,24 @@ declarative agent sideloaded (see [../m365/README.md](../../m365/README.md)).
 5. **Verify the negative cases** as in the Playground: the requester cannot approve their own
    change, and an account outside the directory cannot decide — there is no path that bypasses the
    configured approver.
+
+## Where each step's data lives
+
+The flow is **change → notify → confirm**; each stage reads or writes a concrete store:
+
+- **Submit (impact evidence)** — gathered live per trial: GitHub milestone/blocker issues and the
+  Outlook calendar through the real adapters; Planner tasks and Teams announcements from mocks
+  (`integration_mode` decides per system). Nothing is cached between trials.
+- **Pending queue** — `list_pending_approvals` reads the court's own `pending_approvals` table
+  (written on send, cleared on decision/verdict); it never queries an external system.
+- **Execution** — on approval the run resumes and each plan step is routed through the registry to
+  its adapter. `run_mode=live` applies the change (e.g. the GitHub milestone due date is actually
+  PATCHed); the default dry-run returns predicted effects only. Step results, before-snapshots, and
+  rollback hints land in the trial and the append-only audit record.
+- **Notify** — the decision toast carries the execution outcome (steps applied/predicted, first
+  failure); delivery is best-effort and never blocks the trial.
+- **Confirm** — the requester's `acknowledge_outcome` appends an `ACK` event to the approval
+  ledger, flips `acknowledged` in the trial summary, and pushes a toast to whoever decided, so all
+  parties demonstrably agree on what changed.
+- **Inspect** — `court://trial/{thread_id}` (full trial incl. results) and
+  `court://audit/{audit_id}` (before/after + rollback hints) expose everything above read-only.
