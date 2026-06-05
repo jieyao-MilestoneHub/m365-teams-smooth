@@ -88,6 +88,29 @@ def test_decide_notifies_the_requester_with_the_outcome() -> None:
     assert event["decider_upn"] == APPROVER.upn
 
 
+def test_decided_note_carries_the_execution_outcome() -> None:
+    # The toast must say what happened — a dry-run trial reports predicted steps.
+    notifier = FakeNotifier()
+    service = _service(notifier)
+    s = service.submit_change(_REQ, requester=REQUESTER)
+    service.send_for_approval(s.thread_id, actor=REQUESTER, note="ready")
+    service.decide(s.thread_id, actor=APPROVER, approve=True, note="go")
+    note = str(notifier.decisions[0]["note"])
+    assert "go" in note
+    assert "predicted (dry-run)" in note
+
+
+def test_decided_note_reports_applied_steps_in_live_mode() -> None:
+    from app.domain import RunMode
+
+    notifier = FakeNotifier()
+    service = _service(notifier)
+    s = service.submit_change(_REQ, run_mode=RunMode.LIVE, requester=REQUESTER)
+    service.send_for_approval(s.thread_id, actor=REQUESTER, note="ready")
+    service.decide(s.thread_id, actor=APPROVER, approve=True)
+    assert "step(s) applied" in str(notifier.decisions[0]["note"])
+
+
 def test_cast_verdict_notifies_the_requester() -> None:
     # The legacy verdict gate is terminal too — the requester must hear the outcome from it
     # exactly as they would from decide().
