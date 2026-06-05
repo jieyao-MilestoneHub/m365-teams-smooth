@@ -317,17 +317,29 @@ class CourtService:
             raise UnauthorizedApproverError(auth.reason)
         if not approve and not note.strip():
             raise ValueError("a note is required when rejecting")
-        kind = ApprovalDecision.APPROVE if approve else ApprovalDecision.REJECT
-        if not self._already(thread_id, actor, kind):
-            self._append(thread_id, actor, kind, role=auth.role, note=note)
+        # Record every required role this caster holds, not just the first: one authorized approver
+        # who wears several hats (e.g. eng_lead AND comms) completes an all-roles quorum in a single
+        # click. Distinct approvers each still contribute only their own role. Per-role dedup keeps
+        # a repeat click idempotent; ``appended`` gates the resume so a re-click never re-executes.
+        appended = False
+        if approve:
+            # Authorization guarantees the caster holds at least one required role, so this is
+            # non-empty; record each so a multi-hat approver satisfies every role they cover.
+            for role in (r for r in required if r in roles):
+                if not self._already_role(thread_id, actor, role):
+                    self._append(thread_id, actor, ApprovalDecision.APPROVE, role=role, note=note)
+                    appended = True
+        elif not self._already(thread_id, actor, ApprovalDecision.REJECT):
+            self._append(thread_id, actor, ApprovalDecision.REJECT, role=auth.role, note=note)
+            appended = True
         decision = evaluate_quorum(self._events(thread_id), required, self._policy(trial))
-        if decision.state is QuorumState.SATISFIED:
+        if decision.state is QuorumState.SATISFIED and appended:
             self._resume(thread_id, VerdictType.APPROVE, actor, self._plan_kind(trial))
             self._require_ledger().clear_pending(thread_id)
             # Refetch so the notification carries what actually happened, not the pre-vote view.
             trial = self.get_trial(thread_id) or trial
             self._notify_decided(thread_id, trial, actor, approved=True, note=note)
-        elif decision.state is QuorumState.REJECTED:
+        elif decision.state is QuorumState.REJECTED and appended:
             self._resume(thread_id, VerdictType.REJECT, actor, self._plan_kind(trial))
             self._runner.update(thread_id, {"status": ChangeStatus.REJECTED.value})
             self._require_ledger().clear_pending(thread_id)
@@ -448,6 +460,15 @@ class CourtService:
     def _already(self, thread_id: str, actor: Principal, decision: ApprovalDecision) -> bool:
         return any(
             e.actor.same_as(actor) and e.decision == decision for e in self._events(thread_id)
+        )
+
+    def _already_role(self, thread_id: str, actor: Principal, role: ApproverRole) -> bool:
+        """True when this actor has already approved in this specific role (per-role dedup)."""
+        return any(
+            e.actor.same_as(actor)
+            and e.decision == ApprovalDecision.APPROVE
+            and e.role == role
+            for e in self._events(thread_id)
         )
 
     @staticmethod
