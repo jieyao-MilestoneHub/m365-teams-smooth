@@ -215,6 +215,15 @@ The three trials and their expected outcomes are in [`trials.md`](../reference/t
   sign-in on the first tool call. Platform behaviour, not ours — see Microsoft's
   [Copilot extensibility known issues](https://learn.microsoft.com/en-us/microsoft-365/copilot/extensibility/known-issues).
   Never ship a package update on demo day.
+- **The proactive approval card needs `APPROVER_DIRECTORY` keyed on the Entra object id, not the
+  UPN.** A Teams activity gives the bot the user's Entra **oid** and display name but **no UPN**, so
+  the bot stores each user's conversation reference under their oid. The proactive card is delivered
+  by looking that reference up by the directory identity — which therefore must also be the **oid**,
+  or the lookup misses and only the activity-feed toast lands (a `proactive.skipped` log line marks
+  the miss). Set e.g. `APPROVER_DIRECTORY="eng_lead:<approver-oid>,comms:<approver-oid>,…"`. The oid
+  also works for the toast (`/users/{oid}/…`) and verdict authorization. Alternatively, grant the
+  Graph app `User.Read.All` and resolve the UPN in the bot. Tracked in
+  [#276](https://github.com/jieyao-MilestoneHub/m365-teams-smooth/issues/276).
 - **A user's agent silently won't call the tool ("the tool didn't return any data").** The agent
   confabulates a failure and offers a manual fallback, but the backend logs **zero `POST /mcp`** for
   the attempt — the call never left the client. Backend, OAuth, and manifest are fine (a known-good

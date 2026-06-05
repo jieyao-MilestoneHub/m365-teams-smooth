@@ -12,12 +12,25 @@ from botbuilder.schema import (
     ConversationAccount,
 )
 
-from app.bot.court_bot import CourtBot
+from app.bot.court_bot import CourtBot, _principal
 from app.config import Settings
 from app.container import build_court_service
 from app.domain import RunMode
 from app.domain.principal import Principal
 from app.services.court_service import CourtService
+
+
+def test_principal_keys_on_oid_and_never_fakes_a_upn() -> None:
+    # A Teams activity carries the Entra oid + display name but no UPN. The Principal must not
+    # label the display name as a UPN — identity has to key on the oid so the conversation store
+    # and approver directory match for proactive delivery.
+    account = ChannelAccount(id="29:teams-id", name="Alex Approver")
+    account.aad_object_id = "c9c71ad1-ee59-4d59-8b28-c725ae0d832e"
+    principal = _principal(account)
+    assert principal is not None
+    assert principal.upn == ""
+    assert principal.display_name == "Alex Approver"
+    assert principal.key() == "c9c71ad1-ee59-4d59-8b28-c725ae0d832e"
 
 REQUESTER = ChannelAccount(id="user-req", name="requester@example.com")
 APPROVER = ChannelAccount(id="user-app", name="approver@example.com")
@@ -63,7 +76,9 @@ def _invoke(verb: str, data: dict[str, Any]) -> AdaptiveCardInvokeValue:
 
 
 async def test_invoke_routes_through_service_gates_and_refreshes_in_place() -> None:
-    directory = "eng_lead:approver@example.com,comms:approver2@example.com"
+    # The bot identifies users by their Entra oid (here the channel-account id, since these test
+    # accounts carry no aad_object_id), so the directory keys on those same ids.
+    directory = "eng_lead:user-app,comms:user-app2"
     service = _service(approver_directory=directory)
     bot = CourtBot(service)
 

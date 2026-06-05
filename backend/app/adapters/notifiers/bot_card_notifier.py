@@ -12,12 +12,15 @@ skipped silently; the activity-feed toast still reaches them.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 
 from app.domain import ChangeStatus, TrialRecord
 from app.mcp.cards import build_change_court_card, build_verdict_result_card
 from app.ports.conversation_store import ConversationStore
 from app.ports.notifier import ApprovalNotifier
+
+logger = logging.getLogger(__name__)
 
 Card = dict[str, object]
 TrialReader = Callable[[str], TrialRecord | None]
@@ -71,7 +74,15 @@ class BotCardNotifier(ApprovalNotifier):
         for upn in approver_upns:
             reference = self._store.get(upn)
             if reference is None:
-                continue  # not reachable in the bot chat; the activity toast still lands
+                # Not reachable in the bot chat (no stored conversation reference); the activity
+                # toast still lands. Logged so a silent "no card" is visible, not inferred — a
+                # common cause is an identity-key mismatch (the directory must key on the same
+                # identity the bot captured, i.e. the Entra oid).
+                logger.info(
+                    "proactive.skipped",
+                    extra={"thread_id": thread_id, "event": "approval_requested", "identity": upn},
+                )
+                continue
             self._submit_job(reference, card, thread_id)
 
     def decided(
@@ -86,6 +97,10 @@ class BotCardNotifier(ApprovalNotifier):
     ) -> None:
         reference = self._store.get(requester_upn)
         if reference is None:
+            logger.info(
+                "proactive.skipped",
+                extra={"thread_id": thread_id, "event": "decided", "identity": requester_upn},
+            )
             return
         trial = self._trial_reader(thread_id)
         if trial is None:

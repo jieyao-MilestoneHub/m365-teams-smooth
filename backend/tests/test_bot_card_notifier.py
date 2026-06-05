@@ -105,6 +105,36 @@ def test_decided_enqueues_result_card_for_requester() -> None:
     assert "actions" not in card  # terminal result card — nothing further to click
 
 
+def test_approval_card_delivered_when_directory_and_store_key_on_oid() -> None:
+    # The realistic shape: the bot captured the approver's reference under their Entra oid (it has
+    # no UPN), and the directory is keyed on the same oid. Lookup by oid must hit and deliver.
+    directory = ",".join(
+        f"{role}:oid-app"
+        for role in ("eng_lead", "comms", "security_lead", "account_owner", "manager")
+    )
+    service = build_court_service(
+        Settings(
+            force_all_mock=True,
+            db_url="sqlite:///:memory:",
+            dry_run_default=True,
+            approver_directory=directory,
+        )
+    )
+    store = InMemoryConversationStore()
+    store.save(oid="oid-app", upn="", reference=_REFERENCE)  # bot stores by oid, no UPN
+    jobs: list[tuple[Any, ...]] = []
+    thread_id = _awaiting_approval_thread(service)
+
+    _notifier(service, store, jobs).approval_requested(
+        thread_id=thread_id,
+        title="slip the launch",
+        requester_upn="req",
+        approver_upns=["oid-app"],  # the directory hands the oid through
+        note="please review",
+    )
+    assert len(jobs) == 1
+
+
 def test_unreachable_recipients_enqueue_nothing() -> None:
     service = _service()
     jobs: list[tuple[Any, ...]] = []
