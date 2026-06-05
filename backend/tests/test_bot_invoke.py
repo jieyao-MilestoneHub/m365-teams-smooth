@@ -131,6 +131,24 @@ async def test_invoke_routes_through_service_gates_and_refreshes_in_place() -> N
     assert "actions" not in response.value  # result card is terminal — no further buttons
 
 
+def test_bot_submit_honors_dry_run_default_for_live_execution() -> None:
+    # The bot used to force dry-run; it now follows DRY_RUN_DEFAULT so an operator can run the
+    # bot-card flow live. With dry_run_default=False, a bot-opened trial runs in LIVE mode.
+    requester = _principal(ChannelAccount(id="user-req", name="Robin"))
+    for default, expected in ((True, "dry_run"), (False, "live")):
+        service = build_court_service(
+            Settings(force_all_mock=True, db_url="sqlite:///:memory:", dry_run_default=default)
+        )
+        bot = CourtBot(service)
+        card = bot.respond(
+            text="slip the launch from 2026-06-10 to 2026-06-17", value=None, actor=requester
+        )
+        actions = card["actions"]
+        assert isinstance(actions, list)
+        thread_id = str(actions[0]["data"]["thread_id"])
+        assert service._runner.state(thread_id).get("run_mode") == expected
+
+
 async def test_invoke_error_renders_guidance_card_not_crash() -> None:
     service = _service()
     bot = CourtBot(service)
