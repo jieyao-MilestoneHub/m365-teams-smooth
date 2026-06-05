@@ -36,6 +36,7 @@ from app.domain import (
     RiskResult,
     RunMode,
     StepResult,
+    StepStatus,
     TrialRecord,
     Verdict,
     VerdictType,
@@ -323,11 +324,14 @@ class CourtService:
         if decision.state is QuorumState.SATISFIED:
             self._resume(thread_id, VerdictType.APPROVE, actor, self._plan_kind(trial))
             self._require_ledger().clear_pending(thread_id)
+            # Refetch so the notification carries what actually happened, not the pre-vote view.
+            trial = self.get_trial(thread_id) or trial
             self._notify_decided(thread_id, trial, actor, approved=True, note=note)
         elif decision.state is QuorumState.REJECTED:
             self._resume(thread_id, VerdictType.REJECT, actor, self._plan_kind(trial))
             self._runner.update(thread_id, {"status": ChangeStatus.REJECTED.value})
             self._require_ledger().clear_pending(thread_id)
+            trial = self.get_trial(thread_id) or trial
             self._notify_decided(thread_id, trial, actor, approved=False, note=note)
         logger.info(
             "approval.decided",
@@ -477,6 +481,27 @@ class CourtService:
             )
             metrics.increment("notify.failed")
 
+    @staticmethod
+    def _outcome_summary(results: list[StepResult]) -> str:
+        """One line of what execution actually did — plan-agnostic, built from step statuses."""
+        if not results:
+            return ""
+        total = len(results)
+        predicted = sum(1 for r in results if r.status is StepStatus.DRY_RUN)
+        applied = sum(1 for r in results if r.status is StepStatus.OK)
+        failed = [r for r in results if r.status is StepStatus.FAILED]
+        summary = (
+            f"{total} step(s) predicted (dry-run)"
+            if predicted == total
+            else f"{applied}/{total} step(s) applied"
+        )
+        if failed:
+            first = failed[0]
+            summary += f"; failed: {first.step_id}"
+            if first.error:
+                summary += f" ({first.error[:60]})"
+        return summary
+
     def _notify_decided(
         self, thread_id: str, trial: TrialRecord, actor: Principal, *, approved: bool, note: str
     ) -> None:
@@ -486,6 +511,9 @@ class CourtService:
         requester = trial.change.requester
         if requester is None:
             return
+        # The toast must say what happened, not just who decided — append the execution outcome.
+        outcome = self._outcome_summary(trial.results) if approved else ""
+        combined = " — ".join(part for part in (note.strip(), outcome) if part)
         try:
             self._notifier.decided(
                 thread_id=thread_id,
@@ -493,7 +521,7 @@ class CourtService:
                 requester_upn=requester.upn or requester.key(),
                 approved=approved,
                 decider_upn=actor.upn or actor.key(),
-                note=note,
+                note=combined,
             )
             logger.info(
                 "notify.sent",
