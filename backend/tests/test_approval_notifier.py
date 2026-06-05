@@ -138,3 +138,27 @@ def test_teams_activity_notifier_posts_per_approver() -> None:
     params = body["templateParameters"]
     assert isinstance(params, list)
     assert any(p["name"] == "systemDefaultText" for p in params)
+    chain_id = body["chainId"]
+    assert isinstance(chain_id, int) and 0 < chain_id < 2**63
+    assert calls[1][1]["chainId"] == chain_id  # same trial -> same chain, later events override
+
+    # The decision notification chains onto the same trial's toast.
+    notifier.decided(
+        thread_id="t1",
+        title="slip the launch",
+        requester_upn="lowpriv@x",
+        approved=True,
+        decider_upn="a@x",
+        note="",
+    )
+    assert calls[-1][1]["chainId"] == chain_id
+    # A different trial gets its own chain.
+    notifier.decided(
+        thread_id="t2",
+        title="another change",
+        requester_upn="lowpriv@x",
+        approved=False,
+        decider_upn="a@x",
+        note="no",
+    )
+    assert calls[-1][1]["chainId"] != chain_id

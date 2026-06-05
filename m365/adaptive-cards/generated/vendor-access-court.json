@@ -107,8 +107,9 @@
   ],
   "actions": [
     {
-      "type": "Action.Submit",
+      "type": "Action.Execute",
       "title": "accept_alternative",
+      "verb": "cast_verdict",
       "data": {
         "tool": "cast_verdict",
         "thread_id": "<thread-id>",
@@ -117,8 +118,9 @@
       }
     },
     {
-      "type": "Action.Submit",
+      "type": "Action.Execute",
       "title": "request_revision",
+      "verb": "cast_verdict",
       "data": {
         "tool": "cast_verdict",
         "thread_id": "<thread-id>",
@@ -127,8 +129,9 @@
       }
     },
     {
-      "type": "Action.Submit",
+      "type": "Action.Execute",
       "title": "reject",
+      "verb": "cast_verdict",
       "data": {
         "tool": "cast_verdict",
         "thread_id": "<thread-id>",

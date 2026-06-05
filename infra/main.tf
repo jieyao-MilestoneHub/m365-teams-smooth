@@ -104,6 +104,14 @@ resource "azurerm_container_app" "this" {
     }
   }
 
+  dynamic "secret" {
+    for_each = local.bot_app_password == "" ? [] : [1]
+    content {
+      name  = "bot-app-password"
+      value = local.bot_app_password
+    }
+  }
+
   ingress {
     external_enabled = true
     target_port      = 8000
@@ -256,6 +264,30 @@ resource "azurerm_container_app" "this" {
         content {
           name  = "APPROVER_DIRECTORY"
           value = var.approver_directory
+        }
+      }
+
+      # Bot surface (Azure Bot Service). Empty BOT_APP_ID leaves the endpoint in anonymous mode
+      # (local Playground); these wire it to the registered bot so Teams can authenticate.
+      dynamic "env" {
+        for_each = local.bot_app_id == "" ? [] : [1]
+        content {
+          name  = "BOT_APP_ID"
+          value = local.bot_app_id
+        }
+      }
+      dynamic "env" {
+        for_each = local.bot_app_password == "" ? [] : [1]
+        content {
+          name        = "BOT_APP_PASSWORD"
+          secret_name = "bot-app-password"
+        }
+      }
+      dynamic "env" {
+        for_each = local.bot_app_id == "" ? [] : [1]
+        content {
+          name  = "BOT_APP_TYPE"
+          value = "MultiTenant"
         }
       }
     }

@@ -61,6 +61,24 @@ class PrecedentRow(Base):
     payload: Mapped[dict[str, object]] = mapped_column(JSON)
 
 
+class ConversationReferenceRow(Base):
+    """Where a user can be reached for proactive bot messages.
+
+    ``payload`` is the serialized Bot Framework conversation reference, recorded whenever the user
+    installs or talks to the bot. One row per identity key — a user is addressable by Entra object
+    id and by lowercased UPN, so both keys point at the same reference. A disposable read-model:
+    the next turn rewrites it.
+    """
+
+    __tablename__ = "conversation_references"
+
+    identity_key: Mapped[str] = mapped_column(String, primary_key=True)
+    oid: Mapped[str] = mapped_column(String)
+    upn: Mapped[str] = mapped_column(String)
+    updated_at: Mapped[str] = mapped_column(String)
+    payload: Mapped[dict[str, object]] = mapped_column(JSON)
+
+
 class PendingApprovalRow(Base):
     """Index of trials currently awaiting an approver, so the queue never scans history.
 

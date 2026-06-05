@@ -1,0 +1,128 @@
+"""Action.Execute invokes route through the same service gates and refresh the card in place."""
+
+from __future__ import annotations
+
+from typing import Any
+
+from botbuilder.core import TurnContext
+from botbuilder.schema import (
+    Activity,
+    AdaptiveCardInvokeValue,
+    ChannelAccount,
+    ConversationAccount,
+)
+
+from app.bot.court_bot import CourtBot
+from app.config import Settings
+from app.container import build_court_service
+from app.domain import RunMode
+from app.domain.principal import Principal
+from app.services.court_service import CourtService
+
+REQUESTER = ChannelAccount(id="user-req", name="requester@example.com")
+APPROVER = ChannelAccount(id="user-app", name="approver@example.com")
+APPROVER2 = ChannelAccount(id="user-app2", name="approver2@example.com")
+
+_CARD_TYPE = "application/vnd.microsoft.card.adaptive"
+
+
+def _service(**overrides: Any) -> CourtService:
+    return build_court_service(
+        Settings(
+            force_all_mock=True,
+            db_url="sqlite:///:memory:",
+            dry_run_default=True,
+            **overrides,
+        )
+    )
+
+
+class _FakeAdapter:
+    async def send_activities(self, context: Any, activities: Any) -> list[Any]:
+        return []
+
+
+def _turn_context(sender: ChannelAccount) -> TurnContext:
+    activity = Activity(
+        type="invoke",
+        name="adaptiveCard/action",
+        id="act-1",
+        from_property=sender,
+        recipient=ChannelAccount(id="bot"),
+        conversation=ConversationAccount(id="conv-1"),
+        channel_id="test",
+        service_url="https://example.test",
+    )
+    return TurnContext(_FakeAdapter(), activity)
+
+
+def _invoke(verb: str, data: dict[str, Any]) -> AdaptiveCardInvokeValue:
+    return AdaptiveCardInvokeValue(
+        action={"type": "Action.Execute", "verb": verb, "data": {"tool": verb, **data}}
+    )
+
+
+async def test_invoke_routes_through_service_gates_and_refreshes_in_place() -> None:
+    directory = "eng_lead:approver@example.com,comms:approver2@example.com"
+    service = _service(approver_directory=directory)
+    bot = CourtBot(service)
+
+    # Requester opens a trial (message turn) — lands at requester self-review.
+    requester = Principal(oid="user-req", upn="requester@example.com", display_name="req")
+    summary = service.submit_change(
+        "slip the launch from 2026-06-10 to 2026-06-17",
+        source="playground",
+        run_mode=RunMode.DRY_RUN,
+        requester=requester,
+    )
+    assert summary.status == "awaiting_requester_review"
+
+    # The requester clicks "Send for approval" — the note Input arrives merged into action.data.
+    response = await bot.on_adaptive_card_invoke(
+        _turn_context(REQUESTER),
+        _invoke(
+            "send_for_approval", {"thread_id": summary.thread_id, "note": "ship it safely"}
+        ),
+    )
+    assert response.status_code == 200
+    assert response.type == _CARD_TYPE
+    card = response.value
+    assert card["type"] == "AdaptiveCard"
+    # The refreshed card is the approval phase: decide buttons, no send button.
+    verbs = [a["verb"] for a in card["actions"]]
+    assert verbs == ["decide", "decide"]
+    assert service.requester_note(summary.thread_id) == "ship it safely"
+
+    # The first approver (eng_lead) approves: quorum still pending, so the refreshed card
+    # stays in the approval phase for the remaining role.
+    response = await bot.on_adaptive_card_invoke(
+        _turn_context(APPROVER),
+        _invoke("decide", {"thread_id": summary.thread_id, "approve": True}),
+    )
+    assert response.status_code == 200
+    assert "⛔" not in str(response.value)
+    assert [a["verb"] for a in response.value["actions"]] == ["decide", "decide"]
+
+    # The second approver (comms) completes the quorum: the terminal result card replaces it.
+    response = await bot.on_adaptive_card_invoke(
+        _turn_context(APPROVER2),
+        _invoke("decide", {"thread_id": summary.thread_id, "approve": True}),
+    )
+    assert response.status_code == 200
+    assert response.type == _CARD_TYPE
+    blob = str(response.value)
+    assert "⛔" not in blob  # the gate accepted the decision, no guidance card
+    assert "Verdict recorded" in blob or "Safe alternative executed" in blob
+    assert "actions" not in response.value  # result card is terminal — no further buttons
+
+
+async def test_invoke_error_renders_guidance_card_not_crash() -> None:
+    service = _service()
+    bot = CourtBot(service)
+    response = await bot.on_adaptive_card_invoke(
+        _turn_context(APPROVER),
+        _invoke("decide", {"thread_id": "missing-thread", "approve": True}),
+    )
+    assert response.status_code == 200
+    body_text = str(response.value)
+    assert "⛔" in body_text or "Unknown" in body_text

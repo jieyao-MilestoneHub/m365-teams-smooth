@@ -20,6 +20,11 @@ dependencies = [
     "azure-search-documents==12.1.0b1",
     "azure-identity>=1.17",
     "openai>=1.40",
+    # The bot surface (POST /api/messages): turn handling and Bot Framework auth. The aiohttp
+    # integration package supplies CloudAdapter/ConfigurationBotFrameworkAuthentication; the
+    # FastAPI route drives it through the framework-agnostic process_activity.
+    "botbuilder-core>=4.15,<5",
+    "botbuilder-integration-aiohttp>=4.15,<5",
 ]
 
 [dependency-groups]
@@ -59,6 +64,11 @@ ignore_missing_imports = true
 # The Azure SDK ships only partial type information; relax its imports the same way.
 [[tool.mypy.overrides]]
 module = ["azure.*"]
+ignore_missing_imports = true
+
+# The Bot Framework SDK is an untyped boundary; the bot façade's own mapping logic stays strict.
+[[tool.mypy.overrides]]
+module = ["botbuilder.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

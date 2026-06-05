@@ -93,6 +93,15 @@ class CourtService:
         self._max_request_chars = max_request_chars
         self._id = id_factory
 
+    def attach_notifier(self, notifier: ApprovalNotifier) -> None:
+        """Late-bind the approval notifier.
+
+        The bot-chat card notifier reads trials through this service, so it can only be built
+        after the service exists; the composition root constructs both and then attaches the
+        composite here. Notifications stay best-effort either way.
+        """
+        self._notifier = notifier
+
     def capabilities(self) -> list[Capability]:
         """The merged capability catalog the court can act on (empty if no registry is wired)."""
         return self._registry.capabilities() if self._registry is not None else []

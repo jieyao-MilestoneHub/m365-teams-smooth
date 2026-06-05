@@ -8,5 +8,7 @@ The **Change Court card** is built at runtime from a trial's data by `backend/ap
   Customer Promise trial (the unsafe-promise → safe-alternative case), with the live `thread_id`
   replaced by a `{thread_id}` placeholder. It is a reference artifact, not the source of truth.
 
-Verdict buttons are `Action.Submit` actions that post `{thread_id, verdict_type, selected_plan}` back
-to the `cast_verdict` MCP tool.
+Verdict buttons are `Action.Execute` (universal) actions whose `verb` names the tool and whose data
+posts `{thread_id, verdict_type, selected_plan}` back to `cast_verdict`; on the bot surface the
+invoke response refreshes the card in place. The data keeps a `tool` key so legacy
+`Action.Submit`-style routing resolves identically.

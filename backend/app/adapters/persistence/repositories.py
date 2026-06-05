@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
@@ -9,11 +11,13 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.adapters.persistence.models import (
     ApprovalEventRow,
     AuditRecordRow,
+    ConversationReferenceRow,
     PendingApprovalRow,
     PrecedentRow,
     VerdictClaimRow,
 )
 from app.domain import ApprovalDecision, ApprovalEvent, AuditRecord
+from app.ports.conversation_store import ConversationStore
 from app.ports.memory import MemoryPort, PrecedentRecord
 from app.ports.repository import ApprovalLedger, AuditRepository, VerdictLedger
 
@@ -171,6 +175,44 @@ class SqlApprovalLedger(ApprovalLedger):
         with self._session_factory() as session:
             stmt = select(PendingApprovalRow.thread_id).order_by(PendingApprovalRow.created_at)
             return list(session.execute(stmt).scalars().all())
+
+
+class SqlConversationStore(ConversationStore):
+    """Conversation references over SQLAlchemy: one upserted row per identity key."""
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    def save(self, *, oid: str, upn: str, reference: dict[str, object]) -> None:
+        keys = {k for k in (oid.strip(), upn.strip().lower()) if k}
+        if not keys:
+            return
+        now = datetime.now(UTC).isoformat()
+        with self._session_factory() as session:
+            for key in keys:
+                row = session.get(ConversationReferenceRow, key)
+                if row is None:
+                    session.add(
+                        ConversationReferenceRow(
+                            identity_key=key, oid=oid, upn=upn, updated_at=now, payload=reference
+                        )
+                    )
+                else:
+                    row.oid, row.upn, row.updated_at, row.payload = oid, upn, now, reference
+            try:
+                session.commit()
+            except IntegrityError:  # concurrent turn already wrote the row; the next one rewrites
+                session.rollback()
+
+    def get(self, identity: str) -> dict[str, object] | None:
+        key = identity.strip()
+        if not key:
+            return None
+        with self._session_factory() as session:
+            row = session.get(ConversationReferenceRow, key) or session.get(
+                ConversationReferenceRow, key.lower()
+            )
+            return dict(row.payload) if row is not None else None
 
 
 class SqlPrecedentStore(MemoryPort):

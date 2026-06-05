@@ -132,3 +132,17 @@ def test_legacy_statuses_keep_cast_verdict_actions() -> None:
         actions = card["actions"]
         assert isinstance(actions, list) and actions
         assert all(a["data"]["tool"] == "cast_verdict" for a in actions)
+
+
+def test_actions_are_universal_execute_with_matching_verb() -> None:
+    """Every phase emits Action.Execute whose verb mirrors data.tool, so the bot's invoke
+    handler and legacy Action.Submit value routing resolve to the same service gate."""
+    thread_id, trial = _trial(_service(), "slip the launch from 2026-06-10 to 2026-06-17")
+    for status in ("awaiting_requester_review", "awaiting_approval", "awaiting_verdict"):
+        card = build_change_court_card(thread_id, trial, status=status)
+        actions = card["actions"]
+        assert isinstance(actions, list) and actions
+        for action in actions:
+            assert action["type"] == "Action.Execute"
+            assert action["verb"] == action["data"]["tool"]
+            assert action["data"]["thread_id"] == thread_id

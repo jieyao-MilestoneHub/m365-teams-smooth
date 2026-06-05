@@ -100,10 +100,22 @@ class Settings(BaseSettings):
     # Graph (app-only TeamsActivity.Send; reuses the GRAPH_* credentials; the activity types are
     # declared in the Teams app manifest). Delivery is best-effort and never blocks the workflow.
     notify_mode: str = "off"
-    # Click-through target of the notification toast (a Teams deep link, "…/l/…").
-    notify_link_url: str = "https://teams.microsoft.com"
+    # Click-through target of the notification toast (a Teams deep link, "…/l/…" — Graph rejects
+    # a bare domain). Empty -> derived from the bot app id (the bot chat, where the proactive
+    # approval card lands), falling back to the Teams home when no bot is configured.
+    notify_link_url: str = ""
     # The catalog app id of the Teams app (disambiguates the installed app for notifications).
     notify_teams_app_id: str = ""
+
+    # --- Bot surface (POST /api/messages) ---
+    # The Azure Bot's app registration. Empty bot_app_id -> anonymous Bot Framework auth, which is
+    # what the local Playground/Emulator expects; set all of these when deployed behind Azure Bot
+    # Service. The app is multi-tenant by default so the bot resource and the sign-in tenant may
+    # live in different tenants.
+    bot_app_id: str = ""
+    bot_app_password: str = ""
+    bot_app_type: str = "MultiTenant"
+    bot_app_tenant_id: str = ""
 
     # --- Deployment ---
     # Public HTTPS origin this backend is reachable at (e.g. https://change-court.example.com).
@@ -118,6 +130,21 @@ class Settings(BaseSettings):
         """
         origin = self.public_base_url.rstrip("/") or "http://localhost:8000"
         return f"{origin}/mcp"
+
+    def notification_link_url(self) -> str:
+        """The toast's click-through deep link.
+
+        An explicit ``notify_link_url`` wins; otherwise the bot chat (where the proactive approval
+        card lands) when a bot is configured, then the installed app, then the Teams home.
+        Graph requires a deep link ("…/l/…"), so the derived forms are preferred.
+        """
+        if self.notify_link_url:
+            return self.notify_link_url
+        if self.bot_app_id:
+            return f"https://teams.microsoft.com/l/chat/0/0?users=28:{self.bot_app_id}"
+        if self.notify_teams_app_id:
+            return f"https://teams.microsoft.com/l/app/{self.notify_teams_app_id}"
+        return "https://teams.microsoft.com"
 
     def approver_map(self) -> dict[str, set[str]]:
         """Parse ``approver_directory`` into ``{role: {identity_key, ...}}`` (all lowercased)."""

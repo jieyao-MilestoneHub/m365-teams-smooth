@@ -187,3 +187,33 @@ variable "entra_client_id" {
   description = "Application (client) id of an externally-registered Entra app (when create_entra_app = false)."
   default     = ""
 }
+
+# --- Bot surface (Azure Bot Service + Teams channel) ---
+# The bot endpoint ships with the backend either way; these resources register it as a Teams bot so
+# the court card's buttons work natively in Teams. Cross-tenant note: the Azure Bot resource lives
+# in the subscription's tenant while users sign in from the M365 tenant — hence the multi-tenant
+# bot app registration.
+variable "create_bot" {
+  type        = bool
+  description = "Whether to register the Azure Bot resource + Teams channel for the approval-card surface."
+  default     = false
+}
+
+variable "create_bot_app" {
+  type        = bool
+  description = "Whether Terraform creates the bot's multi-tenant app registration (false = supply bot_app_id/bot_app_password externally)."
+  default     = true
+}
+
+variable "bot_app_id" {
+  type        = string
+  description = "Application (client) id of an externally-registered bot app (when create_bot_app = false)."
+  default     = ""
+}
+
+variable "bot_app_password" {
+  type        = string
+  description = "Client secret of an externally-registered bot app (when create_bot_app = false). Stored as a Container App secret."
+  default     = ""
+  sensitive   = true
+}

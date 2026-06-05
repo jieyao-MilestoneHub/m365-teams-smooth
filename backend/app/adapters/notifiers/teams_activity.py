@@ -11,14 +11,25 @@ Graph contract, verified live against the deployed tenant:
   feed, while the reserved ``systemDefault`` type — free-form text via the ``systemDefaultText``
   template parameter — delivers reliably, so that is what this adapter sends.
 - ``teamsAppId`` (the *catalog* app id, not the manifest id) disambiguates the installed app.
+
+Each trial's notifications share a ``chainId`` derived from the thread id, so a newer event for the
+same trial overrides the previous toast in the recipient's feed instead of stacking next to it.
 """
 
 from __future__ import annotations
+
+from hashlib import sha256
 
 from app.adapters.integrations.graph import GraphClient
 from app.ports.notifier import ApprovalNotifier
 
 _TOPIC_VALUE = "AI Change Court"
+
+
+def _chain_id(thread_id: str) -> int:
+    """A stable positive Int64 for the trial, as Graph expects for notification chaining."""
+    digest = sha256(thread_id.encode("utf-8")).digest()
+    return int.from_bytes(digest[:8], "big") & 0x7FFF_FFFF_FFFF_FFFF
 
 
 class TeamsActivityNotifier(ApprovalNotifier):
@@ -29,12 +40,13 @@ class TeamsActivityNotifier(ApprovalNotifier):
         self._link_url = link_url
         self._teams_app_id = teams_app_id
 
-    def _send(self, upn: str, text: str) -> None:
+    def _send(self, upn: str, text: str, thread_id: str) -> None:
         payload: dict[str, object] = {
             "topic": {"source": "text", "value": _TOPIC_VALUE, "webUrl": self._link_url},
             "activityType": "systemDefault",
             "previewText": {"content": text[:150]},
             "templateParameters": [{"name": "systemDefaultText", "value": text[:150]}],
+            "chainId": _chain_id(thread_id),
         }
         if self._teams_app_id:
             payload["teamsAppId"] = self._teams_app_id
@@ -51,7 +63,7 @@ class TeamsActivityNotifier(ApprovalNotifier):
     ) -> None:
         text = f"Approval needed — {requester_upn}: {title}" + (f" — {note}" if note else "")
         for upn in approver_upns:
-            self._send(upn, text)
+            self._send(upn, text, thread_id)
 
     def decided(
         self,
@@ -67,4 +79,4 @@ class TeamsActivityNotifier(ApprovalNotifier):
             return
         outcome = "approved" if approved else "rejected"
         text = f"{decider_upn} {outcome}: {title}" + (f" — {note}" if note else "")
-        self._send(requester_upn, text)
+        self._send(requester_upn, text, thread_id)
