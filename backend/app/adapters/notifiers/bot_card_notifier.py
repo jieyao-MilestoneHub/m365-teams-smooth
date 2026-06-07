@@ -6,8 +6,10 @@ deep link lands on something the approver can act on without typing. It composes
 trial data comes from injected readers, the card from the existing builders, and delivery is handed
 to a queue (the sync/async seam) — no business logic, no I/O of its own.
 
-Recipients without a stored conversation reference (they never installed or talked to the bot) are
-skipped silently; the activity-feed toast still reaches them.
+Recipients without a stored conversation reference are still submitted — as create-jobs that ask
+the sender to open the personal conversation (valid whenever the app is installed for the user).
+Deployments where the bot cannot address users (no credentials) drop those jobs at the sender; the
+activity-feed toast remains the floor.
 """
 
 from __future__ import annotations
@@ -26,7 +28,7 @@ Card = dict[str, object]
 TrialReader = Callable[[str], TrialRecord | None]
 NoteReader = Callable[[str], str]
 StatusReader = Callable[[str], str | None]
-SubmitJob = Callable[[dict[str, object], Card, str], None]
+SubmitJob = Callable[[dict[str, object] | None, Card, str, str], None]
 RequestCardBuilder = Callable[..., Card]
 ResultCardBuilder = Callable[..., Card]
 
@@ -74,16 +76,14 @@ class BotCardNotifier(ApprovalNotifier):
         for upn in approver_upns:
             reference = self._store.get(upn)
             if reference is None:
-                # Not reachable in the bot chat (no stored conversation reference); the activity
-                # toast still lands. Logged so a silent "no card" is visible, not inferred — a
-                # common cause is an identity-key mismatch (the directory must key on the same
-                # identity the bot captured, i.e. the Entra oid).
+                # No stored conversation reference — hand the sender a create-job instead. The
+                # identity must be the Entra oid (what the directory keys on) for the channel to
+                # resolve the member; logged so the fallback path is visible, not inferred.
                 logger.info(
-                    "proactive.skipped",
+                    "proactive.create",
                     extra={"thread_id": thread_id, "event": "approval_requested", "identity": upn},
                 )
-                continue
-            self._submit_job(reference, card, thread_id)
+            self._submit_job(reference, card, thread_id, upn)
 
     def decided(
         self,
@@ -98,16 +98,15 @@ class BotCardNotifier(ApprovalNotifier):
         reference = self._store.get(requester_upn)
         if reference is None:
             logger.info(
-                "proactive.skipped",
+                "proactive.create",
                 extra={"thread_id": thread_id, "event": "decided", "identity": requester_upn},
             )
-            return
         trial = self._trial_reader(thread_id)
         if trial is None:
             return
         status = self._status_reader(thread_id) or ("approved" if approved else "rejected")
         card = self._result_card(trial, status=status, audit_id=None, thread_id=thread_id)
-        self._submit_job(reference, card, thread_id)
+        self._submit_job(reference, card, thread_id, requester_upn)
 
     def acknowledged(
         self,

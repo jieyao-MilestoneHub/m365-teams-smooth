@@ -116,6 +116,10 @@ class Settings(BaseSettings):
     bot_app_password: str = ""
     bot_app_type: str = "MultiTenant"
     bot_app_tenant_id: str = ""
+    # Channel service URL used when the sender must CREATE a conversation (recipient never
+    # contacted the bot). Teams' global entry routes to the tenant's region; override when a
+    # captured reference shows a regional URL (e.g. .../apac/).
+    bot_service_url: str = "https://smba.trafficmanager.net/teams/"
 
     # --- Deployment ---
     # Public HTTPS origin this backend is reachable at (e.g. https://change-court.example.com).

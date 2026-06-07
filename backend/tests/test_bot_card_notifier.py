@@ -40,7 +40,9 @@ def _notifier(
 ) -> BotCardNotifier:
     return BotCardNotifier(
         conversation_store=store,
-        submit_job=lambda ref, card, thread_id: jobs.append((ref, card, thread_id)),
+        submit_job=lambda ref, card, thread_id, recipient: jobs.append(
+            (ref, card, thread_id, recipient)
+        ),
         trial_reader=service.get_trial,
         note_reader=service.requester_note,
         status_reader=service.get_status,
@@ -72,13 +74,16 @@ def test_approval_requested_enqueues_decide_card_per_reachable_approver() -> Non
         note="please review",
     )
 
-    # One job for the installed approver; the offline one is skipped silently.
-    assert len(jobs) == 1
-    reference, card, job_thread = jobs[0]
+    # A continue-job for the installed approver; a create-job for the one without a reference.
+    assert len(jobs) == 2
+    reference, card, job_thread, recipient = jobs[0]
     assert reference == _REFERENCE and job_thread == thread_id
+    assert recipient == "approver@example.com"
     verbs = [a["verb"] for a in card["actions"]]
     assert verbs == ["decide", "decide"]  # the actionable approval card, not a toast
     assert "please review" in str(card)
+    offline_reference, _, _, offline_recipient = jobs[1]
+    assert offline_reference is None and offline_recipient == "offline@example.com"
 
 
 def test_decided_enqueues_result_card_for_requester() -> None:
@@ -101,7 +106,7 @@ def test_decided_enqueues_result_card_for_requester() -> None:
     )
 
     assert len(jobs) == 1
-    _, card, _ = jobs[0]
+    _, card, _, _ = jobs[0]
     assert "actions" not in card  # terminal result card — nothing further to click
 
 
@@ -135,7 +140,9 @@ def test_approval_card_delivered_when_directory_and_store_key_on_oid() -> None:
     assert len(jobs) == 1
 
 
-def test_unreachable_recipients_enqueue_nothing() -> None:
+def test_unreachable_recipients_enqueue_create_jobs() -> None:
+    # No stored reference -> the job carries no reference but names the recipient, asking the
+    # sender to create the conversation (the bot-credentialed deployments can; others drop it).
     service = _service()
     jobs: list[tuple[Any, ...]] = []
     thread_id = _awaiting_approval_thread(service)
@@ -157,4 +164,7 @@ def test_unreachable_recipients_enqueue_nothing() -> None:
         note="no",
     )
 
-    assert jobs == []
+    assert [(ref, recipient) for ref, _, _, recipient in jobs] == [
+        (None, "approver@example.com"),
+        (None, "requester@example.com"),
+    ]
