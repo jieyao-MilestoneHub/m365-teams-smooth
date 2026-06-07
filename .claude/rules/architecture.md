@@ -14,13 +14,15 @@ Microsoft 365 Copilot Chat / Teams
         ▼
   FastAPI process (backend/)
      ├─ mcp/        MCP server: tools + resources + OAuth2 resource server (primary surface)
-     ├─ api/        minimal REST: health only (audit/trial inspection is an MCP resource)
+     ├─ api/        minimal REST: health + the read-only run page (signed links; no business logic)
      ├─ services/   single business layer (REST + MCP both delegate here — no duplication)
      ├─ agent/      LangGraph court: intake → impact → options → policy+quorum → [verdict] → execute → audit
      ├─ ports/      abstract interfaces (DIP boundary)
      ├─ adapters/   integrations (real GitHub + mock others), persistence, llm, notifiers
      └─ domain/     pure models/enums/errors (no framework or SDK imports)
-  Teams Adaptive Card = the primary UI (Change Court card). No web dashboard.
+  Teams Adaptive Card = the decision UI (Change Court card). The one web surface is the
+  read-only pipeline run page (/runs/{thread_id}, HMAC-signed deep links — ADR-0011):
+  it inspects a trial's run, never decides. No dashboard beyond it.
   SQLite (local) → Postgres (later), DB_URL-driven
 ```
 

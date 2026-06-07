@@ -69,6 +69,8 @@ listed below it.
 - ☐ `pytest` green (unit + integration, including dry-run and live court paths, and the guard tests).
 - ☐ Shipped docs stay product-focused (`.claude/rules/docs.md`): the docs check in `scripts/verify.sh`
   passes.
+- ☐ The pipeline run page is read-only and signed-link-gated: no token → 401, secret unset → 404,
+  and the page exposes no decision action (verdicts happen only on the card).
 
 ## Pending tenant (verify when a Microsoft 365 dev tenant is available)
 

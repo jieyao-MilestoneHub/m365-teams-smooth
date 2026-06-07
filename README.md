@@ -51,6 +51,11 @@ In Teams, a risky decision returns a **Change Court card**: the proposed change,
 evidence, the stakeholders required to approve, the predicted effects with rollback hints, and the
 verdict buttons. Approving resumes the run and executes; the audit trail records the outcome.
 
+The card also links to a **pipeline run page** — a read-only, CI-style run log (signed per-trial
+links) where the whole flow can be watched live: each stage's timing and evidence, the verdict gate
+filling its quorum, per-system execution lanes with before→after effects, and the audit record.
+Decisions stay on the card; the page only inspects.
+
 ## Three trials
 
 - **Launch Slip Trial** — "slip the launch from June 10 to June 17." Updates a real GitHub milestone
