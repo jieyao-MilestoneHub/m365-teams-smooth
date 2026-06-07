@@ -68,6 +68,13 @@ variable "github_token" {
   sensitive   = true
 }
 
+variable "run_link_secret" {
+  type        = string
+  description = "Optional: HMAC secret signing the read-only run-page deep links. Empty disables the run page (it 404s). Stored as a Container App secret."
+  default     = ""
+  sensitive   = true
+}
+
 variable "github_repo" {
   type        = string
   description = "Optional: owner/name for the real GitHub adapter."
