@@ -15,6 +15,37 @@ def _service() -> CourtService:
 
 
 _REQUEST = "slip the launch from 2026-06-10 to 2026-06-17"
+_CONFLICT_REQUEST = "move the rehearsal to 2026-06-16"
+
+
+def test_target_date_conflict_yields_a_safe_alternative_date() -> None:
+    # 2026-06-16 collides with the seeded board review: the court refuses the date as posed
+    # and the Defender proposes the next free day with the same four-system ripple.
+    service = _service()
+    summary = service.submit_change(_CONFLICT_REQUEST)
+
+    assert summary.unsafe is True
+    assert summary.plan_kind == PlanKind.SAFE_ALTERNATIVE.value
+    assert "accept_alternative" in summary.verdict_options
+    assert "approve" not in summary.verdict_options
+
+    trial = service.get_trial(summary.thread_id)
+    assert trial is not None and trial.impact is not None and trial.options is not None
+    assert "schedule.target_date_conflict" in trial.impact.tags
+    assert trial.options.supersedes_request is True
+    move = next(
+        s for s in trial.options.steps if s.capability.name == "github.update_milestone_due"
+    )
+    assert move.params["due_on"] == "2026-06-17"  # the next free day after the clash
+
+
+def test_accepting_the_alternative_date_executes() -> None:
+    service = _service()
+    summary = service.submit_change(_CONFLICT_REQUEST)
+    cast = service.cast_verdict(
+        summary.thread_id, VerdictType.ACCEPT_ALTERNATIVE, selected_plan=PlanKind.SAFE_ALTERNATIVE
+    )
+    assert cast.execution_status == ChangeStatus.DONE.value
 
 
 def test_launch_slip_produces_high_risk_court_awaiting_verdict() -> None:

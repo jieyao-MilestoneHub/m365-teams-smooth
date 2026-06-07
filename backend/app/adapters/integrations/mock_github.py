@@ -25,7 +25,7 @@ class MockGitHubAdapter(BaseIntegrationAdapter):
 
     def __init__(self) -> None:
         self._milestones: dict[str, dict[str, object]] = {
-            "Launch": {"title": "Launch", "due_on": "2026-06-10"},
+            "Launch Rehearsal": {"title": "Launch Rehearsal", "due_on": "2026-06-10"},
         }
         # Open issues that block SSO going generally available (Customer Promise).
         self._blocking_issues: list[dict[str, object]] = [
@@ -83,7 +83,7 @@ class MockGitHubAdapter(BaseIntegrationAdapter):
 
     def _read(self, query: ReadQuery) -> ReadResult:
         if query.capability == "github.read_milestone":
-            name = str(query.params.get("milestone", "Launch"))
+            name = str(query.params.get("milestone", "Launch Rehearsal"))
             return ReadResult(
                 capability=query.capability, data=dict(self._milestones.get(name, {}))
             )
@@ -129,7 +129,7 @@ class MockGitHubAdapter(BaseIntegrationAdapter):
 
     def _fetch_before(self, step: ExecutionStep) -> dict[str, object]:
         if step.capability.name == "github.update_milestone_due":
-            milestone = str(step.params.get("milestone", "Launch"))
+            milestone = str(step.params.get("milestone", "Launch Rehearsal"))
             return dict(self._milestones.get(milestone, {}))
         if step.capability.name == "github.create_issue":
             return {"issues": len(self._created_issues)}
