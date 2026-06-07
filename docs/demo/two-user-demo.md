@@ -27,14 +27,15 @@ requester: submit ──► AWAITING_REQUESTER_REVIEW ── send (note required
 
 ## Local: Agents Playground
 
-1. Pick the identities. The Playground's user switcher changes the channel account id; the launch
-   slip trial requires `eng_lead` **and** `comms` (quorum policy `all`), so map two approver users:
+1. Pick the identities. The Playground's user switcher changes the channel account id; the
+   Reschedule Sync trial requires `eng_lead` **and** `comms` (quorum policy `all`), so map two
+   approver users:
 
    ```bash
    APPROVER_DIRECTORY="eng_lead:<user-b-id>,comms:<user-c-id>" make bot
    ```
 
-2. As **user A**: type `slip the launch from 2026-06-10 to 2026-06-17` → the card holds at
+2. As **user A**: type `move the rehearsal to 2026-06-17` → the card holds at
    requester review → fill the note → **Send for approval**.
 3. Switch to **user B**: type `queue` → open the trial → **Approve** (quorum still pending).
 4. Switch to **user C**: `queue` → **Approve** → the run resumes, executes (DRY_RUN) and audits.
@@ -45,9 +46,10 @@ requester: submit ──► AWAITING_REQUESTER_REVIEW ── send (note required
 
 ## Real tenant (Copilot Chat / Teams)
 
-Prerequisites: the backend deployed over HTTPS with Entra OAuth (see [deploy.md](deploy.md)), the
-declarative agent sideloaded (see [../m365/README.md](../../m365/README.md)). Before walking the
-flow, read the [runbook's Known issues](runbook.md#known-issues-open--plan-around-these) — the
+Prerequisites: the backend deployed over HTTPS with Entra OAuth (see
+[../deploy/deploy.md](../deploy/deploy.md)), the declarative agent sideloaded (see
+[../../m365/README.md](../../m365/README.md)). Before walking the flow, read the
+[runbook's Known issues](../deploy/runbook.md#known-issues-open--plan-around-these) — the
 notification toast is not actionable yet, and app-package updates require each user to remove and
 re-add the agent.
 

@@ -49,7 +49,8 @@ where its data comes from.
   static file; `services/` stays the single business layer and `cards.py` stays a pure mapper
   (the link generator is injected at the composition edge).
 - The run-event log lives in the same ephemeral SQLite as everything else: a new Container App
-  revision wipes it, so run-page links die with their trials (covered by the demo-day checklist).
+  revision wipes it, so run-page links die with their trials (covered by the
+  [demo-day checklist](../../demo/demo-day-checklist.md)).
 - Anyone holding a link can read that one trial's run log; link hygiene is the access model,
   by design. Rotating `RUN_LINK_SECRET` invalidates all previously minted links at once.
 - An MCP `court://run/{thread_id}` resource over the same `get_run_view` is a one-call seam left
