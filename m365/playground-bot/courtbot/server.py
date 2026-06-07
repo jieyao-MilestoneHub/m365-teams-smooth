@@ -56,8 +56,13 @@ def wire_proactive(
     service.attach_notifier(
         BotCardNotifier(
             conversation_store=store,
-            submit_job=lambda reference, card, thread_id: sender.submit(
-                ProactiveJob(reference=reference, card=card, thread_id=thread_id)
+            submit_job=lambda reference, card, thread_id, recipient: sender.submit(
+                ProactiveJob(
+                    reference=reference,
+                    card=card,
+                    thread_id=thread_id,
+                    recipient_oid=recipient,
+                )
             ),
             trial_reader=service.get_trial,
             note_reader=service.requester_note,
