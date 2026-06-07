@@ -136,9 +136,9 @@ docs/        architecture, ADRs, API/contract, trials & test data
 scripts/     developer/demo scripts (verify.sh, seed data)
 ```
 
-A visual tour of every layer is in [`docs/architecture/architecture.html`](docs/architecture/architecture.html) (self-contained,
-opens offline); the security posture and credential-rotation runbook are in
-[`docs/deploy/security.md`](docs/deploy/security.md).
+A visual tour of every layer is in [`docs/architecture/index.html`](docs/architecture/index.html) — six
+self-contained diagram pages that open offline; the security posture and credential-rotation runbook
+are in [`docs/deploy/security.md`](docs/deploy/security.md).
 
 ## Getting started (local)
 

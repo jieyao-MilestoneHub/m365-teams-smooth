@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AI Change Court — Architecture</title>
+<style>
+  :root {
+    --ink: #1c2430; --muted: #5b6675; --line: #d8dee6; --bg: #ffffff; --page: #f4f6f9;
+    --entry: #6d4ca8;   /* M365 / entry      — purple */
+    --facade: #2a6fb0;  /* mcp/api façade    — blue   */
+    --core: #1f7a8c;    /* services/agent    — teal   */
+    --port: #46708a;    /* ports (DIP)       — slate  */
+    --adapter: #b5651d; /* adapters          — amber  */
+    --domain: #1f9d57;  /* domain (pure)     — green  */
+    --data: #5b6675;    /* persistence       — grey   */
+    --agentic: #2a6fb0; /* agentic role      — blue   */
+    --gov: #1f9d57;     /* deterministic gov — green  */
+    --gate: #c9851b;    /* durable interrupt — orange */
+    --danger: #c0392b;  /* refusal / guard   — red    */
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink);
+    font: 16px/1.6 -apple-system, "Segoe UI", "Noto Sans TC", Roboto, "PingFang TC",
+      "Microsoft JhengHei", sans-serif; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 32px 20px 80px; }
+  header.hero { background: linear-gradient(135deg, #2a6fb0, #1c4f80); color: #fff;
+    border-radius: 14px; padding: 26px 30px; margin-bottom: 18px; }
+  header.hero h1 { margin: 0 0 6px; font-size: 27px; }
+  header.hero p { margin: 0; opacity: .93; font-size: 15px; }
+  nav.pager { display: flex; justify-content: space-between; gap: 12px;
+    font-size: 13.5px; color: var(--muted); margin: 0 2px 22px; }
+  nav.pager a { color: #2a6fb0; text-decoration: none; }
+  nav.pager a:hover { text-decoration: underline; }
+  h2 { font-size: 21px; margin: 36px 0 6px; padding-bottom: 6px; border-bottom: 2px solid #eaf2fb; }
+  h2 .n { color: #2a6fb0; font-variant-numeric: tabular-nums; }
+  p.lead { color: var(--muted); margin: 8px 0 14px; font-size: 14.5px; }
+  ul { margin: 8px 0 16px; padding-left: 22px; }
+  ul li { margin: 5px 0; }
+  figure { margin: 0 0 8px; background: var(--bg); border: 1px solid var(--line);
+    border-radius: 12px; padding: 16px 16px 10px; overflow-x: auto; }
+  figcaption { color: var(--muted); font-size: 13px; padding: 6px 4px 2px; }
+  svg { display: block; width: 100%; height: auto; min-width: 720px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 6px 2px 16px; font-size: 13px;
+    color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 13px; height: 13px; border-radius: 3px; display: inline-block; }
+  ol.toc { list-style: none; margin: 18px 0; padding: 0; display: grid; gap: 12px; }
+  ol.toc li { background: var(--bg); border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px 18px; }
+  ol.toc .num { color: #2a6fb0; font-weight: 700; margin-right: 8px; }
+  ol.toc a { color: var(--ink); font-weight: 700; text-decoration: none; font-size: 16px; }
+  ol.toc a:hover { color: #2a6fb0; }
+  ol.toc p { margin: 4px 0 0; color: var(--muted); font-size: 13.5px; }
+  code { font-family: "SFMono-Regular", Consolas, monospace; font-size: 13px;
+    background: #f0f3f7; padding: 1px 5px; border-radius: 4px; }
+  footer { margin-top: 36px; color: var(--muted); font-size: 13px; text-align: center; }
+  /* SVG shared text */
+  text { font-family: -apple-system, "Segoe UI", "Noto Sans TC", sans-serif; fill: var(--ink); }
+  .t-title { font-size: 14px; font-weight: 700; }
+  .t-sub { font-size: 11.5px; fill: #5b6675; }
+  .t-white { fill: #fff; }
+  .t-lbl { font-size: 11px; fill: #5b6675; }
+  .edge { stroke: #9aa7b4; stroke-width: 1.6; fill: none; }
+  .edge-strong { stroke: #2a6fb0; stroke-width: 2; fill: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>AI Change Court — Architecture</h1>
+  <p>A risky enterprise decision goes on trial before it becomes action: gather impact evidence,
+     draft a feasible plan — or a safer alternative — resolve who must approve, collect the
+     verdict, execute, and keep an audit nobody can rewrite. Six views, each a self-contained
+     offline page.</p>
+</header>
+
+<h2>How to read these six views</h2>
+<p class="lead">They are ordered from the outside in, then from flow to data: start with the
+  container layers (①), follow a decision through the court pipeline (②) and its human approval
+  gate (③), then see what protects the path (④), what persists (⑤), and where the Microsoft
+  platform plugs in (⑥). Every page carries its own diagram, design rationale, guarantees, and
+  links — read one in isolation or all six in order.</p>
+
+<ol class="toc">
+  <li><span class="num">①</span><a href="01-layered-architecture.html">Layered container architecture</a>
+    <p>Dependency-inversion layers from the M365 entry through the FastAPI façades to the pure
+       domain — why the core never touches an SDK, and why a new integration is one adapter plus
+       one registration.</p></li>
+  <li><span class="num">②</span><a href="02-court-pipeline.html">Court pipeline &amp; governed autonomy</a>
+    <p>The LangGraph court with its courtroom roles, the agentic-vs-deterministic split, the
+       durable verdict interrupt, and the precedent memory loop.</p></li>
+  <li><span class="num">③</span><a href="03-approval-sequence.html">Approval sequence &amp; separation of duties</a>
+    <p>Submit → send → decide → execute as a time-ordered sequence — the requester ≠ approver
+       gate, derived quorum, and the idempotent verdict gate.</p></li>
+  <li><span class="num">④</span><a href="04-trust-boundaries.html">Security &amp; trust boundaries</a>
+    <p>Four defense lines from the OAuth2 edge to adapter parameter validation, plus the
+       append-only audit and the keyless credential posture.</p></li>
+  <li><span class="num">⑤</span><a href="05-data-and-retention.html">Data model &amp; retention</a>
+    <p>The permanent audit as source of truth, purgeable working storage, and rebuildable read
+       models — including the court's explainable precedent memory.</p></li>
+  <li><span class="num">⑥</span><a href="06-platform-integration.html">Microsoft platform integration</a>
+    <p>Where Microsoft 365 Copilot, Azure AI Foundry (Azure OpenAI + Foundry IQ), Microsoft
+       Graph, and GitHub plug in — and which edges are keyless, credentialed, or mocked.</p></li>
+</ol>
+
+<h2>Further reading</h2>
+<ul>
+  <li><a href="../overview/goals.md">Overview &amp; goals</a> — the problem and the
+    governed-autonomy thesis.</li>
+  <li><a href="../reference/adr/">Architecture Decision Records</a> — the significant,
+    hard-to-reverse choices and their rationale.</li>
+  <li><a href="../README.md">Documentation map</a> — everything else, organized by goal.</li>
+</ul>
+
+<footer>Self-contained static pages — inline SVG, no external dependencies, work offline.</footer>
+
+</div>
+</body>
+</html>
