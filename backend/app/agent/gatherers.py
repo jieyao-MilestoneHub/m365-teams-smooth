@@ -202,8 +202,48 @@ def gather_project_access(
     return ImpactEvidence(items=items, tags=tags)
 
 
+def gather_meeting_actions(
+    change: Change,
+    registry: IntegrationRegistry,
+    knowledge: KnowledgePort,
+    errors: list[str],
+) -> ImpactEvidence:
+    """Meeting follow-ups: the spoken commitments a discussion left behind, and the calendar."""
+    items: list[EvidenceItem] = []
+    tags: list[str] = []
+
+    notes = _read(registry, "teams", "teams.read_meeting_notes", errors, channel="standup").get(
+        "notes", []
+    )
+    if isinstance(notes, list) and notes:
+        items.append(
+            EvidenceItem(
+                system="teams",
+                kind="meeting_notes",
+                summary=f"{len(notes)} spoken follow-up(s) in the standup discussion",
+                data={"notes": notes},
+                grounded=knowledge.ground("meeting follow-through accountability"),
+            )
+        )
+        tags.append("meeting.action_items_found")
+
+    events = _read(registry, "outlook", "outlook.read_events", errors).get("events", [])
+    if isinstance(events, list) and events:
+        items.append(
+            EvidenceItem(
+                system="outlook",
+                kind="calendar",
+                summary="Calendar events near the proposed review slot",
+                data={"events": events},
+            )
+        )
+
+    return ImpactEvidence(items=items, tags=tags)
+
+
 GATHERERS: dict[str, Gatherer] = {
     "launch": gather_launch,
     "sso-ga": gather_sso_ga,
     "project-access": gather_project_access,
+    "meeting-actions": gather_meeting_actions,
 }

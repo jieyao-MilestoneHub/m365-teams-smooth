@@ -51,6 +51,16 @@ GOLDEN: dict[str, dict[str, object]] = {
         },
         "approvers": {"security_lead", "account_owner"},
     },
+    "meeting_actions": {
+        "request": "create action items from standup",
+        "status": "done",  # low risk, no approver: auto-approved and executed in one pass
+        "risk_level": "low",
+        "unsafe": False,
+        "plan_kind": "feasible",
+        "verdict_options": {"approve", "request_revision", "reject"},
+        "plan_capabilities": {"planner.create_task", "outlook.create_event"},
+        "approvers": set(),
+    },
     "vendor_access": {
         "request": "give the vendor access to Project X until the campaign is done",
         "status": "awaiting_verdict",

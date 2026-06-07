@@ -52,6 +52,17 @@ _DEFAULT_CORPUS: list[tuple[tuple[str, ...], GroundedFact]] = [
             citation="Commercial Commitments Policy §1.4",
         ),
     ),
+    (
+        ("action item", "follow-up", "follow-through", "meeting", "standup"),
+        GroundedFact(
+            claim=(
+                "Action items agreed in a meeting must be tracked with an owner and a due "
+                "date, not left in the discussion."
+            ),
+            source_id="policy/meeting-follow-through",
+            citation="Meeting Follow-through Policy §1.2",
+        ),
+    ),
 ]
 
 

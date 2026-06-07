@@ -25,6 +25,7 @@ _SUBJECTS = {
     "launch": "moving or slipping a launch / milestone / release date",
     "sso-ga": "promising a customer that a feature is generally available by a date",
     "project-access": "granting an external vendor / contractor / agency access to a folder",
+    "meeting-actions": "turning meeting or standup discussion into tracked follow-up tasks",
 }
 
 

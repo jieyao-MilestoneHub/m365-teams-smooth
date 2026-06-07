@@ -127,6 +127,25 @@ VENDOR_ACCESS = RulePack(
 )
 
 
+MEETING_ACTIONS = RulePack(
+    id="meeting_actions",
+    match=MatchRules(
+        any_action_capability=["planner.create_task"],
+        any_tag=["meeting.action_items_found"],
+    ),
+    risk_factors=[
+        RiskFactorRule(id="action_items_found", when_tag="meeting.action_items_found", weight=10),
+    ],
+    risk_bands=_STANDARD_BANDS,
+    # Internal task tracking carries the requester's own authority: low risk, no approver —
+    # the requester's confirmation at the review gate is what executes it.
+    quorum=QuorumRules(approvers=[]),
+    verdict_options=VerdictOptionRules(
+        default=[VerdictType.APPROVE, VerdictType.REQUEST_REVISION, VerdictType.REJECT],
+    ),
+)
+
+
 def default_packs() -> list[RulePack]:
-    """The rule packs governing the three trials."""
-    return [LAUNCH_SLIP, CUSTOMER_PROMISE, VENDOR_ACCESS]
+    """The rule packs governing the trials."""
+    return [LAUNCH_SLIP, CUSTOMER_PROMISE, VENDOR_ACCESS, MEETING_ACTIONS]
