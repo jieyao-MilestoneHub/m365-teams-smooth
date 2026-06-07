@@ -275,6 +275,9 @@ def build_court_service(
         approvals=approvals,
         directory=directory,
         notifier=notifier,
+        run_events=run_events,
+        run_link_secret=settings.run_link_secret,
+        public_base_url=settings.public_base_url,
         dry_run_default=settings.dry_run_default,
         max_request_chars=settings.max_request_chars,
     )

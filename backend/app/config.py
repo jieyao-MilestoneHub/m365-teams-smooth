@@ -122,6 +122,11 @@ class Settings(BaseSettings):
     # The MCP resource-server URL is derived as "{public_base_url}/mcp"; empty -> localhost default.
     public_base_url: str = ""
 
+    # --- Run page (read-only pipeline inspection) ---
+    # HMAC secret signing per-trial run-page deep links ("/runs/{thread_id}?t=..."). Empty ->
+    # the run page is disabled entirely (requests 404); an unverifiable link advertises nothing.
+    run_link_secret: str = ""
+
     def mcp_resource_url(self) -> str:
         """The MCP endpoint's externally reachable URL (``{public_base_url}/mcp``).
 

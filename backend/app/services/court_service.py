@@ -53,8 +53,10 @@ from app.observability import metrics
 from app.ports.notifier import ApprovalNotifier
 from app.ports.registry import IntegrationRegistry
 from app.ports.repository import ApprovalLedger, AuditRepository, VerdictLedger
+from app.ports.run_event_sink import RunEventReader
+from app.security.run_links import run_page_url, sign_thread, verify_thread
 from app.services.approver_directory import ApproverDirectory
-from app.services.dto import CastResult, TrialSummary
+from app.services.dto import ApprovalTimelineEntry, CastResult, RunView, TrialSummary
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +81,9 @@ class CourtService:
         approvals: ApprovalLedger | None = None,
         directory: ApproverDirectory | None = None,
         notifier: ApprovalNotifier | None = None,
+        run_events: RunEventReader | None = None,
+        run_link_secret: str = "",
+        public_base_url: str = "",
         dry_run_default: bool = True,
         max_request_chars: int = 1000,
         id_factory: Callable[[], str] = lambda: uuid4().hex,
@@ -90,6 +95,9 @@ class CourtService:
         self._approvals = approvals
         self._directory = directory
         self._notifier = notifier
+        self._run_events = run_events
+        self._run_link_secret = run_link_secret
+        self._public_base_url = public_base_url
         self._dry_run_default = dry_run_default
         self._max_request_chars = max_request_chars
         self._id = id_factory
@@ -644,6 +652,69 @@ class CourtService:
             idempotency_key=f"{thread_id}:{verdict_type.value}",
         )
         self._runner.resume(thread_id, verdict)
+
+    # --- Run page (read-only pipeline inspection) ---
+
+    def run_page_enabled(self) -> bool:
+        """True when run-page links can be signed and verified (a secret is configured)."""
+        return bool(self._run_link_secret)
+
+    def run_link(self, thread_id: str) -> str | None:
+        """The signed run-page URL for a trial, or ``None`` when the run page is disabled."""
+        if not self._run_link_secret:
+            return None
+        return run_page_url(self._public_base_url, thread_id, self._run_link_secret)
+
+    def run_token(self, thread_id: str) -> str | None:
+        """The bare token for a trial's run page (``None`` when disabled) — for tests/tools."""
+        if not self._run_link_secret:
+            return None
+        return sign_thread(thread_id, self._run_link_secret)
+
+    def verify_run_token(self, thread_id: str, token: str) -> bool:
+        """Constant-time check that a presented token authorizes this thread's run page."""
+        return verify_thread(thread_id, token, self._run_link_secret)
+
+    def get_run_view(self, thread_id: str, *, after_seq: int = 0) -> RunView:
+        """The run page's poll payload: new events past ``after_seq`` plus the current trial.
+
+        Readable mid-run: the run-event log commits per event and the checkpointer saves after
+        each node, so a poller watches the pipeline advance while the graph is still executing.
+        """
+        events = (
+            self._run_events.list_after(thread_id, after_seq)
+            if self._run_events is not None
+            else []
+        )
+        state = self._runner.state(thread_id)
+        trial = self.get_trial(thread_id)
+        if trial is None and not events and not state.get("status"):
+            raise NotFoundError(f"trial '{thread_id}' not found")
+        approvals = (
+            [
+                ApprovalTimelineEntry(
+                    decision=e.decision.value,
+                    actor=self._display(e.actor),
+                    role=e.role.value if e.role is not None else None,
+                    note=e.note,
+                    at=e.at,
+                )
+                for e in self._approvals.list_for_thread(thread_id)
+            ]
+            if self._approvals is not None
+            else []
+        )
+        audit_id = state.get("audit_id")
+        run_mode = state.get("run_mode")
+        return RunView(
+            summary=self._summary(thread_id, state),
+            trial=trial,
+            events=events,
+            approvals=approvals,
+            last_seq=max((e.seq for e in events), default=after_seq),
+            run_mode=str(run_mode) if run_mode else None,
+            audit_id=audit_id if isinstance(audit_id, str) else None,
+        )
 
     def get_status(self, thread_id: str) -> str | None:
         status = self._runner.state(thread_id).get("status")
