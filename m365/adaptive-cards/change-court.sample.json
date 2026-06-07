@@ -16,6 +16,13 @@
     },
     {
       "type": "TextBlock",
+      "text": "✓ intake → ✓ impact → ✓ options → ✓ policy → ⏸ verdict → ○ execute → ○ verify → ○ audit",
+      "wrap": true,
+      "isSubtle": true,
+      "spacing": "Small"
+    },
+    {
+      "type": "TextBlock",
       "text": "Risk: HIGH",
       "wrap": true,
       "weight": "Bolder",
@@ -118,6 +125,13 @@
       "type": "TextBlock",
       "text": "Approvers required (all): security_lead, account_owner",
       "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "[Pipeline run log]({public_base_url}/runs/{thread_id}?t={run_token})",
+      "wrap": true,
+      "isSubtle": true,
+      "spacing": "Small"
     }
   ],
   "actions": [
@@ -153,6 +167,11 @@
         "verdict_type": "reject",
         "selected_plan": "safe_alternative"
       }
+    },
+    {
+      "type": "Action.OpenUrl",
+      "title": "View pipeline run",
+      "url": "{public_base_url}/runs/{thread_id}?t={run_token}"
     }
   ]
 }

@@ -106,7 +106,7 @@ class BotCardNotifier(ApprovalNotifier):
         if trial is None:
             return
         status = self._status_reader(thread_id) or ("approved" if approved else "rejected")
-        card = self._result_card(trial, status=status, audit_id=None)
+        card = self._result_card(trial, status=status, audit_id=None, thread_id=thread_id)
         self._submit_job(reference, card, thread_id)
 
     def acknowledged(

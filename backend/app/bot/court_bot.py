@@ -172,7 +172,7 @@ class CourtBot(ActivityHandler):  # type: ignore[misc]  # SDK base is untyped (A
         trial = self._service.get_trial(thread_id)
         if trial is None:
             return _text_card(f"Recorded ({summary.status}), but the trial is unavailable.")
-        return self._result_card(trial, status=summary.status, audit_id=None)
+        return self._result_card(trial, status=summary.status, audit_id=None, thread_id=thread_id)
 
     def _on_open(self, value: Mapping[str, Any]) -> Card:
         """Re-render a trial from the queue card in its current phase."""
@@ -231,7 +231,9 @@ class CourtBot(ActivityHandler):  # type: ignore[misc]  # SDK base is untyped (A
             return _text_card(
                 f"Verdict recorded ({result.execution_status}), but the trial is unavailable."
             )
-        return self._result_card(trial, status=result.execution_status, audit_id=result.audit_id)
+        return self._result_card(
+            trial, status=result.execution_status, audit_id=result.audit_id, thread_id=thread_id
+        )
 
     def _already_handled(self, activity_id: str | None) -> bool:
         """Record ``activity_id`` and report whether it was seen before (None never dedupes)."""

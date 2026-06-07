@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from functools import partial
 
 from fastapi import FastAPI
 from starlette.types import ASGIApp, Receive, Scope, Send
@@ -23,6 +24,7 @@ from app.bot.proactive import ProactiveJob, ProactiveSender
 from app.config import Settings
 from app.container import build_conversation_store, build_teams_notifier
 from app.main import create_app
+from app.mcp.cards import build_change_court_card, build_verdict_result_card
 from app.mcp.security import (
     build_auth_settings,
     build_token_verifier,
@@ -73,10 +75,19 @@ def create_full_app(service: CourtService | None = None) -> FastAPI:
     )
 
     # Bot surface: the shared handler, its transport adapter, and proactive card delivery.
+    # Cards carry the signed run-page deep link; the builders stay pure — the link generator is
+    # closed over here, at the composition edge (it is a no-op until RUN_LINK_SECRET is set).
+    request_card = partial(build_change_court_card, run_link=court.run_link)
+    result_card = partial(build_verdict_result_card, run_link=court.run_link)
     bot_adapter = build_bot_adapter(settings)
     conversation_store = build_conversation_store(settings)
     sender = ProactiveSender(bot_adapter, bot_app_id=settings.bot_app_id)
-    bot = CourtBot(court, conversation_store=conversation_store)
+    bot = CourtBot(
+        court,
+        conversation_store=conversation_store,
+        request_card=request_card,
+        result_card=result_card,
+    )
 
     channels: list[ApprovalNotifier] = []
     teams_notifier = build_teams_notifier(settings)
@@ -91,6 +102,8 @@ def create_full_app(service: CourtService | None = None) -> FastAPI:
             trial_reader=court.get_trial,
             note_reader=court.requester_note,
             status_reader=court.get_status,
+            request_card=request_card,
+            result_card=result_card,
         )
     )
     court.attach_notifier(CompositeNotifier(channels))

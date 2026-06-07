@@ -150,3 +150,79 @@ def test_actions_are_universal_execute_with_matching_verb() -> None:
             assert action["type"] == "Action.Execute"
             assert action["verb"] == action["data"]["tool"]
             assert action["data"]["thread_id"] == thread_id
+
+
+def _open_urls(card: dict[str, object]) -> list[dict[str, object]]:
+    actions = card.get("actions")
+    if not isinstance(actions, list):
+        return []
+    return [a for a in actions if isinstance(a, dict) and a.get("type") == "Action.OpenUrl"]
+
+
+def test_run_link_adds_open_url_button_and_fallback_link() -> None:
+    thread_id, trial = _trial(_service(), "slip the launch from 2026-06-10 to 2026-06-17")
+    url = f"https://court.example.com/runs/{thread_id}?t=tok"
+    card = build_change_court_card(
+        thread_id, trial, status="awaiting_approval", run_link=lambda _tid: url
+    )
+
+    buttons = _open_urls(card)
+    assert len(buttons) == 1
+    assert buttons[0]["title"] == "View pipeline run"
+    assert buttons[0]["url"] == url
+    assert f"[Pipeline run log]({url})" in _texts(card)  # webview-safe fallback
+    # The decision buttons stay first and unchanged.
+    actions = card["actions"]
+    assert isinstance(actions, list)
+    assert [a["data"]["tool"] for a in actions if "data" in a] == ["decide", "decide"]
+
+
+def test_no_run_link_renders_no_open_url() -> None:
+    thread_id, trial = _trial(_service(), "slip the launch from 2026-06-10 to 2026-06-17")
+    assert _open_urls(build_change_court_card(thread_id, trial)) == []
+    # A generator returning None (RUN_LINK_SECRET unset) is equally a no-op.
+    card = build_change_court_card(thread_id, trial, run_link=lambda _tid: None)
+    assert _open_urls(card) == []
+
+
+def test_result_card_carries_run_link_when_thread_known() -> None:
+    service = _service()
+    summary = service.submit_change("slip the launch from 2026-06-10 to 2026-06-17")
+    cast = service.cast_verdict(summary.thread_id, VerdictType.APPROVE)
+    trial = service.get_trial(summary.thread_id)
+    assert trial is not None
+
+    url = f"https://court.example.com/runs/{summary.thread_id}?t=tok"
+    card = build_verdict_result_card(
+        trial,
+        status=cast.execution_status,
+        audit_id=cast.audit_id,
+        thread_id=summary.thread_id,
+        run_link=lambda _tid: url,
+    )
+    assert _open_urls(card) == [
+        {"type": "Action.OpenUrl", "title": "View pipeline run", "url": url}
+    ]
+    # Without a thread_id the result card cannot mint a link and must not guess one.
+    bare = build_verdict_result_card(
+        trial, status=cast.execution_status, audit_id=cast.audit_id, run_link=lambda _tid: url
+    )
+    assert _open_urls(bare) == []
+
+
+def test_stage_strip_traces_the_pipeline_by_status() -> None:
+    thread_id, trial = _trial(_service(), "slip the launch from 2026-06-10 to 2026-06-17")
+
+    waiting = _texts(build_change_court_card(thread_id, trial, status="awaiting_approval"))
+    assert "⏸ verdict" in waiting
+    assert "✓ policy" in waiting
+    assert "○ execute" in waiting
+
+    done = _texts(build_verdict_result_card(trial, status="done", audit_id=None))
+    assert "✓ audit" in done and "⏸" not in done
+
+    blocked = _texts(build_change_court_card(thread_id, trial, status="blocked"))
+    assert "⛔ intake" in blocked  # the hallucination guard is visible at a glance
+
+    # An unknown/empty status renders no strip rather than a wrong one.
+    assert "○ execute" not in _texts(build_change_court_card(thread_id, trial, status=""))

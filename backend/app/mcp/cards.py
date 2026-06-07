@@ -11,9 +11,84 @@ keeps the ``tool`` key so ``Action.Submit``-style value routing resolves identic
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from app.domain import ChangeStatus, EvidenceItem, PlanKind, TrialRecord, VerdictType
 
 _SCHEMA = "http://adaptivecards.io/schemas/adaptive-card.json"
+
+# Builds the signed run-page URL for a thread (None disables the link). Injected by the
+# composition root — the card stays a pure mapper with no settings or crypto of its own.
+RunLink = Callable[[str], str | None]
+
+_PIPELINE_STAGES = (
+    "intake", "impact", "options", "policy", "verdict", "execute", "verify", "audit"
+)
+
+_GLYPH_DONE, _GLYPH_WAIT, _GLYPH_IDLE, _GLYPH_RUN, _GLYPH_FAIL = "✓", "⏸", "○", "⏳", "⛔"
+
+# The verdict gate sits between policy and execute (index 4 of the strip).
+_GATE_WAITING = {
+    ChangeStatus.AWAITING_REQUESTER_REVIEW.value,
+    ChangeStatus.AWAITING_VERDICT.value,
+    ChangeStatus.AWAITING_APPROVAL.value,
+}
+
+
+def _stage_glyphs(status: str) -> list[str] | None:
+    """Per-stage glyphs for a lifecycle status, or ``None`` when no strip applies."""
+    if status == ChangeStatus.BLOCKED.value:
+        return [_GLYPH_FAIL] + [_GLYPH_IDLE] * 7  # hallucination guard refused at intake
+    if status in (ChangeStatus.INTAKE.value, ChangeStatus.EVALUATING.value):
+        return [_GLYPH_DONE, _GLYPH_RUN] + [_GLYPH_IDLE] * 6
+    if status in _GATE_WAITING:
+        return [_GLYPH_DONE] * 4 + [_GLYPH_WAIT] + [_GLYPH_IDLE] * 3
+    if status == ChangeStatus.EXECUTING.value:
+        return [_GLYPH_DONE] * 5 + [_GLYPH_RUN, _GLYPH_IDLE, _GLYPH_IDLE]
+    if status == ChangeStatus.DONE.value:
+        return [_GLYPH_DONE] * 8
+    if status == ChangeStatus.FAILED.value:
+        # verify and audit still run after a failing step (containment, not a crash).
+        return [_GLYPH_DONE] * 5 + [_GLYPH_FAIL, _GLYPH_DONE, _GLYPH_DONE]
+    if status in (ChangeStatus.REJECTED.value, ChangeStatus.WITHDRAWN.value):
+        return [_GLYPH_DONE] * 4 + [_GLYPH_FAIL] + [_GLYPH_IDLE] * 3
+    return None
+
+
+def _stage_strip(status: str) -> dict[str, object] | None:
+    """One compact TextBlock tracing the pipeline (the run page is the live, detailed view)."""
+    glyphs = _stage_glyphs(status)
+    if glyphs is None:
+        return None
+    text = " → ".join(f"{g} {name}" for g, name in zip(glyphs, _PIPELINE_STAGES, strict=True))
+    block = _text(text)
+    block["isSubtle"] = True
+    block["spacing"] = "Small"
+    return block
+
+
+def _run_link_parts(
+    run_link: RunLink | None, thread_id: str
+) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
+    """The run-page deep link as ``(body_rows, actions)`` — empty when no link is available.
+
+    Both forms ship: the ``Action.OpenUrl`` button, plus a subtle markdown link in the body as
+    a fallback for hosts whose webview suppresses OpenUrl actions.
+    """
+    if run_link is None or not thread_id:
+        return [], []
+    url = run_link(thread_id)
+    if not url:
+        return [], []
+    fallback = _text(f"[Pipeline run log]({url})")
+    fallback["isSubtle"] = True
+    fallback["spacing"] = "Small"
+    action: dict[str, object] = {
+        "type": "Action.OpenUrl",
+        "title": "View pipeline run",
+        "url": url,
+    }
+    return [fallback], [action]
 
 
 def _text(
@@ -79,7 +154,12 @@ def _approval_actions(thread_id: str) -> tuple[list[dict[str, object]], dict[str
 
 
 def build_change_court_card(
-    thread_id: str, trial: TrialRecord, *, status: str = "", requester_note: str = ""
+    thread_id: str,
+    trial: TrialRecord,
+    *,
+    status: str = "",
+    requester_note: str = "",
+    run_link: RunLink | None = None,
 ) -> dict[str, object]:
     """Render the Change Court card: change, impact, plan, approvers, and phase-aware actions."""
     change = trial.change
@@ -87,6 +167,9 @@ def build_change_court_card(
         _text("AI Change Court", weight="Bolder"),
         _text(change.raw_request),
     ]
+    strip = _stage_strip(status)
+    if strip is not None:
+        body.append(strip)
 
     risk = trial.risk
     if risk is not None:
@@ -156,6 +239,10 @@ def build_change_court_card(
                     )
                 )
 
+    link_rows, link_actions = _run_link_parts(run_link, thread_id)
+    body.extend(link_rows)
+    actions.extend(link_actions)
+
     return {
         "type": "AdaptiveCard",
         "$schema": _SCHEMA,
@@ -166,7 +253,12 @@ def build_change_court_card(
 
 
 def build_verdict_result_card(
-    trial: TrialRecord, *, status: str, audit_id: str | None
+    trial: TrialRecord,
+    *,
+    status: str,
+    audit_id: str | None,
+    thread_id: str = "",
+    run_link: RunLink | None = None,
 ) -> dict[str, object]:
     """Render the post-verdict card: outcome plus per-step results and any rollback hints."""
     verdict = trial.verdict
@@ -182,6 +274,9 @@ def build_verdict_result_card(
         ]
     else:
         body = [_text("Verdict recorded", weight="Bolder")]
+    strip = _stage_strip(status)
+    if strip is not None:
+        body.append(strip)
     body.append(_text(f"Status: {status}"))
     if audit_id:
         body.append(_text(f"Audit: {audit_id}"))
@@ -202,9 +297,14 @@ def build_verdict_result_card(
                     color="Warning",
                 )
             )
-    return {
+    link_rows, link_actions = _run_link_parts(run_link, thread_id)
+    body.extend(link_rows)
+    card: dict[str, object] = {
         "type": "AdaptiveCard",
         "$schema": _SCHEMA,
         "version": "1.5",
         "body": body,
     }
+    if link_actions:
+        card["actions"] = link_actions
+    return card
