@@ -10,7 +10,13 @@ import pytest
 from app.adapters.persistence.checkpointer import SqliteCheckpointStore
 from app.agent import instrument as instrument_module
 from app.agent.graph import build_court_graph
-from app.agent.instrument import _noop_duration_hook, instrument, set_node_duration_hook
+from app.agent.instrument import (
+    _noop_duration_hook,
+    _noop_run_emitter,
+    instrument,
+    set_node_duration_hook,
+    set_run_event_emitter,
+)
 from app.agent.state import CourtState, initial_state
 from app.domain import RunMode
 from app.observability.context import current_context
@@ -90,6 +96,46 @@ def test_set_node_duration_hook_routes_timing() -> None:
 def test_instrument_resets_hook_isolation() -> None:
     # The module default must be the no-op after the previous test restored it.
     assert instrument_module._node_duration_hook is _noop_duration_hook
+
+
+def test_set_run_event_emitter_routes_node_events() -> None:
+    calls: list[tuple[str, str, str, dict[str, object]]] = []
+    set_run_event_emitter(
+        lambda thread_id, phase, name, payload: calls.append((thread_id, phase, name, payload))
+    )
+    try:
+        instrument(lambda state: CourtState(status="evaluating"), "intake")(_state())
+    finally:
+        set_run_event_emitter(_noop_run_emitter)
+
+    assert [(c[0], c[1], c[2]) for c in calls] == [
+        ("t1", "started", "intake"),
+        ("t1", "finished", "intake"),
+    ]
+    finished = calls[1][3]
+    assert finished["status"] == "evaluating"
+    assert isinstance(finished["duration_seconds"], float)
+
+
+def test_run_emitter_emits_finished_even_when_node_raises() -> None:
+    calls: list[str] = []
+    set_run_event_emitter(lambda thread_id, phase, name, payload: calls.append(phase))
+
+    def exploding(state: CourtState) -> CourtState:
+        raise RuntimeError("boom")
+
+    try:
+        with pytest.raises(RuntimeError):
+            instrument(exploding, "impact")(_state())
+    finally:
+        set_run_event_emitter(_noop_run_emitter)
+
+    assert calls == ["started", "finished"]  # the run log never loses a node boundary
+
+
+def test_run_emitter_resets_to_noop_isolation() -> None:
+    # The module default must be the no-op after the previous tests restored it.
+    assert instrument_module._run_emitter is _noop_run_emitter
 
 
 def test_build_court_graph_instruments_each_node(captured: list[logging.LogRecord]) -> None:

@@ -7,7 +7,7 @@ primary key ``(thread_id, idempotency_key)``.
 
 from __future__ import annotations
 
-from sqlalchemy import JSON, String
+from sqlalchemy import JSON, Index, Integer, String, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -76,6 +76,30 @@ class ConversationReferenceRow(Base):
     oid: Mapped[str] = mapped_column(String)
     upn: Mapped[str] = mapped_column(String)
     updated_at: Mapped[str] = mapped_column(String)
+    payload: Mapped[dict[str, object]] = mapped_column(JSON)
+
+
+class RunEventRow(Base):
+    """One append-only pipeline run event. ``payload`` is the serialized RunEvent extras.
+
+    ``seq`` is monotonic per thread; the unique constraint makes a duplicate assignment a loud
+    conflict rather than a silent reorder (the graph is linear today, so contention within one
+    thread is effectively nil — the constraint guards a future parallel-node refactor).
+    """
+
+    __tablename__ = "run_events"
+    __table_args__ = (
+        UniqueConstraint("thread_id", "seq", name="uq_run_events_thread_seq"),
+        Index("ix_run_events_thread_seq", "thread_id", "seq"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    thread_id: Mapped[str] = mapped_column(String, index=True)
+    seq: Mapped[int] = mapped_column(Integer)
+    kind: Mapped[str] = mapped_column(String)
+    name: Mapped[str] = mapped_column(String)
+    status: Mapped[str] = mapped_column(String, default="")
+    created_at: Mapped[str] = mapped_column(String)
     payload: Mapped[dict[str, object]] = mapped_column(JSON)
 
 

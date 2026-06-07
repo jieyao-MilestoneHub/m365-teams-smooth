@@ -33,6 +33,7 @@ from app.domain.plan import (
 from app.domain.principal import Principal
 from app.domain.quorum import Approver, Quorum, VerdictOption
 from app.domain.risk import RiskFactor, RiskResult
+from app.domain.run_events import RunEvent, RunEventKind
 from app.domain.verdict import Verdict
 from app.domain.verification import EffectVerification
 
@@ -66,6 +67,8 @@ __all__ = [
     "RiskLevel",
     "RiskResult",
     "RollbackHint",
+    "RunEvent",
+    "RunEventKind",
     "RunMode",
     "StepResult",
     "StepStatus",
