@@ -81,7 +81,17 @@ def create_full_app(service: CourtService | None = None) -> FastAPI:
     result_card = partial(build_verdict_result_card, run_link=court.run_link)
     bot_adapter = build_bot_adapter(settings)
     conversation_store = build_conversation_store(settings)
-    sender = ProactiveSender(bot_adapter, bot_app_id=settings.bot_app_id)
+    sender = ProactiveSender(
+        bot_adapter,
+        bot_app_id=settings.bot_app_id,
+        tenant_id=settings.bot_app_tenant_id,
+        service_url=settings.bot_service_url,
+        # A conversation created by the sender is captured for next time, keyed on the oid the
+        # directory hands through — the same key the bot itself stores on contact.
+        save_reference=lambda oid, reference: conversation_store.save(
+            oid=oid, upn="", reference=reference
+        ),
+    )
     bot = CourtBot(
         court,
         conversation_store=conversation_store,
@@ -96,8 +106,13 @@ def create_full_app(service: CourtService | None = None) -> FastAPI:
     channels.append(
         BotCardNotifier(
             conversation_store=conversation_store,
-            submit_job=lambda reference, card, thread_id: sender.submit(
-                ProactiveJob(reference=reference, card=card, thread_id=thread_id)
+            submit_job=lambda reference, card, thread_id, recipient: sender.submit(
+                ProactiveJob(
+                    reference=reference,
+                    card=card,
+                    thread_id=thread_id,
+                    recipient_oid=recipient,
+                )
             ),
             trial_reader=court.get_trial,
             note_reader=court.requester_note,
