@@ -19,8 +19,10 @@ The backend engine is **implemented and runs end-to-end locally, credential-free
 the full layered app (`agent/ mcp/ api/ services/ ports/ adapters/ domain/`), the LangGraph court
 pipeline, SQLAlchemy persistence, and a green test suite; the three trials pass under
 `scripts/verify.sh`. GitHub is the one real integration; the other six systems are mocks. There is
-**no frontend** — the Teams Adaptive Card is the only UI, rendered tenant-free via the Playground bot
-or the exported card JSON. The commands and module paths below are runnable today.
+**no frontend build** — the Teams Adaptive Card is the decision UI, rendered tenant-free via the
+Playground bot or the exported card JSON; the one web surface is a read-only, signed-link-gated
+pipeline **run page** (a static file the backend serves — it inspects a trial's run, never decides).
+The commands and module paths below are runnable today.
 
 What remains is **going live in a real tenant** (the *Pending tenant* items in `verify.md`): hosting
 the backend over public HTTPS, Entra ID OAuth2, sideloading the declarative agent, and — optionally —
@@ -53,7 +55,8 @@ M365 Copilot Chat / Teams
         ▼
   FastAPI (backend/)
      mcp/  api/  services/  agent/  ports/  adapters/  domain/
-  Teams Adaptive Card = the only UI (no web dashboard)
+  Teams Adaptive Card = the only DECISION UI; the read-only run page
+  (signed links, /runs/{thread_id}) is the one web surface — no dashboard
   SQLite now → Postgres later (DB_URL-driven)
 ```
 
@@ -101,8 +104,10 @@ uv run pytest                      # tests
 uv run pytest path/to/test.py::test_name   # single test
 ```
 
-There is no frontend. The Teams Adaptive Card is the only UI; audit/trial data is exposed via an MCP
-resource (REST is health-only). The intended MCP surface (Phase 4) is the tools `submit_change`,
+There is no frontend build. The Teams Adaptive Card is the only decision UI; audit/trial data is
+exposed via an MCP resource. REST serves health plus the read-only run page (`/runs/{thread_id}` +
+its poll endpoint, HMAC-signed links, no mutating action — see ADR-0011). The intended MCP surface
+(Phase 4) is the tools `submit_change`,
 `get_trial`, `cast_verdict`, `get_status` plus the resources for trial / audit / capabilities —
 `cast_verdict` must reach idempotent parity across both MCP and REST.
 
