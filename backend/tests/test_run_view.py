@@ -6,7 +6,7 @@ import pytest
 
 from app.config import Settings
 from app.container import build_court_service
-from app.domain import ChangeStatus, Principal, VerdictType
+from app.domain import ChangeStatus, PlanKind, Principal, VerdictType
 from app.domain.errors import NotFoundError
 from app.domain.run_events import RunEventKind
 from app.services.court_service import CourtService
@@ -89,6 +89,22 @@ def test_run_view_folds_in_the_approval_timeline() -> None:
     assert ("send", "Rae Quester") in decisions
     assert ("approve", "Ann Prover") in decisions
     assert all(a.at for a in view.approvals)
+
+
+def test_run_view_carries_the_safe_alternative_contrast() -> None:
+    """The fields the run page's comparison panel reads must reach the view."""
+    service = _service()
+    summary = service.submit_change("promise Customer A that SSO is GA by 2026-06-17")
+
+    view = service.get_run_view(summary.thread_id)
+
+    assert view.trial is not None and view.trial.options is not None
+    assert view.trial.options.kind is PlanKind.SAFE_ALTERNATIVE
+    assert view.trial.options.supersedes_request is True
+    assert view.trial.options.rationale
+    assert view.trial.change is not None and view.trial.change.unsafe is True
+    assert view.trial.change.unsafe_reason
+    assert view.trial.change.raw_request
 
 
 def test_unknown_thread_raises_not_found() -> None:
