@@ -47,6 +47,29 @@ def test_read_blocking_issues() -> None:
 
 
 @respx.mock
+def test_read_closed_issues_filters_prs_and_widens_since() -> None:
+    route = respx.get(f"{_API}/repos/octo/launch/issues").mock(
+        return_value=httpx.Response(
+            200,
+            json=[
+                {"number": 38, "title": "Harden tokens", "closed_at": "2026-06-05T10:00:00Z"},
+                {"number": 39, "title": "a PR", "closed_at": "2026-06-05T11:00:00Z",
+                 "pull_request": {"url": "..."}},
+            ],
+        )
+    )
+    data = _adapter().read(
+        ReadQuery(capability="github.read_closed_issues", params={"since": "2026-06-01"})
+    ).data
+    assert data["issues"] == [
+        {"number": 38, "title": "Harden tokens", "closed_at": "2026-06-05T10:00:00Z"}
+    ]
+    sent = route.calls.last.request.url.params
+    assert sent["state"] == "closed"
+    assert sent["since"] == "2026-06-01T00:00:00Z"  # plain dates widen to API timestamps
+
+
+@respx.mock
 def test_read_blocking_issues_excludes_prs_and_normalizes() -> None:
     # The /issues endpoint returns pull requests too; they must not be counted as blockers, and
     # only the {number, title, state} fields should survive into the evidence.
