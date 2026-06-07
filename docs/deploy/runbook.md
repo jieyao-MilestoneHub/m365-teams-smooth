@@ -35,8 +35,8 @@ path in [`deploy.md`](deploy.md) is faster; this runbook is for a real, repeatab
   `azure_tenant_id`. Expose an `api://<client-id>/court.use` scope and a Teams redirect URI on that
   app; it backs both `OAUTH_AUDIENCE` and the Phase 3 OAuth connection.
 - **(Optional) Azure OpenAI** deployment (GPT-4o-class, accepts `max_tokens`) if you want the
-  agentic roles live; **(optional)** a throwaway GitHub repo with `blocker`-labelled issues for the
-  real-evidence Customer Promise trial.
+  agentic roles live; **(optional)** a throwaway GitHub repo with a `Launch Rehearsal` milestone
+  (the real milestone write) and some closed issues (real evidence for the weekly report).
 
 ---
 
@@ -158,9 +158,10 @@ custom app, or via Agents Toolkit). The declarative agent now appears in Copilot
 Single-flow (any signed-in user):
 
 1. In Copilot Chat, invoke the agent and type a trial request, e.g.
-   `promise Customer A that SSO is GA by 2026-06-17`.
-2. The **Change Court card** renders: impact evidence, the refusal + safe alternative, required
-   approvers, verdict buttons.
+   `move the rehearsal to 2026-06-17` (or the conflicting-date variant `…to 2026-06-16` to see the
+   refusal + safe alternative).
+2. The **Change Court card** renders: impact evidence, the plan (or the refusal + safe
+   alternative), required approvers, verdict buttons.
 3. Click the verdict → `cast_verdict` resumes the run from its checkpoint and returns the result card.
 
 Two-user separation of duties (needs Phase 2 `APPROVER_DIRECTORY` + a low-privilege requester
@@ -168,7 +169,8 @@ account; full script in [`two-user-demo.md`](../demo/two-user-demo.md)):
 
 1. **Requester** (low-priv) submits the change → card holds at requester review → **Send for
    approval** with a note.
-2. **Approver** (a different account in `APPROVER_DIRECTORY`) → pulls the queue → **Approve**.
+2. **Approver** (a different account in `APPROVER_DIRECTORY`) → the approval card lands in their
+   bot chat proactively (typing `queue` pulls it as a fallback) → **Approve**.
 3. Quorum satisfied → executes (DRY_RUN by default, ADR-0007) → audit recorded. Confirm the
    requester **cannot** approve their own change, and an account outside the directory cannot decide.
 

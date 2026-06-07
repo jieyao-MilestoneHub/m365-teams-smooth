@@ -18,17 +18,21 @@ into small, reviewable PRs.
 
 ## The three trials (the demo spine)
 
-1. **Launch Slip Trial** — "slip the launch from 2026-06-10 to 2026-06-17." Updates a real GitHub
-   milestone plus mock calendar, planner, and announcement; flagged HIGH risk. An unsupported request
+1. **Reschedule Sync** — "move the rehearsal to 2026-06-17." One request moves a real GitHub
+   milestone plus mock calendar, planner, and announcement; flagged HIGH risk with an
+   `eng_lead` + `comms` quorum. The conflicting-date variant ("…to 2026-06-16", an occupied day) is
+   **refused as posed** with the next free day proposed as a safe alternative. An unsupported request
    ("delete the repo") is blocked by the capability registry; a simulated step failure yields a
    partial result with a rollback hint; casting the same verdict twice is a no-op.
-2. **Customer Promise Trial** — "promise Customer A that SSO is GA by 2026-06-17." The court finds open
-   blockers, the renewal value, and a security review scheduled *after* the date, then **rejects the
-   unsafe promise** and proposes a safe alternative (private preview on the 17th, GA after the review),
-   drafting the customer reply and an escalation thread.
-3. **Vendor Access Trial** — "give the vendor access until the campaign is done." The court flags the
-   ambiguous duration and over-broad scope and proposes **least-privilege** access (read-only to one
-   folder) with an **expiry and auto-revoke**, pending the right approvals.
+2. **Meeting Actions** — "create action items from standup." The discussion's spoken follow-ups
+   become tracked tasks with owners and due dates, plus a scheduled review for the undated proposal.
+   LOW risk, no approver — the requester's confirmation executes it.
+3. **Weekly Report** — "post the Project X weekly report." Recently closed issues, tracked tasks,
+   and the week's meetings are aggregated into one post to the project channel; with the real GitHub
+   adapter the evidence is the repository's actual activity.
+
+The earlier governance trials (customer promise, vendor access) remain wired and tested as
+additional court capabilities beyond the demo spine.
 
 ## Phase 1 — Walking skeleton ☑
 

@@ -75,24 +75,28 @@ SDK. This spec is the contract for the domain models (issue #61), the nodes, and
 
 ## Capability catalog
 
-The seven systems the three trials need. GitHub runs real (later) or mock; the rest are mock.
+The seven systems the trials need. GitHub runs real or mock; the rest are mock.
 Every trial action below maps to exactly one capability — anything not listed is rejected by `intake`.
 
 | System | Capability | Kind | Params (key fields) | Used by |
 | --- | --- | --- | --- | --- |
-| github | `github.read_milestone` | READ | `repo, milestone` | Launch Slip |
-| github | `github.read_blocking_issues` | READ | `repo, label?` | Launch Slip, Customer Promise |
-| github | `github.update_milestone_due` | WRITE | `repo, milestone, due_on` | Launch Slip |
-| github | `github.create_issue` | WRITE | `repo, title, body` | Launch Slip |
+| github | `github.read_milestone` | READ | `repo, milestone` | Reschedule Sync |
+| github | `github.read_blocking_issues` | READ | `repo, label?` | Customer Promise |
+| github | `github.read_closed_issues` | READ | `repo, since?` | Weekly Report |
+| github | `github.update_milestone_due` | WRITE | `repo, milestone, due_on` | Reschedule Sync |
+| github | `github.create_issue` | WRITE | `repo, title, body` | Reschedule Sync |
 | github | `github.comment_issue` | WRITE | `repo, issue, body` | Customer Promise |
-| outlook | `outlook.read_events` | READ | `calendar, window` | Launch Slip |
+| outlook | `outlook.read_events` | READ | `calendar, window` | Reschedule Sync, Meeting Actions, Weekly Report |
 | outlook | `outlook.read_security_review` | READ | `subject` | Customer Promise |
-| outlook | `outlook.create_event` | WRITE | `calendar, title, start, end` | Customer Promise |
+| outlook | `outlook.create_event` | WRITE | `calendar, title, start, end` | Reschedule Sync, Meeting Actions, Customer Promise |
 | outlook | `outlook.draft_email` | WRITE | `to, subject, body` (draft only — never sent) | Customer Promise |
-| planner | `planner.read_tasks` | READ | `plan` | Launch Slip |
-| planner | `planner.shift_task_dates` | WRITE | `plan, delta_days` | Launch Slip |
-| teams | `teams.read_announcement` | READ | `channel` | Launch Slip |
-| teams | `teams.update_announcement` | WRITE | `channel, message` | Launch Slip |
+| planner | `planner.read_tasks` | READ | `plan` | Reschedule Sync, Weekly Report |
+| planner | `planner.shift_task_dates` | WRITE | `plan, delta_days` | Reschedule Sync |
+| planner | `planner.create_task` | WRITE | `title, due?, assignee?` | Meeting Actions |
+| teams | `teams.read_announcement` | READ | `channel` | Reschedule Sync |
+| teams | `teams.read_meeting_notes` | READ | `channel` | Meeting Actions |
+| teams | `teams.update_announcement` | WRITE | `channel, message` | Reschedule Sync |
+| teams | `teams.post_message` | WRITE | `channel, message` | Weekly Report |
 | teams | `teams.create_escalation_thread` | WRITE | `channel, title, body` | Customer Promise |
 | crm | `crm.read_account` | READ | `account` (renewal value + date) | Customer Promise |
 | crm | `crm.add_note` | WRITE | `account, note` | Customer Promise |

@@ -4,12 +4,13 @@
 
 **Governed execution for risky enterprise decisions in Microsoft Teams.**
 
-Decisions happen in chat faster than governance can keep up — "delay the launch a week", "promise
-this customer the feature by Friday", "give this vendor access until the campaign is done." Each one
-quietly mutates GitHub, calendars, CRM, SharePoint, support, and compliance. AI Change Court puts a
-risky decision **on trial** before it becomes action: it detects who and what the decision affects,
-simulates the consequences, decides which stakeholders must sign off, collects a verdict, and only
-then executes across systems — leaving an auditable trail.
+Cross-system changes happen in chat faster than anyone can keep them consistent — "move the
+rehearsal a week out", "track what we agreed in standup", "post the weekly status report". Each one
+touches GitHub, calendars, the task planner, and Teams, and each is easy to half-do: one system
+updated, three left stale. AI Change Court puts the change **on trial** before it becomes action:
+it detects who and what the change affects, simulates the consequences, decides which stakeholders
+must sign off (none, for routine work — the requester's own confirmation suffices), collects a
+verdict, and only then executes across systems — leaving an auditable trail.
 
 It is not a chatbot and not a workflow macro. It decides **whether a decision is even safe to
 execute**, and when it isn't, it says so and proposes a safer path.
@@ -24,8 +25,8 @@ intake → impact → options → policy + quorum → [verdict] → execute → 
 
 1. **Intake** — parse the request into a structured change; every requested action is validated
    against a **capability registry**, so the agent cannot invent or perform unsupported actions.
-2. **Impact** — gather the second-order consequences across systems (open blockers, customer
-   commitments, renewal value, schedule conflicts) as evidence.
+2. **Impact** — gather the second-order consequences across systems (schedule conflicts, spoken
+   follow-ups, scattered activity, open blockers, customer commitments) as evidence.
 3. **Options** — produce a feasible execution plan; when the request is unsafe, produce a **safe
    alternative**.
 4. **Policy + quorum** — risk-score the change (rules are data), decide which stakeholders must
@@ -58,17 +59,22 @@ Decisions stay on the card; the page only inspects.
 
 ## Three trials
 
-- **Launch Slip Trial** — "slip the launch from June 10 to June 17." Updates a real GitHub milestone
-  plus mock calendar, planner, and announcement; flagged HIGH risk; an unsupported request such as
-  "delete the repo" is blocked by the capability registry; a simulated step failure surfaces a
-  partial result with a rollback hint instead of crashing.
-- **Customer Promise Trial** — "promise Customer A the SSO feature is GA by June 17." The court finds
-  open blockers, the customer's renewal value, and a security review scheduled *after* the promised
-  date, then **rejects the unsafe promise** and proposes a safe alternative (private preview on the
-  17th, GA after the review), drafting the customer reply and an escalation thread.
-- **Vendor Access Trial** — "give the vendor access until the campaign is done." The court flags the
-  ambiguous duration and the over-broad scope, and proposes **least-privilege** access (read-only to
-  one folder) with an **expiry and auto-revoke**, pending the right approvals.
+- **Reschedule Sync** — "move the rehearsal to June 17." One request moves a real GitHub milestone
+  plus the calendar, planner tasks, and the Teams announcement together; flagged HIGH risk with an
+  `eng_lead` + `comms` quorum. When the requested day **collides with an existing event** ("move the
+  rehearsal to June 16"), the court **refuses the date as posed** and proposes the next free day —
+  the same ripple, a safer date. An unsupported request such as "delete the repo" is blocked by the
+  capability registry; a simulated step failure surfaces a partial result with a rollback hint.
+- **Meeting Actions** — "create action items from standup." The court reads the discussion's spoken
+  follow-ups and turns each dated one into a tracked task with its owner, scheduling the review that
+  was proposed without a date. LOW risk, no approver — the requester's confirmation executes it.
+- **Weekly Report** — "post the Project X weekly report." Recently closed GitHub issues, tracked
+  tasks, and the week's meetings are collected once, composed into one message, and posted to the
+  project channel. With the real GitHub adapter the evidence is the repository's actual activity.
+
+The earlier governance trials — the unsafe customer promise (refusal + private-preview alternative)
+and over-broad vendor access (least-privilege + auto-revoke) — remain wired and tested as additional
+court capabilities (see [`docs/reference/trials.md`](docs/reference/trials.md)).
 
 ## Architecture
 
@@ -157,7 +163,7 @@ uv run uvicorn app.asgi:app --reload    # REST + the OAuth2-protected MCP server
 Run the demo and the verification gate (both credential-free, fully mocked):
 
 ```bash
-make demo          # three trials end-to-end; opens on the Customer Promise refusal
+make demo          # the trials end-to-end; opens on the conflicting-date refusal
 scripts/verify.sh  # trials + safety + MCP + quality gates (tenant checks report PENDING)
 make check         # ruff + mypy + pytest
 ```
@@ -185,16 +191,14 @@ Set via environment variables (see `.env.example`):
 
 **Never commit secrets.** Use environment variables or a secret store.
 
-### Grounding the Customer Promise trial in real GitHub (opt-in)
+### Grounding the trials in real GitHub (opt-in)
 
-The Customer Promise trial weighs open **blocking issues** as impact evidence. By default these come
-from the mock adapter, so the trial runs credential-free. To ground them in a live repository
-instead:
+Two trials read or write a live repository when the GitHub adapter runs in `real` mode; by default
+both use the mock adapter, so everything runs credential-free.
 
-1. In a throwaway repo, open a few issues and label them `blocker` (the default label; override with
-   the `label` read param). Pull requests are ignored — only issues count. This repository already
-   carries `blocker`-labelled demo issues mirroring the trial's scenario, so it can serve as the
-   seed repo directly (`GITHUB_REPO=<this repo's owner/name>`).
+1. **Reschedule Sync** updates a milestone titled `Launch Rehearsal` — create one in a throwaway
+   repo (any due date; the trial moves it). **Weekly Report** aggregates the repo's recently closed
+   issues — any active repository provides those naturally.
 2. Run with the GitHub adapter in `real` mode:
 
    ```bash

@@ -2,10 +2,11 @@
 
 ## The problem
 
-Risky decisions are made in chat faster than governance can keep up — "delay the launch a week",
-"promise this customer the feature by Friday", "give this vendor access until the campaign is done".
-Each quietly mutates GitHub, calendars, CRM, SharePoint, support, and compliance. By the time anyone
-reviews it, the action has already happened.
+Cross-system changes are made in chat faster than anyone keeps them consistent — "move the
+rehearsal a week out", "track what we agreed in standup", "post the weekly report". Each touches
+GitHub, calendars, the task planner, and Teams, and each is easy to half-do: one system updated,
+three left stale. The riskier requests — a customer promise, a vendor access grant — quietly mutate
+CRM, SharePoint, and compliance before anyone reviews them.
 
 ## What it is
 
@@ -37,9 +38,12 @@ Every change must serve one of three demonstrable trials (details in
 
 | Trial | Request | Outcome |
 | --- | --- | --- |
-| **Launch Slip** | slip the launch from June 10 to June 17 | Feasible, HIGH risk; ripples into calendar/planner/announcement; an unsupported "delete the repo" is blocked. |
-| **Customer Promise** | promise Customer A that SSO is GA by June 17 | **Refused** — blockers + a security review *after* the date → private preview now, GA after the review. |
-| **Vendor Access** | give the vendor access until the campaign is done | Ambiguous + over-broad → **least-privilege**, time-boxed, auto-revoke. |
+| **Reschedule Sync** | move the rehearsal to June 17 | Feasible, HIGH risk with quorum; one request ripples into milestone/calendar/planner/announcement. The June 16 variant collides with an existing event → **refused**, the next free day proposed. |
+| **Meeting Actions** | create action items from standup | LOW risk, no approver; spoken follow-ups become tracked tasks with owners and due dates + a scheduled review. |
+| **Weekly Report** | post the Project X weekly report | LOW risk, no approver; closed issues, tasks, and meetings aggregated into one channel post (real repo activity with `github:real`). |
+
+The earlier governance trials (customer promise → refusal + private preview; vendor access →
+least-privilege + auto-revoke) remain wired and tested as additional court capabilities.
 
 ## Scope discipline
 

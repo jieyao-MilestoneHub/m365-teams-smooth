@@ -19,10 +19,13 @@ Tags are emitted by `impact` from read capabilities and matched by rule packs.
 
 | Tag | Meaning | Emitted in |
 | --- | --- | --- |
-| `schedule.milestone_move` | A dated milestone is being moved. | Launch Slip |
-| `schedule.calendar_conflict` | The new date collides with an existing event. | Launch Slip |
-| `schedule.planner_shift` | Planner tasks must shift. | Launch Slip |
-| `comms.pending_announcement` | An announcement references the old date. | Launch Slip |
+| `schedule.milestone_move` | A dated milestone is being moved. | Reschedule Sync |
+| `schedule.calendar_conflict` | Calendar events sit near the new date. | Reschedule Sync |
+| `schedule.target_date_conflict` | The requested day itself collides with an existing event (unsafe). | Reschedule Sync |
+| `schedule.planner_shift` | Planner tasks must shift. | Reschedule Sync |
+| `comms.pending_announcement` | An announcement references the old date. | Reschedule Sync |
+| `meeting.action_items_found` | The meeting discussion left spoken follow-ups to track. | Meeting Actions |
+| `report.activity_collected` | Recent activity was collected for a status report. | Weekly Report |
 | `github.blocking_issues_open` | Open issues block the promised capability. | Customer Promise |
 | `crm.renewal_at_risk` | The account has material renewal value tied to the promise. | Customer Promise |
 | `security.review_after_due_date` | The security review lands after the requested target date. | Customer Promise |
@@ -85,13 +88,16 @@ Matched factor ids and the pack id are recorded in `RiskResult.matched_rule_ids`
 
 | Trial | Fired tags | Score / level | Unsafe? | Required approvers | Verdict options |
 | --- | --- | --- | --- | --- | --- |
-| **Launch Slip** | `schedule.milestone_move` (40), `schedule.calendar_conflict` (20), `schedule.planner_shift` (10), `comms.pending_announcement` (10) | 80 / **HIGH** | no | `eng_lead`, `comms` | approve · approve_internal_only · request_revision · reject |
+| **Reschedule Sync** | `schedule.milestone_move` (40), `schedule.calendar_conflict` (20), `schedule.planner_shift` (10), `comms.pending_announcement` (10) | 80 / **HIGH** | no | `eng_lead`, `comms` | approve · approve_internal_only · request_revision · reject |
+| **Reschedule — conflicting date** | the four above + `schedule.target_date_conflict` (30, unsafe) | 110 / **HIGH** | **yes** | `eng_lead`, `comms` | accept_alternative · request_revision · reject |
+| **Meeting Actions** | `meeting.action_items_found` (10) | 10 / **LOW** | no | — (requester authority) | approve · request_revision · reject |
+| **Weekly Report** | `report.activity_collected` (5) | 5 / **LOW** | no | — (requester authority) | approve · request_revision · reject |
 | **Customer Promise** | `github.blocking_issues_open` (30), `crm.renewal_at_risk` (20), `security.review_after_due_date` (50, unsafe) | 100 / **HIGH** | **yes** | `security_lead`, `account_owner` | accept_alternative · request_revision · reject |
 | **Vendor Access** | `access.ambiguous_duration` (20), `access.overbroad_scope` (40, unsafe), `data.customer_data_present` (30, conditional) | 90 / **HIGH** | **yes** | `manager` (+ `security_lead` if `data.customer_data_present`) | accept_alternative · request_revision · reject |
 
-Weights above are the starting values the Launch Slip and Vendor Access packs encode (the Customer
-Promise weights are shown in the example pack); they live in the rule pack data and can be tuned
-without code changes.
+Weights live in the rule pack data (`backend/app/agent/policy_rules/packs.py`) and can be tuned
+without engine changes. A LOW score sets `requires_approval = False`: the court auto-approves, and
+in the identity-aware flow the requester's confirmation at the review gate is what executes.
 
 ## Why data, not code
 
