@@ -37,8 +37,9 @@ requester: submit ──► AWAITING_REQUESTER_REVIEW ── send (note required
 
 2. As **user A**: type `move the rehearsal to 2026-06-17` → the card holds at
    requester review → fill the note → **Send for approval**.
-3. Switch to **user B**: type `queue` → open the trial → **Approve** (quorum still pending).
-4. Switch to **user C**: `queue` → **Approve** → the run resumes, executes (DRY_RUN) and audits.
+3. Switch to **user B**: the approval card lands in the bot chat proactively (type `queue` to pull
+   it if needed) → **Approve** (quorum still pending).
+4. Switch to **user C**: approve the same way → the run resumes, executes (DRY_RUN) and audits.
 5. Negative checks that must hold:
    - As user A, clicking **Approve** on A's own trial renders the separation-of-duties refusal.
    - **Reject** with an empty note renders "a note is required when rejecting".
