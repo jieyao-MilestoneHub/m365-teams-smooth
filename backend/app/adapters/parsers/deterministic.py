@@ -24,6 +24,16 @@ _MOVE_VERBS = ("slip", "move", "push", "delay", "reschedule", "postpone", "shift
 _PROMISE_VERBS = ("promise", "tell", "commit", "assure", "guarantee", "pledge")
 _PROMISE_OBJECTS = ("customer", "client", "sso", "ga", "available", "ready")
 _VENDOR_WORDS = ("vendor", "contractor", "agency", "supplier", "guest", "external")
+_MEETING_WORDS = (
+    "action item",
+    "action items",
+    "follow-up",
+    "follow-ups",
+    "follow up",
+    "meeting notes",
+    "standup",
+    "stand-up",
+)
 
 _MONTHS = {
     "january": 1, "jan": 1, "february": 2, "feb": 2, "march": 3, "mar": 3,
@@ -123,6 +133,9 @@ class DeterministicRequestParser(RequestParser):
                     },
                 )
             )
+        elif _has(text, *_MEETING_WORDS):
+            # Spoken follow-ups to track; the planner derives the tasks from the discussion.
+            subject = "meeting-actions"
         elif (_has(text, *_PROMISE_VERBS) and _has(text, *_PROMISE_OBJECTS)) or (
             "generally available" in text
         ):

@@ -8,6 +8,7 @@ time-boxed access — that supersedes the request. Registered in ``PLANNERS`` fo
 
 from __future__ import annotations
 
+import re
 from datetime import date
 
 from app.agent.nodes.options import feasible_from_actions
@@ -189,8 +190,56 @@ def plan_project_access(change: Change, impact: ImpactEvidence) -> ExecutionPlan
     )
 
 
+_NOTE_DATE = re.compile(r"\b(\d{4}-\d{2}-\d{2})\b")
+
+
+def plan_meeting_actions(change: Change, impact: ImpactEvidence) -> ExecutionPlan:
+    """Feasible: each dated follow-up becomes a tracked task with its owner; the review that was
+    proposed without a date gets a calendar slot instead of being lost."""
+    item = next((i for i in impact.items if i.kind == "meeting_notes"), None)
+    notes = item.data.get("notes") if item is not None else None
+    if not isinstance(notes, list):
+        return feasible_from_actions(change)
+
+    steps: list[ExecutionStep] = []
+    review_proposed = False
+    for note in notes:
+        if not isinstance(note, dict):
+            continue
+        text = str(note.get("text", "")).strip()
+        found = _NOTE_DATE.search(text)
+        if found:
+            params: dict[str, object] = {"title": text.rstrip("."), "due": found.group(1)}
+            author = str(note.get("author", ""))
+            if author:
+                params["assignee"] = author
+            steps.append(_step(f"s{len(steps) + 1}", "planner", "planner.create_task", params))
+        elif "review" in text.lower():
+            review_proposed = True
+    if review_proposed:
+        steps.append(
+            _step(
+                f"s{len(steps) + 1}",
+                "outlook",
+                "outlook.create_event",
+                {"title": "Progress review", "start": "2026-06-15"},
+            )
+        )
+    if not steps:
+        return feasible_from_actions(change)
+    return ExecutionPlan(
+        kind=PlanKind.FEASIBLE,
+        steps=steps,
+        rationale=(
+            "Track each spoken follow-up as a task with its owner and due date; "
+            "schedule the review that was proposed without one."
+        ),
+    )
+
+
 PLANNERS = {
     "launch": plan_launch,
     "sso-ga": plan_sso_ga,
     "project-access": plan_project_access,
+    "meeting-actions": plan_meeting_actions,
 }

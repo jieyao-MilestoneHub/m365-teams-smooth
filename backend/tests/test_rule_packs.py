@@ -12,8 +12,13 @@ from app.agent.policy_rules.packs import (
 from app.domain import ApproverRole, RiskLevel
 
 
-def test_default_packs_are_the_three_trials() -> None:
-    assert [p.id for p in default_packs()] == ["launch_slip", "customer_promise", "vendor_access"]
+def test_default_packs_cover_every_trial_subject() -> None:
+    assert [p.id for p in default_packs()] == [
+        "launch_slip",
+        "customer_promise",
+        "vendor_access",
+        "meeting_actions",
+    ]
 
 
 def test_launch_slip_is_high_risk_but_not_unsafe() -> None:
