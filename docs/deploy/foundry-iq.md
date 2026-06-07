@@ -1,5 +1,9 @@
 # Foundry IQ — knowledge grounding
 
+> This page covers **provisioning** the backing Azure environment. For the integration side —
+> the port, provider selection, and pointing the court at your own knowledge base — see
+> [integrate/foundry-iq.md](../integrate/foundry-iq.md).
+
 The court grounds its reasoning in cited facts via the `KnowledgePort`
 (`backend/app/ports/knowledge.py`), consumed by the impact gatherers and the impact node. Two
 providers satisfy the same port:

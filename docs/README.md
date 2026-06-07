@@ -1,7 +1,7 @@
 # Documentation map
 
-Everything you need to understand, run, and deploy **AI Change Court**, organized into four areas.
-Start with whichever matches your goal.
+Everything you need to understand, run, deploy, and extend **AI Change Court**, organized into
+five areas. Start with whichever matches your goal.
 
 ## How to read these docs
 
@@ -10,12 +10,13 @@ Start with whichever matches your goal.
 | **Understand what this is & why** | [overview/goals.md](overview/goals.md) |
 | **See how it's built** | [architecture/index.html](architecture/index.html) — open in a browser (offline) |
 | **Run a demo / deploy it** | [deploy/runbook.md](deploy/runbook.md) (cloud → Teams) · [deploy/deploy.md](deploy/deploy.md) (concepts) |
+| **Extend it (new integration / scenario)** | [integrate/README.md](integrate/README.md) |
 | **Look up a specific contract or decision** | [reference/](reference/) |
 
 New to the project? Read **overview → architecture diagram → reference/trials** in that order, then
 the deploy guide when you're ready to run it.
 
-## The four areas
+## The five areas
 
 ### ① Overview — what & why
 - [overview/goals.md](overview/goals.md) — the problem, the governed-autonomy thesis, the three
@@ -39,7 +40,13 @@ the deploy guide when you're ready to run it.
 - [deploy/security.md](deploy/security.md) — security posture, trust boundaries, and the
   credential-rotation runbook.
 
-### ④ Reference — contracts, schemas, decisions
+### ④ Integrate — extending it
+- [integrate/README.md](integrate/README.md) — the extension model (*a new integration = one
+  adapter + one registration; a new scenario = one rule pack + gatherer + planner*) and a
+  goal-by-goal map of the guides: third-party adapters, new scenarios, Foundry IQ knowledge
+  grounding, MCP tools + agent manifests, the LLM provider, and the config reference.
+
+### ⑤ Reference — contracts, schemas, decisions
 - [reference/adr/](reference/adr/) — Architecture Decision Records: the significant, hard-to-reverse
   choices and their rationale (one file per decision).
 - [reference/mcp-and-card-contract.md](reference/mcp-and-card-contract.md) — the MCP tool/resource
