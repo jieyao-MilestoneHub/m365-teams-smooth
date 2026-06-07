@@ -21,11 +21,11 @@ listed below it.
   repo) and all other systems `mock`. Alternatively `FORCE_ALL_MOCK=true` for a fully credential-free
   run.
 
-## Trial 1 — Launch Slip (dry-run, then live)
+## Trial 1 — Reschedule Sync (dry-run, then live)
 
-- ☐ Submit "slip the launch from 2026-06-10 to 2026-06-17" with `run_mode=dry_run`.
+- ☐ Submit "move the rehearsal to 2026-06-17" with `run_mode=dry_run`.
 - ☐ A **Change Court** is produced: structured change, **impact evidence** (milestone move, calendar
-  conflict, planner shift, pending announcement), a feasible plan with predicted effects, and rollback
+  events, planner shift, pending announcement), a feasible plan with predicted effects, and rollback
   hints.
 - ☐ Every plan step references a **registered capability** (no hallucinated actions).
 - ☐ **Policy + quorum** flags HIGH risk → status `AWAITING_VERDICT` with the required approvers and
@@ -33,35 +33,38 @@ listed below it.
 - ☐ Dry-run mutates **nothing** external; the audit record is marked `DRY_RUN`.
 - ☐ Submit live → cast verdict **approve** via MCP `cast_verdict` → graph resumes from its checkpoint
   and executes.
-- ☐ **Real GitHub:** the milestone due date is updated / an issue is created in the test repo.
+- ☐ **Real GitHub:** the "Launch Rehearsal" milestone due date is updated in the test repo.
 - ☐ Mock adapters return believable before/after snapshots for calendar, planner, and announcement.
 - ☐ Final status is `DONE`; the audit log shows before/after and rollback hints (append-only).
+- ☐ **Conflict variant:** "move the rehearsal to 2026-06-16" collides with the seeded board review →
+  the date is **refused as posed** and the next free day (2026-06-17) is proposed as a safe
+  alternative (accept_alternative / request_revision / reject — no plain approve).
 - ☐ **Hallucination guard:** adding "also delete the old launch repo" is **rejected** — no registered
   capability supports it; it is neither planned nor executed.
 - ☐ **Idempotency:** casting the same verdict twice is a no-op — no double execution (REST and MCP).
 - ☐ **Partial failure:** a simulated Planner failure is captured in `errors` and surfaced with a
   rollback suggestion; the run does not crash.
 
-## Trial 2 — Customer Promise
+## Trial 2 — Meeting Actions
 
-- ☐ Submit "promise Customer A that SSO is GA by 2026-06-17."
-- ☐ Impact evidence: GitHub shows open blocking issues; CRM shows the renewal value and date; the
-  security review is scheduled **after** the promised date.
-- ☐ Policy: no GA promise before security approval → the requested promise is **unsafe**.
-- ☐ **Verdict: reject the unsafe promise**, with a **safe alternative** — private preview on 2026-06-17,
-  GA pending the security review on 2026-06-18.
-- ☐ On accepting the alternative: a GitHub issue comment (customer due date), an Outlook review event,
-  a CRM note ("do not promise GA; offer private preview"), a customer email **draft**, and a Teams
-  escalation thread are produced.
+- ☐ Submit "create action items from standup."
+- ☐ Impact evidence: the standup's four spoken follow-ups surface with their owners and dates,
+  grounded with a follow-through citation.
+- ☐ Plan: three `planner.create_task` steps (owner + due date) and one `outlook.create_event` for
+  the review that was proposed without a date.
+- ☐ Policy: **LOW** risk, **no approver** — the court auto-approves; with identities configured the
+  requester's confirmation at the review gate is what executes.
+- ☐ Final status is `DONE`; the audit record carries the created tasks.
 
-## Trial 3 — Vendor Access
+## Trial 3 — Weekly Report
 
-- ☐ Submit "give the external vendor access to Project X until the campaign is done."
-- ☐ The court flags the **ambiguous duration** and the **over-broad folder scope**.
-- ☐ **Proposed safe access:** read-only to `/ProjectX/LaunchAssets` until 2026-06-30, then auto-revoke;
-  requires manager approval (and security approval if the folder holds customer data).
-- ☐ On approval: an Entra guest invite (mock), a scoped SharePoint permission (mock), an expiry, and an
-  auto-revoke task are created; the audit log records the grant and the scheduled revoke.
+- ☐ Submit "post the Project X weekly report."
+- ☐ Impact evidence: recently closed GitHub issues, tracked tasks, and the week's meetings —
+  collected once, grounded with a reporting-cadence citation. With `github:real`, the closed-issue
+  evidence is the repository's actual activity.
+- ☐ Plan: one `teams.post_message` composed from the gathered counts.
+- ☐ Policy: **LOW** risk, **no approver**; executes on the requester's authority.
+- ☐ Final status is `DONE`; the audit record carries the posted report.
 
 ## Quality gates
 

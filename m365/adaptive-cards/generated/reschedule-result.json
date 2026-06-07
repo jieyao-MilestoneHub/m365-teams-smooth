@@ -63,7 +63,7 @@
     },
     {
       "type": "TextBlock",
-      "text": "    ↩ rollback: restore the prior announcement / delete the escalation thread",
+      "text": "    ↩ rollback: restore the prior announcement / delete the escalation thread or post",
       "wrap": true
     }
   ]

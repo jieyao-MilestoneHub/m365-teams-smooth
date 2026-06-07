@@ -11,7 +11,7 @@
     },
     {
       "type": "TextBlock",
-      "text": "give the vendor access to Project X until the campaign is done",
+      "text": "move the rehearsal to 2026-06-17",
       "wrap": true
     },
     {
@@ -30,98 +30,83 @@
     },
     {
       "type": "TextBlock",
-      "text": "⛔ REJECTED as requested — proposing a safer alternative",
-      "wrap": true,
-      "weight": "Bolder",
-      "color": "Attention"
-    },
-    {
-      "type": "TextBlock",
-      "text": "Grant least-privilege read-only access to /ProjectX/LaunchAssets until 2026-06-30, then auto-revoke.",
-      "wrap": true,
-      "color": "Attention"
-    },
-    {
-      "type": "TextBlock",
-      "text": "⚠ Decisive evidence",
-      "wrap": true,
-      "weight": "Bolder",
-      "color": "Attention"
-    },
-    {
-      "type": "TextBlock",
-      "text": "• [sharepoint] '/ProjectX' holds customer data",
-      "wrap": true,
-      "weight": "Bolder"
-    },
-    {
-      "type": "TextBlock",
-      "text": "    ↳ External access should be least-privilege and time-boxed, with an explicit revoke date. (Access Control Policy §4.3)",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
       "text": "Impact evidence",
       "wrap": true,
       "weight": "Bolder"
     },
     {
       "type": "TextBlock",
-      "text": "• [request] Requested access has no end date ('until done')",
+      "text": "• [github] Milestone 'Launch Rehearsal' currently due 2026-06-10",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "• [request] Requested scope '/ProjectX' is broader than necessary",
+      "text": "• [outlook] Calendar events near the new date",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "• [knowledge] grounded governance facts",
+      "text": "• [planner] 2 planner task(s) must shift",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "    ↳ External access should be least-privilege and time-boxed, with an explicit revoke date. (Access Control Policy §4.3)",
+      "text": "• [teams] A pending announcement references the original date",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "Safe alternative: Grant least-privilege read-only access to /ProjectX/LaunchAssets until 2026-06-30, then auto-revoke.",
+      "text": "Proposed plan: Move the rehearsal to 2026-06-17; update calendar, schedule, and announcement.",
       "wrap": true,
       "weight": "Bolder"
     },
     {
       "type": "TextBlock",
-      "text": "• sharepoint.grant_folder_permission",
+      "text": "• github.update_milestone_due",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "• entra.invite_guest",
+      "text": "• outlook.create_event",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "• entra.schedule_access_revoke",
+      "text": "• planner.shift_task_dates",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "Approvers required (all): manager, security_lead",
+      "text": "• teams.update_announcement",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "Approvers required (all): eng_lead, comms",
       "wrap": true
     }
   ],
   "actions": [
     {
       "type": "Action.Execute",
-      "title": "accept_alternative",
+      "title": "approve",
       "verb": "cast_verdict",
       "data": {
         "tool": "cast_verdict",
         "thread_id": "<thread-id>",
-        "verdict_type": "accept_alternative",
-        "selected_plan": "safe_alternative"
+        "verdict_type": "approve",
+        "selected_plan": "feasible"
+      }
+    },
+    {
+      "type": "Action.Execute",
+      "title": "approve_internal_only",
+      "verb": "cast_verdict",
+      "data": {
+        "tool": "cast_verdict",
+        "thread_id": "<thread-id>",
+        "verdict_type": "approve_internal_only",
+        "selected_plan": "feasible"
       }
     },
     {
@@ -132,7 +117,7 @@
         "tool": "cast_verdict",
         "thread_id": "<thread-id>",
         "verdict_type": "request_revision",
-        "selected_plan": "safe_alternative"
+        "selected_plan": "feasible"
       }
     },
     {
@@ -143,7 +128,7 @@
         "tool": "cast_verdict",
         "thread_id": "<thread-id>",
         "verdict_type": "reject",
-        "selected_plan": "safe_alternative"
+        "selected_plan": "feasible"
       }
     }
   ]

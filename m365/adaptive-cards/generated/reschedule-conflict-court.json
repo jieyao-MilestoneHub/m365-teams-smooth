@@ -11,7 +11,7 @@
     },
     {
       "type": "TextBlock",
-      "text": "promise Customer A that SSO is GA by 2026-06-17",
+      "text": "move the rehearsal to 2026-06-16",
       "wrap": true
     },
     {
@@ -37,7 +37,7 @@
     },
     {
       "type": "TextBlock",
-      "text": "Reject the GA promise: offer a private preview on 2026-06-17, with GA pending the security review on 2026-06-18.",
+      "text": "The requested 2026-06-16 collides with an existing commitment (Board review); propose 2026-06-17 instead, with the same calendar, schedule, and announcement ripple.",
       "wrap": true,
       "color": "Attention"
     },
@@ -50,13 +50,13 @@
     },
     {
       "type": "TextBlock",
-      "text": "• [outlook] Security review on 2026-06-18 is after the promised 2026-06-17",
+      "text": "• [outlook] The requested date 2026-06-16 collides with 'Board review'",
       "wrap": true,
       "weight": "Bolder"
     },
     {
       "type": "TextBlock",
-      "text": "    ↳ A capability cannot be declared generally available before its security review completes. (GA Readiness Policy §2.1)",
+      "text": "    ↳ Moving a launch milestone requires updating dependent schedules and pending communications. (Launch Playbook §3.2)",
       "wrap": true
     },
     {
@@ -67,38 +67,33 @@
     },
     {
       "type": "TextBlock",
-      "text": "• [github] 2 open blocking issue(s)",
+      "text": "• [github] Milestone 'Launch Rehearsal' currently due 2026-06-10",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "• [crm] Renewal value 250000 due 2026-09-30",
+      "text": "• [outlook] Calendar events near the new date",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "• [knowledge] grounded governance facts",
+      "text": "• [planner] 2 planner task(s) must shift",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "    ↳ A capability cannot be declared generally available before its security review completes. (GA Readiness Policy §2.1)",
+      "text": "• [teams] A pending announcement references the original date",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "    ↳ Commitments affecting an at-risk renewal require account-owner sign-off. (Commercial Commitments Policy §1.4)",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
-      "text": "Safe alternative: Reject the GA promise: offer a private preview on 2026-06-17, with GA pending the security review on 2026-06-18.",
+      "text": "Safe alternative: The requested 2026-06-16 collides with an existing commitment (Board review); propose 2026-06-17 instead, with the same calendar, schedule, and announcement ripple.",
       "wrap": true,
       "weight": "Bolder"
     },
     {
       "type": "TextBlock",
-      "text": "• github.comment_issue",
+      "text": "• github.update_milestone_due",
       "wrap": true
     },
     {
@@ -108,22 +103,17 @@
     },
     {
       "type": "TextBlock",
-      "text": "• crm.add_note",
+      "text": "• planner.shift_task_dates",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "• outlook.draft_email",
+      "text": "• teams.update_announcement",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "• teams.create_escalation_thread",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
-      "text": "Approvers required (all): security_lead, account_owner",
+      "text": "Approvers required (all): eng_lead, comms",
       "wrap": true
     }
   ],

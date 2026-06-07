@@ -5,15 +5,9 @@
   "body": [
     {
       "type": "TextBlock",
-      "text": "✅ Safe alternative executed",
+      "text": "Verdict recorded",
       "wrap": true,
-      "weight": "Bolder",
-      "color": "Good"
-    },
-    {
-      "type": "TextBlock",
-      "text": "Refused the request as posed; ran the safer plan instead.",
-      "wrap": true
+      "weight": "Bolder"
     },
     {
       "type": "TextBlock",
@@ -39,7 +33,7 @@
     },
     {
       "type": "TextBlock",
-      "text": "    ↩ rollback: revoke the granted folder permission",
+      "text": "    ↩ rollback: delete the created task",
       "wrap": true
     },
     {
@@ -49,7 +43,7 @@
     },
     {
       "type": "TextBlock",
-      "text": "    ↩ rollback: cancel the guest invite / scheduled revoke",
+      "text": "    ↩ rollback: delete the created task",
       "wrap": true
     },
     {
@@ -59,7 +53,17 @@
     },
     {
       "type": "TextBlock",
-      "text": "    ↩ rollback: cancel the guest invite / scheduled revoke",
+      "text": "    ↩ rollback: delete the created task",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "• s4: dry_run (predicted)",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "    ↩ rollback: delete the created event/draft to restore the prior state",
       "wrap": true
     }
   ]

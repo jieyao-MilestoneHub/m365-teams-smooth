@@ -29,7 +29,7 @@ the backend over public HTTPS, Entra ID OAuth2, sideloading the declarative agen
 replacing the mocks with real Microsoft Graph adapters. See `docs/deploy/deploy.md`. Roadmap phases and PR
 slicing live in `roadmap.md` (Phases 1–5, plus enhancements) and in GitHub issues (labeled
 `ready`/`blocked`, `area:*`); keep PRs single-responsibility. **Stay convergent:** every change must
-serve one of the three trials (Launch Slip, Customer Promise, Vendor Access); see `verify.md`.
+serve one of the three demo trials (Reschedule Sync, Meeting Actions, Weekly Report); see `verify.md`.
 
 ## Source of truth: `.claude/rules/`
 
@@ -145,5 +145,8 @@ are built — no ServiceNow / generic Graph adapter.
 - CI today: `.github/workflows/security.yml` (gitleaks secret scan) + weekly Dependabot. No secrets
   in the repo — use env vars.
 
-The demo spine is **three trials** — Launch Slip, Customer Promise (reject unsafe promise + safe
-alternative), and Vendor Access (ambiguous → least-privilege + auto-revoke). See `verify.md`.
+The demo spine is **three everyday trials** — Reschedule Sync (one request moves the milestone,
+calendar, tasks, and announcement together; a conflicting date is refused and a free one proposed),
+Meeting Actions (standup follow-ups become tracked tasks on the requester's authority), and Weekly
+Report (scattered activity aggregated into one post). The earlier governance trials (Customer
+Promise, Vendor Access) stay wired and tested as additional capabilities. See `verify.md`.

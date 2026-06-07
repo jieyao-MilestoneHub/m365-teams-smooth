@@ -36,9 +36,9 @@ section "Preconditions"
 check "backend app imports and boots" backend python -c "from app.main import create_app; create_app()"
 
 section "The three trials (fully mocked, dry-run + verdict)"
-check "Launch Slip trial" backend pytest -q tests/test_trial_launch_slip.py
-check "Customer Promise trial (reject + safe alternative)" backend pytest -q tests/test_trial_customer_promise.py
-check "Vendor Access trial (least-privilege + auto-revoke)" backend pytest -q tests/test_trial_vendor_access.py
+check "Reschedule trial (feasible + conflict alternative)" backend pytest -q tests/test_trial_launch_slip.py
+check "Meeting Actions trial (requester authority)" backend pytest -q tests/test_trial_meeting_actions.py
+check "Weekly Report trial (aggregate + post)" backend pytest -q tests/test_trial_weekly_report.py
 check "golden fixtures match" backend pytest -q tests/test_golden_trials.py
 
 section "Safety & audit"
