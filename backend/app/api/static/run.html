@@ -156,6 +156,14 @@
   .cite::before { content: "↳ "; color: var(--faint); }
   .sev-high { color: var(--amber); }
 
+  /* requested-vs-alternative comparison (options stage, safe_alternative only) */
+  .cmp-side { border-left: 2px solid var(--border-strong); padding-left: 10px; margin: 8px 0; }
+  .cmp-side.asked { border-left-color: rgba(240,109,106,.55); }
+  .cmp-side.alt { border-left-color: var(--green-dim); }
+  .cmp-h { font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 2px; }
+  .cmp-side.asked .cmp-h { color: var(--red); }
+  .cmp-side.alt .cmp-h { color: var(--green); }
+
   .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 8px; }
   .panel h3 {
     margin: 0 0 8px; font-family: var(--serif); font-variant: small-caps;
@@ -426,9 +434,19 @@ function stageBody(id) {
   }
   if (id === "options" && t.options) {
     const alt = t.options.kind === "safe_alternative";
-    return `<div class="row">${alt ? "🛡 <b>Safe alternative</b>: " : "Plan: "}${esc(t.options.rationale || "")}</div>` +
-      (t.options.steps || []).map(s =>
-        `<div class="row">• <span class="sys">${esc(s.capability.system)}</span> ${esc(s.capability.name)}</div>`).join("");
+    const steps = withParams => (t.options.steps || []).map(s => {
+      const p = withParams && s.params && Object.keys(s.params).length
+        ? `<span class="cite">${esc(Object.entries(s.params).slice(0, 4).map(([k, v]) => `${k}: ${fmtVal(v)}`).join(" · "))}</span>` : "";
+      return `<div class="row">• <span class="sys">${esc(s.capability.system)}</span> ${esc(s.capability.name)}${p}</div>`;
+    }).join("");
+    if (!alt) return `<div class="row">Plan: ${esc(t.options.rationale || "")}</div>` + steps(false);
+    // The courtroom contrast: the ask as posed vs the Defender's counter-proposal.
+    const c = t.change || {};
+    return `<div class="cmp-side asked"><div class="cmp-h">requested</div>
+        <div class="row">“${esc(c.raw_request || "")}”</div>` +
+      (c.unsafe_reason ? `<div class="row"><span class="sev-high">⚠ ${esc(c.unsafe_reason)}</span></div>` : "") +
+      `</div><div class="cmp-side alt"><div class="cmp-h">🛡 defender's alternative</div>
+        <div class="row">${esc(t.options.rationale || "")}</div>${steps(true)}</div>`;
   }
   if (id === "policy" && t.risk) {
     const rules = (t.risk.matched_rule_ids || []).join(", ");
