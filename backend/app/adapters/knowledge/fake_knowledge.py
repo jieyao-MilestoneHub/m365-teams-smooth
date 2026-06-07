@@ -53,6 +53,17 @@ _DEFAULT_CORPUS: list[tuple[tuple[str, ...], GroundedFact]] = [
         ),
     ),
     (
+        ("report", "status", "weekly", "cadence"),
+        GroundedFact(
+            claim=(
+                "Status reports follow a weekly cadence and post to the project channel "
+                "as the single source of record."
+            ),
+            source_id="policy/status-reporting",
+            citation="Status Reporting Policy §2.1",
+        ),
+    ),
+    (
         ("action item", "follow-up", "follow-through", "meeting", "standup"),
         GroundedFact(
             claim=(

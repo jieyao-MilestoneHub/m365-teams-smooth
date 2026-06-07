@@ -237,9 +237,34 @@ def plan_meeting_actions(change: Change, impact: ImpactEvidence) -> ExecutionPla
     )
 
 
+def _evidence_count(impact: ImpactEvidence, kind: str, field: str) -> int:
+    item = next((i for i in impact.items if i.kind == kind), None)
+    value = item.data.get(field) if item is not None else None
+    return len(value) if isinstance(value, list) else 0
+
+
+def plan_weekly_report(change: Change, impact: ImpactEvidence) -> ExecutionPlan:
+    """Feasible: compose the report from the gathered evidence and post it once to the channel."""
+    closed = _evidence_count(impact, "closed_issues", "issues")
+    tasks = _evidence_count(impact, "tasks", "tasks")
+    meetings = _evidence_count(impact, "calendar", "events")
+    message = (
+        f"Weekly report — {closed} issue(s) closed, {tasks} task(s) tracked, "
+        f"{meetings} meeting(s) held. Full detail is in the trial's audit record."
+    )
+    return ExecutionPlan(
+        kind=PlanKind.FEASIBLE,
+        steps=[
+            _step("s1", "teams", "teams.post_message", {"channel": "project-x", "message": message})
+        ],
+        rationale="Aggregate the week's activity once and post it to the project channel.",
+    )
+
+
 PLANNERS = {
     "launch": plan_launch,
     "sso-ga": plan_sso_ga,
     "project-access": plan_project_access,
     "meeting-actions": plan_meeting_actions,
+    "weekly-report": plan_weekly_report,
 }

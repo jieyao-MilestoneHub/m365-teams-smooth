@@ -146,6 +146,24 @@ MEETING_ACTIONS = RulePack(
 )
 
 
+WEEKLY_REPORT = RulePack(
+    id="weekly_report",
+    match=MatchRules(
+        any_action_capability=["teams.post_message"],
+        any_tag=["report.activity_collected"],
+    ),
+    risk_factors=[
+        RiskFactorRule(id="activity_collected", when_tag="report.activity_collected", weight=5),
+    ],
+    risk_bands=_STANDARD_BANDS,
+    # Posting an internal status summary is the requester's own authority: low risk, no approver.
+    quorum=QuorumRules(approvers=[]),
+    verdict_options=VerdictOptionRules(
+        default=[VerdictType.APPROVE, VerdictType.REQUEST_REVISION, VerdictType.REJECT],
+    ),
+)
+
+
 def default_packs() -> list[RulePack]:
     """The rule packs governing the trials."""
-    return [LAUNCH_SLIP, CUSTOMER_PROMISE, VENDOR_ACCESS, MEETING_ACTIONS]
+    return [LAUNCH_SLIP, CUSTOMER_PROMISE, VENDOR_ACCESS, MEETING_ACTIONS, WEEKLY_REPORT]

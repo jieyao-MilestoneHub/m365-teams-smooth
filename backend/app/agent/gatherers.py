@@ -241,9 +241,58 @@ def gather_meeting_actions(
     return ImpactEvidence(items=items, tags=tags)
 
 
+def gather_weekly_report(
+    change: Change,
+    registry: IntegrationRegistry,
+    knowledge: KnowledgePort,
+    errors: list[str],
+) -> ImpactEvidence:
+    """Weekly report: the recent activity scattered across systems, collected once."""
+    items: list[EvidenceItem] = []
+    tags: list[str] = []
+
+    closed = _read(registry, "github", "github.read_closed_issues", errors).get("issues", [])
+    if isinstance(closed, list) and closed:
+        items.append(
+            EvidenceItem(
+                system="github",
+                kind="closed_issues",
+                summary=f"{len(closed)} issue(s) closed recently",
+                data={"issues": closed},
+                grounded=knowledge.ground("status reporting cadence single source"),
+            )
+        )
+        tags.append("report.activity_collected")
+
+    tasks = _read(registry, "planner", "planner.read_tasks", errors).get("tasks", [])
+    if isinstance(tasks, list) and tasks:
+        items.append(
+            EvidenceItem(
+                system="planner",
+                kind="tasks",
+                summary=f"{len(tasks)} task(s) tracked this week",
+                data={"tasks": tasks},
+            )
+        )
+
+    events = _read(registry, "outlook", "outlook.read_events", errors).get("events", [])
+    if isinstance(events, list) and events:
+        items.append(
+            EvidenceItem(
+                system="outlook",
+                kind="calendar",
+                summary=f"{len(events)} meeting(s) on the calendar",
+                data={"events": events},
+            )
+        )
+
+    return ImpactEvidence(items=items, tags=tags)
+
+
 GATHERERS: dict[str, Gatherer] = {
     "launch": gather_launch,
     "sso-ga": gather_sso_ga,
     "project-access": gather_project_access,
     "meeting-actions": gather_meeting_actions,
+    "weekly-report": gather_weekly_report,
 }

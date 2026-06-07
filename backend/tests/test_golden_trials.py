@@ -61,6 +61,16 @@ GOLDEN: dict[str, dict[str, object]] = {
         "plan_capabilities": {"planner.create_task", "outlook.create_event"},
         "approvers": set(),
     },
+    "weekly_report": {
+        "request": "post the Project X weekly report",
+        "status": "done",  # low risk, no approver: auto-approved and executed in one pass
+        "risk_level": "low",
+        "unsafe": False,
+        "plan_kind": "feasible",
+        "verdict_options": {"approve", "request_revision", "reject"},
+        "plan_capabilities": {"teams.post_message"},
+        "approvers": set(),
+    },
     "vendor_access": {
         "request": "give the vendor access to Project X until the campaign is done",
         "status": "awaiting_verdict",

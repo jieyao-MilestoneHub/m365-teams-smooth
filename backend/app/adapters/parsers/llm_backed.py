@@ -26,6 +26,7 @@ _SUBJECTS = {
     "sso-ga": "promising a customer that a feature is generally available by a date",
     "project-access": "granting an external vendor / contractor / agency access to a folder",
     "meeting-actions": "turning meeting or standup discussion into tracked follow-up tasks",
+    "weekly-report": "aggregating recent project activity into a status report for the channel",
 }
 
 
