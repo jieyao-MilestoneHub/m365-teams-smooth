@@ -1,0 +1,13 @@
+# The build context is the repo root (docker build -f backend/Dockerfile .) and is uploaded
+# wholesale by remote builders (az acr build). Secrets and local state must never enter it,
+# and COPY backend/ ./ must not bake them into the image.
+**/.env*
+infra/
+.git/
+.github/
+.claude/
+**/__pycache__/
+**/.venv/
+**/*.sqlite*
+**/*.db
+*.png
