@@ -31,6 +31,12 @@ LAUNCH_SLIP = RulePack(
         RiskFactorRule(id="calendar_conflict", when_tag="schedule.calendar_conflict", weight=20),
         RiskFactorRule(id="planner_shift", when_tag="schedule.planner_shift", weight=10),
         RiskFactorRule(id="pending_announcement", when_tag="comms.pending_announcement", weight=10),
+        RiskFactorRule(
+            id="target_date_conflict",
+            when_tag="schedule.target_date_conflict",
+            weight=30,
+            marks_unsafe=True,
+        ),
     ],
     risk_bands=_STANDARD_BANDS,
     quorum=QuorumRules(
@@ -43,6 +49,11 @@ LAUNCH_SLIP = RulePack(
         default=[
             VerdictType.APPROVE,
             VerdictType.APPROVE_INTERNAL_ONLY,
+            VerdictType.REQUEST_REVISION,
+            VerdictType.REJECT,
+        ],
+        when_unsafe=[
+            VerdictType.ACCEPT_ALTERNATIVE,
             VerdictType.REQUEST_REVISION,
             VerdictType.REJECT,
         ],

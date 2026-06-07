@@ -19,7 +19,7 @@ from datetime import date
 from app.domain import Change, RequestedAction
 from app.ports.request_parser import RequestParser
 
-_LAUNCH_NOUNS = ("launch", "milestone", "release", "go-live", "ship")
+_LAUNCH_NOUNS = ("launch", "milestone", "release", "go-live", "ship", "rehearsal", "sync")
 _MOVE_VERBS = ("slip", "move", "push", "delay", "reschedule", "postpone", "shift", "bring")
 _PROMISE_VERBS = ("promise", "tell", "commit", "assure", "guarantee", "pledge")
 _PROMISE_OBJECTS = ("customer", "client", "sso", "ga", "available", "ready")
@@ -152,7 +152,7 @@ class DeterministicRequestParser(RequestParser):
                     system="github",
                     capability_name="github.update_milestone_due",
                     verb="update",
-                    params={"milestone": "Launch", "due_on": due_by},
+                    params={"milestone": "Launch Rehearsal", "due_on": due_by},
                 )
             )
             if _has(text, "delete") and _has(text, "repo", "repository"):

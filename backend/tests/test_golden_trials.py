@@ -51,6 +51,23 @@ GOLDEN: dict[str, dict[str, object]] = {
         },
         "approvers": {"security_lead", "account_owner"},
     },
+    "rehearsal_conflict": {
+        # The requested day collides with the seeded board review: refused as posed, the next
+        # free day proposed instead — the safe-alternative path inside the everyday reschedule.
+        "request": "move the rehearsal to 2026-06-16",
+        "status": "awaiting_verdict",
+        "risk_level": "high",
+        "unsafe": True,
+        "plan_kind": "safe_alternative",
+        "verdict_options": {"accept_alternative", "request_revision", "reject"},
+        "plan_capabilities": {
+            "github.update_milestone_due",
+            "outlook.create_event",
+            "planner.shift_task_dates",
+            "teams.update_announcement",
+        },
+        "approvers": {"eng_lead", "comms"},
+    },
     "meeting_actions": {
         "request": "create action items from standup",
         "status": "done",  # low risk, no approver: auto-approved and executed in one pass

@@ -48,13 +48,17 @@ def gather_launch(
     items: list[EvidenceItem] = []
     tags: list[str] = []
 
-    milestone = _read(registry, "github", "github.read_milestone", errors, milestone="Launch")
+    milestone = _read(
+        registry, "github", "github.read_milestone", errors, milestone="Launch Rehearsal"
+    )
     if milestone:
         items.append(
             EvidenceItem(
                 system="github",
                 kind="milestone",
-                summary=f"Milestone 'Launch' currently due {milestone.get('due_on')}",
+                summary=(
+                    f"Milestone '{milestone.get('title')}' currently due {milestone.get('due_on')}"
+                ),
                 data=milestone,
             )
         )
@@ -71,6 +75,31 @@ def gather_launch(
             )
         )
         tags.append("schedule.calendar_conflict")
+        # The requested day itself colliding with an existing event is graver than nearby
+        # busyness: the date as posed cannot stand, and the Defender must counter-propose.
+        clash = next(
+            (
+                e
+                for e in events
+                if change.due_by and str(e.get("start", ""))[:10] == change.due_by
+            ),
+            None,
+        )
+        if clash is not None:
+            items.append(
+                EvidenceItem(
+                    system="outlook",
+                    kind="date_conflict",
+                    summary=(
+                        f"The requested date {change.due_by} collides with "
+                        f"'{clash.get('title')}'"
+                    ),
+                    data={"event": clash, "title": clash.get("title")},
+                    severity="high",
+                    grounded=knowledge.ground("schedule change controlled coordinated"),
+                )
+            )
+            tags.append("schedule.target_date_conflict")
 
     tasks = _read(registry, "planner", "planner.read_tasks", errors).get("tasks", [])
     if isinstance(tasks, list) and tasks:

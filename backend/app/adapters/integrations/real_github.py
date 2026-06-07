@@ -105,7 +105,7 @@ class RealGitHubAdapter(BaseIntegrationAdapter):
     def _read(self, query: ReadQuery) -> ReadResult:
         repo = safe_repo(str(query.params.get("repo", self._repo)))
         if query.capability == "github.read_milestone":
-            title = str(query.params.get("milestone", "Launch"))
+            title = str(query.params.get("milestone", "Launch Rehearsal"))
             found = self._find_milestone(repo, title)
             return ReadResult(
                 capability=query.capability,
@@ -184,7 +184,7 @@ class RealGitHubAdapter(BaseIntegrationAdapter):
     def _fetch_before(self, step: ExecutionStep) -> dict[str, object]:
         if step.capability.name == "github.update_milestone_due":
             repo = self._repo_of(step)
-            return self._find_milestone(repo, str(step.params.get("milestone", "Launch")))
+            return self._find_milestone(repo, str(step.params.get("milestone", "Launch Rehearsal")))
         return {}
 
     def _rollback(self, step: ExecutionStep, before: dict[str, object]) -> RollbackHint:

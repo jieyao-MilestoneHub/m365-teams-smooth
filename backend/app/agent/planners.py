@@ -9,7 +9,7 @@ time-boxed access — that supersedes the request. Registered in ``PLANNERS`` fo
 from __future__ import annotations
 
 import re
-from datetime import date
+from datetime import date, timedelta
 
 from app.agent.nodes.options import feasible_from_actions
 from app.domain import (
@@ -60,36 +60,72 @@ def _as_day(value: str) -> date:
     return date.fromisoformat(value[:10])
 
 
-def plan_launch(change: Change, impact: ImpactEvidence) -> ExecutionPlan:
-    """Feasible: move the milestone and ripple into calendar, planner, and the announcement."""
-    new_due = change.due_by or "2026-06-17"
-    old_due = _evidence_field(impact, "milestone", "due_on") or "2026-06-10"
-    delta = (_as_day(new_due) - _as_day(old_due)).days
-    steps = [
+def _busy_days(impact: ImpactEvidence) -> set[str]:
+    item = next((i for i in impact.items if i.kind == "calendar"), None)
+    events = item.data.get("events") if item is not None else None
+    if not isinstance(events, list):
+        return set()
+    return {str(e.get("start", ""))[:10] for e in events if isinstance(e, dict)}
+
+
+def _next_free_day(after: date, busy: set[str]) -> str:
+    day = after
+    for _ in range(14):
+        day = day + timedelta(days=1)
+        if day.isoformat() not in busy:
+            return day.isoformat()
+    return (after + timedelta(days=1)).isoformat()
+
+
+def _reschedule_steps(new_due: str, delta: int) -> list[ExecutionStep]:
+    return [
         _step(
             "s1",
             "github",
             "github.update_milestone_due",
-            {"milestone": "Launch", "due_on": new_due},
+            {"milestone": "Launch Rehearsal", "due_on": new_due},
         ),
         _step(
             "s2",
             "outlook",
             "outlook.create_event",
-            {"title": f"Launch review: moved to {new_due}", "start": new_due},
+            {"title": f"Launch rehearsal: moved to {new_due}", "start": new_due},
         ),
         _step("s3", "planner", "planner.shift_task_dates", {"delta_days": delta}),
         _step(
             "s4",
             "teams",
             "teams.update_announcement",
-            {"channel": "launch", "message": f"Launch has moved to {new_due}."},
+            {"channel": "launch", "message": f"Launch rehearsal has moved to {new_due}."},
         ),
     ]
+
+
+def plan_launch(change: Change, impact: ImpactEvidence) -> ExecutionPlan:
+    """Feasible: move the milestone and ripple into calendar, planner, and the announcement.
+    When the requested day itself collides with an existing event, the date as posed is refused
+    and the next free day is proposed instead — the same ripple, a safer date."""
+    new_due = change.due_by or "2026-06-17"
+    old_due = _evidence_field(impact, "milestone", "due_on") or "2026-06-10"
+    if "schedule.target_date_conflict" in impact.tags:
+        clash = _evidence_field(impact, "date_conflict", "title")
+        proposed = _next_free_day(_as_day(new_due), _busy_days(impact))
+        delta = (_as_day(proposed) - _as_day(old_due)).days
+        return ExecutionPlan(
+            kind=PlanKind.SAFE_ALTERNATIVE,
+            steps=_reschedule_steps(proposed, delta),
+            supersedes_request=True,
+            rationale=(
+                f"The requested {new_due} collides with an existing commitment"
+                f"{f' ({clash})' if clash else ''}; propose {proposed} instead, "
+                "with the same calendar, schedule, and announcement ripple."
+            ),
+        )
+    delta = (_as_day(new_due) - _as_day(old_due)).days
     return ExecutionPlan(
         kind=PlanKind.FEASIBLE,
-        steps=steps,
-        rationale=f"Move the launch to {new_due}; update calendar, schedule, and announcement.",
+        steps=_reschedule_steps(new_due, delta),
+        rationale=f"Move the rehearsal to {new_due}; update calendar, schedule, and announcement.",
     )
 
 

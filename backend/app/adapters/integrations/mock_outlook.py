@@ -25,11 +25,12 @@ class MockOutlookAdapter(BaseIntegrationAdapter):
 
     def __init__(self) -> None:
         # A security review for SSO lands on the 18th — after a promised 17th (Customer Promise).
+        # The board review occupies the 16th, so a reschedule targeting that day collides.
         self._events: list[dict[str, object]] = [
             {
-                "title": "Launch dry-run",
-                "start": "2026-06-17T09:00:00Z",
-                "end": "2026-06-17T10:00:00Z",
+                "title": "Board review",
+                "start": "2026-06-16T09:00:00Z",
+                "end": "2026-06-16T10:00:00Z",
             },
         ]
         self._security_reviews: dict[str, str] = {"sso": "2026-06-18"}
