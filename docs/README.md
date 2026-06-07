@@ -8,7 +8,7 @@ Start with whichever matches your goal.
 | Your goal | Start here |
 | --- | --- |
 | **Understand what this is & why** | [overview/goals.md](overview/goals.md) |
-| **See how it's built** | [architecture/architecture.html](architecture/architecture.html) — open in a browser (offline) |
+| **See how it's built** | [architecture/index.html](architecture/index.html) — open in a browser (offline) |
 | **Run a demo / deploy it** | [deploy/runbook.md](deploy/runbook.md) (cloud → Teams) · [deploy/deploy.md](deploy/deploy.md) (concepts) |
 | **Look up a specific contract or decision** | [reference/](reference/) |
 
@@ -22,10 +22,11 @@ the deploy guide when you're ready to run it.
   trials, and scope discipline. **Read this first.**
 
 ### ② Architecture — how it's built
-- [architecture/architecture.html](architecture/architecture.html) — a self-contained, offline page
-  with five professional diagrams: layered container architecture, the court pipeline + the
-  agentic-vs-deterministic split, the separation-of-duties sequence, the trust/security boundaries,
-  and the persistence/data model.
+- [architecture/index.html](architecture/index.html) — six self-contained, offline diagram pages
+  (one view per page, each with design rationale and guarantees): layered container architecture,
+  the court pipeline + the agentic-vs-deterministic split, the separation-of-duties sequence, the
+  trust/security boundaries, the persistence/data model, and the Microsoft platform integration
+  map (Copilot · Azure AI Foundry / Foundry IQ · Graph · GitHub).
 
 ### ③ Deploy — running it, including environment setup
 - [deploy/deploy.md](deploy/deploy.md) — the concepts: hosting over HTTPS, Entra ID OAuth2, the

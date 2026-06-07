@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AI Change Court — ⑥ Microsoft platform integration</title>
+<style>
+  :root {
+    --ink: #1c2430; --muted: #5b6675; --line: #d8dee6; --bg: #ffffff; --page: #f4f6f9;
+    --entry: #6d4ca8;   /* M365 / entry      — purple */
+    --facade: #2a6fb0;  /* mcp/api façade    — blue   */
+    --core: #1f7a8c;    /* services/agent    — teal   */
+    --port: #46708a;    /* ports (DIP)       — slate  */
+    --adapter: #b5651d; /* adapters          — amber  */
+    --domain: #1f9d57;  /* domain (pure)     — green  */
+    --data: #5b6675;    /* persistence       — grey   */
+    --agentic: #2a6fb0; /* agentic role      — blue   */
+    --gov: #1f9d57;     /* deterministic gov — green  */
+    --gate: #c9851b;    /* durable interrupt — orange */
+    --danger: #c0392b;  /* refusal / guard   — red    */
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink);
+    font: 16px/1.6 -apple-system, "Segoe UI", "Noto Sans TC", Roboto, "PingFang TC",
+      "Microsoft JhengHei", sans-serif; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 32px 20px 80px; }
+  header.hero { background: linear-gradient(135deg, #2a6fb0, #1c4f80); color: #fff;
+    border-radius: 14px; padding: 26px 30px; margin-bottom: 18px; }
+  header.hero h1 { margin: 0 0 6px; font-size: 27px; }
+  header.hero p { margin: 0; opacity: .93; font-size: 15px; }
+  nav.pager { display: flex; justify-content: space-between; gap: 12px;
+    font-size: 13.5px; color: var(--muted); margin: 0 2px 22px; }
+  nav.pager a { color: #2a6fb0; text-decoration: none; }
+  nav.pager a:hover { text-decoration: underline; }
+  h2 { font-size: 21px; margin: 36px 0 6px; padding-bottom: 6px; border-bottom: 2px solid #eaf2fb; }
+  h2 .n { color: #2a6fb0; font-variant-numeric: tabular-nums; }
+  p.lead { color: var(--muted); margin: 8px 0 14px; font-size: 14.5px; }
+  ul { margin: 8px 0 16px; padding-left: 22px; }
+  ul li { margin: 5px 0; }
+  figure { margin: 0 0 8px; background: var(--bg); border: 1px solid var(--line);
+    border-radius: 12px; padding: 16px 16px 10px; overflow-x: auto; }
+  figcaption { color: var(--muted); font-size: 13px; padding: 6px 4px 2px; }
+  svg { display: block; width: 100%; height: auto; min-width: 720px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 6px 2px 16px; font-size: 13px;
+    color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 13px; height: 13px; border-radius: 3px; display: inline-block; }
+  ol.toc { list-style: none; margin: 18px 0; padding: 0; display: grid; gap: 12px; }
+  ol.toc li { background: var(--bg); border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px 18px; }
+  ol.toc .num { color: #2a6fb0; font-weight: 700; margin-right: 8px; }
+  ol.toc a { color: var(--ink); font-weight: 700; text-decoration: none; font-size: 16px; }
+  ol.toc a:hover { color: #2a6fb0; }
+  ol.toc p { margin: 4px 0 0; color: var(--muted); font-size: 13.5px; }
+  code { font-family: "SFMono-Regular", Consolas, monospace; font-size: 13px;
+    background: #f0f3f7; padding: 1px 5px; border-radius: 4px; }
+  footer { margin-top: 36px; color: var(--muted); font-size: 13px; text-align: center; }
+  /* SVG shared text */
+  text { font-family: -apple-system, "Segoe UI", "Noto Sans TC", sans-serif; fill: var(--ink); }
+  .t-title { font-size: 14px; font-weight: 700; }
+  .t-sub { font-size: 11.5px; fill: #5b6675; }
+  .t-white { fill: #fff; }
+  .t-lbl { font-size: 11px; fill: #5b6675; }
+  .edge { stroke: #9aa7b4; stroke-width: 1.6; fill: none; }
+  .edge-strong { stroke: #2a6fb0; stroke-width: 2; fill: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>⑥ Microsoft platform integration</h1>
+  <p>Where AI Change Court meets the platform: Copilot Chat and Teams in front, Azure AI Foundry
+     for reasoning and knowledge, Microsoft Graph and GitHub for evidence and execution — every
+     credential explicit, keyless where the platform allows.</p>
+</header>
+
+<nav class="pager">
+  <span><a href="05-data-and-retention.html">← ⑤ Data</a></span>
+  <span><a href="index.html">⌂ All views</a></span>
+  <span></span>
+</nav>
+
+<h2>What this view shows</h2>
+<p class="lead">The platform map. Users meet the court in Microsoft 365 Copilot Chat / Teams
+  through a declarative agent and the Change Court Adaptive Card; the Microsoft 365 Agents
+  Playground offers the same card surface with no tenant at all. Behind the backend, Azure AI
+  Foundry supplies both the reasoning model (Azure OpenAI) and the grounded knowledge
+  (Foundry IQ over Azure AI Search); Microsoft Graph and the GitHub API supply evidence and carry
+  approved writes. Each edge is labeled with its authentication posture.</p>
+
+<div class="legend">
+  <span><i style="background:#1f9d57"></i>keyless — managed identity</span>
+  <span><i style="background:#b5651d"></i>credential from the host secret store</span>
+  <span><i style="background:#9aa7b4"></i>in-process mock — no credentials</span>
+</div>
+<figure>
+<svg viewBox="0 0 960 500" role="img" aria-label="Microsoft platform integration diagram">
+  <defs>
+    <marker id="ah6" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#6b7886"/>
+    </marker>
+    <marker id="ah6g" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#1f9d57"/>
+    </marker>
+    <marker id="ah6a" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#b5651d"/>
+    </marker>
+    <marker id="ah6m" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#9aa7b4"/>
+    </marker>
+  </defs>
+
+  <!-- entry surfaces -->
+  <rect x="60" y="14" width="420" height="58" rx="9" fill="#6d4ca8"/>
+  <text x="270" y="36" text-anchor="middle" class="t-title t-white">Microsoft 365 Copilot Chat / Teams</text>
+  <text x="270" y="54" text-anchor="middle" class="t-sub t-white">declarative agent · Change Court Adaptive Card</text>
+
+  <rect x="520" y="14" width="380" height="58" rx="9" fill="#7d5fb8"/>
+  <text x="710" y="36" text-anchor="middle" class="t-title t-white">Microsoft 365 Agents Playground</text>
+  <text x="710" y="54" text-anchor="middle" class="t-sub t-white">the same card surface, no tenant required</text>
+
+  <!-- entry → backend -->
+  <line x1="270" y1="72" x2="320" y2="138" class="edge" marker-end="url(#ah6)"/>
+  <text x="92" y="106" class="t-lbl">MCP + OAuth 2.0 · card actions → bot endpoint</text>
+  <line x1="710" y1="72" x2="650" y2="138" class="edge" marker-end="url(#ah6)"/>
+  <text x="672" y="106" class="t-lbl">Bot Framework activities (local)</text>
+
+  <!-- backend -->
+  <rect x="180" y="140" width="600" height="92" rx="12" fill="#e3f1f3" stroke="#1f7a8c"/>
+  <text x="480" y="166" text-anchor="middle" class="t-title" fill="#1f7a8c">AI Change Court backend (FastAPI)</text>
+  <text x="480" y="188" text-anchor="middle" class="t-sub">MCP tools + resources over OAuth 2.0 · bot endpoint for card actions</text>
+  <text x="480" y="204" text-anchor="middle" class="t-sub">read-only run page (signed links) · hosted on Azure Container Apps</text>
+  <text x="480" y="222" text-anchor="middle" class="t-lbl">every external edge below passes through an adapter behind a port (view ①)</text>
+
+  <!-- backend → services -->
+  <line x1="290" y1="232" x2="170" y2="298" stroke="#1f9d57" stroke-width="1.8" fill="none" marker-end="url(#ah6g)"/>
+  <text x="40" y="262" class="t-lbl" fill="#1f9d57">keyless — managed identity</text>
+  <line x1="425" y1="232" x2="425" y2="298" stroke="#b5651d" stroke-width="1.8" fill="none" marker-end="url(#ah6a)"/>
+  <text x="330" y="262" class="t-lbl" fill="#b5651d">app registration credentials</text>
+  <line x1="590" y1="232" x2="645" y2="298" stroke="#b5651d" stroke-width="1.8" fill="none" marker-end="url(#ah6a)"/>
+  <text x="575" y="262" class="t-lbl" fill="#b5651d">token (host secret store)</text>
+  <line x1="700" y1="232" x2="830" y2="298" stroke="#9aa7b4" stroke-width="1.8" stroke-dasharray="5 4" fill="none" marker-end="url(#ah6m)"/>
+  <text x="790" y="262" class="t-lbl">in-process · no credentials</text>
+
+  <!-- Azure AI Foundry -->
+  <rect x="40" y="300" width="250" height="120" rx="10" fill="#eaf2fb" stroke="#2a6fb0"/>
+  <text x="165" y="324" text-anchor="middle" class="t-title" fill="#2a6fb0">Azure AI Foundry</text>
+  <text x="165" y="346" text-anchor="middle" class="t-sub">Azure OpenAI — agentic parsing,</text>
+  <text x="165" y="361" text-anchor="middle" class="t-sub">plan drafting, summarizing</text>
+  <text x="165" y="383" text-anchor="middle" class="t-sub">Foundry IQ (Azure AI Search) —</text>
+  <text x="165" y="398" text-anchor="middle" class="t-sub">knowledge grounding with citations</text>
+
+  <!-- Microsoft Graph -->
+  <rect x="310" y="300" width="230" height="120" rx="10" fill="#e7edf2" stroke="#46708a"/>
+  <text x="425" y="324" text-anchor="middle" class="t-title" fill="#46708a">Microsoft Graph</text>
+  <text x="425" y="346" text-anchor="middle" class="t-sub">Outlook calendar — evidence reads</text>
+  <text x="425" y="362" text-anchor="middle" class="t-sub">SharePoint sites — evidence reads</text>
+  <text x="425" y="378" text-anchor="middle" class="t-sub">Teams — approval notifications</text>
+  <text x="425" y="400" text-anchor="middle" class="t-lbl">writes stay mock / dry-run first</text>
+
+  <!-- GitHub -->
+  <rect x="560" y="300" width="180" height="120" rx="10" fill="#f7ede1" stroke="#b5651d"/>
+  <text x="650" y="324" text-anchor="middle" class="t-title" fill="#b5651d">GitHub API</text>
+  <text x="650" y="346" text-anchor="middle" class="t-sub">milestones · issues</text>
+  <text x="650" y="362" text-anchor="middle" class="t-sub">activity for reports</text>
+  <text x="650" y="378" text-anchor="middle" class="t-sub">evidence reads +</text>
+  <text x="650" y="393" text-anchor="middle" class="t-sub">approved writes</text>
+
+  <!-- Mock adapters -->
+  <rect x="760" y="300" width="160" height="120" rx="10" fill="#fff" stroke="#9aa7b4" stroke-dasharray="5 4"/>
+  <text x="840" y="324" text-anchor="middle" class="t-title" fill="#5b6675">Mock adapters</text>
+  <text x="840" y="346" text-anchor="middle" class="t-sub">Planner · CRM · Entra</text>
+  <text x="840" y="362" text-anchor="middle" class="t-sub">(+ any real system,</text>
+  <text x="840" y="377" text-anchor="middle" class="t-sub">switched per config)</text>
+  <text x="840" y="399" text-anchor="middle" class="t-sub">realistic seeded data</text>
+
+  <!-- bottom note -->
+  <text x="480" y="456" text-anchor="middle" class="t-lbl">Real vs mock is per-system configuration; one switch forces everything to mock,</text>
+  <text x="480" y="472" text-anchor="middle" class="t-lbl">so the full pipeline — court, card, approvals — runs locally with no credentials at all.</text>
+</svg>
+</figure>
+<figcaption>View ⑥ — the platform map. Two ways in (a real tenant or the tenant-free Playground),
+  one backend, and four kinds of outbound edge — keyless Azure AI Foundry, credentialed Microsoft
+  Graph and GitHub, and in-process mocks for everything else.</figcaption>
+
+<h2>Design rationale</h2>
+<ul>
+  <li><strong>Meet users where the decision happens.</strong> The declarative agent puts the court
+    inside Copilot Chat and Teams; the Adaptive Card is the decision UI. There is no separate web
+    app to deploy, secure, or train people on.</li>
+  <li><strong>Two entries, one behavior.</strong> A real tenant and the Agents Playground drive the
+    identical backend, card payloads, and approval flow — so the full experience can be exercised,
+    rehearsed, and demonstrated before any tenant exists.</li>
+  <li><strong>Foundry carries both halves of intelligence.</strong> Azure OpenAI powers the agentic
+    roles (parsing, drafting); Foundry IQ grounds the impact evidence in a knowledge base with
+    citations. Both authenticate keylessly through managed identity — no API key exists to
+    leak.</li>
+  <li><strong>Reads before writes.</strong> Microsoft Graph supplies real calendar and SharePoint
+    evidence; Graph writes remain mocked or dry-run until promoted deliberately, system by system,
+    in configuration.</li>
+  <li><strong>The platform is swappable at the edge.</strong> Every box on the bottom row sits
+    behind the same adapter port — which is why the diagram looks the same whether a system is real
+    or mocked.</li>
+</ul>
+
+<h2>Key guarantees</h2>
+<ul>
+  <li>No stored key for Azure AI Foundry services — managed identity only.</li>
+  <li>Remaining credentials (GitHub token, Graph app registration) live in the host's secret
+    store, never in the repository.</li>
+  <li>One configuration switch forces every integration to mock: the entire pipeline runs with
+    zero external credentials.</li>
+  <li>Copilot, Teams card actions, and the Playground all resolve to the same business layer — no
+    surface-specific behavior.</li>
+</ul>
+
+<h2>Related reading</h2>
+<ul>
+  <li><a href="../deploy/foundry-iq.md">Foundry IQ provisioning</a> — standing up the knowledge
+    grounding environment.</li>
+  <li><a href="../deploy/runbook.md">Deployment runbook</a> — Azure Container Apps → Teams, end to
+    end.</li>
+  <li><a href="../deploy/security.md">Security posture</a> — the credential story in detail.</li>
+  <li><a href="01-layered-architecture.html">View ① — Layered architecture</a> — the same edges
+    seen from inside the process.</li>
+  <li><a href="04-trust-boundaries.html">View ④ — Trust boundaries</a> — what each edge must pass
+    through first.</li>
+</ul>
+
+<nav class="pager">
+  <span><a href="05-data-and-retention.html">← ⑤ Data</a></span>
+  <span><a href="index.html">⌂ All views</a></span>
+  <span></span>
+</nav>
+
+<footer>Self-contained static page — inline SVG, no external dependencies, works offline.</footer>
+
+</div>
+</body>
+</html>

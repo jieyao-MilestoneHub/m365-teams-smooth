@@ -27,7 +27,7 @@ The differentiator is the refusal. Most automation asks "how do I do this?"; AI 
 "**should this be done, and is it even safe?**" — and when it is not, it says so and offers the safe
 path. The agent's freedom lives in **perception and generation** (which evidence to gather, what
 plan to draft); the **safety verdict stays deterministic** (risk scoring, quorum, refusal authority
-are rules, not LLM output). See [the architecture diagram](../architecture/architecture.html) and
+are rules, not LLM output). See [the architecture views](../architecture/index.html) and
 [ADR-0009](../reference/adr/0009-agentic-roles-and-governed-autonomy.md).
 
 ## What "done" looks like — the three trials
@@ -49,7 +49,7 @@ breadth's sake. New work must converge on one of the three trials.
 
 ## Where to go next
 
-- **Understand the design** → [architecture diagram](../architecture/architecture.html).
+- **Understand the design** → [architecture views](../architecture/index.html).
 - **Run it / deploy it** → [deploy guide](../deploy/deploy.md) and the
   [Container Apps → Teams runbook](../deploy/runbook.md).
 - **Dive into specifics** → [reference/](../reference/) (contracts, schemas, ADRs, trials).
