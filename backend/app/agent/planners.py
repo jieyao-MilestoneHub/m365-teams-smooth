@@ -35,6 +35,24 @@ def _evidence_field(impact: ImpactEvidence, kind: str, field: str) -> str | None
     return str(value) if value is not None else None
 
 
+def _blocker_issue(impact: ImpactEvidence) -> int | None:
+    """The lowest-numbered open blocker from evidence — the comment must land on a real issue,
+    not a fixture number, when the GitHub adapter runs against a real repository."""
+    item = next((i for i in impact.items if i.kind == "blockers"), None)
+    if item is None:
+        return None
+    issues = item.data.get("issues")
+    if not isinstance(issues, list):
+        return None
+    numbers: list[int] = []
+    for issue in issues:
+        if isinstance(issue, dict):
+            number = issue.get("number")
+            if isinstance(number, int):
+                numbers.append(number)
+    return min(numbers) if numbers else None
+
+
 def _as_day(value: str) -> date:
     """The calendar day of an ISO date or timestamp — live evidence carries full timestamps
     (GitHub returns ``2026-06-10T00:00:00Z``), while parsed requests carry plain dates."""
@@ -86,8 +104,9 @@ def plan_sso_ga(change: Change, impact: ImpactEvidence) -> ExecutionPlan:
         f"We can offer a private preview on {promised}; general availability will "
         f"follow the security review on {ga_date}."
     )
+    issue = _blocker_issue(impact) or 42  # fixture blocker only when evidence carried none
     steps = [
-        _step("s1", "github", "github.comment_issue", {"issue": 42, "body": comment}),
+        _step("s1", "github", "github.comment_issue", {"issue": issue, "body": comment}),
         _step(
             "s2",
             "outlook",
