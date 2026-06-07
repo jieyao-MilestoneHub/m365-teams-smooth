@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Change Court · Run</title>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --border: #30363d; --text: #c9d1d9;
+    --muted: #8b949e; --green: #3fb950; --amber: #d29922; --red: #f85149; --accent: #58a6ff;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 14px/1.5 -apple-system, "Segoe UI", sans-serif; }
+  header { display: flex; align-items: center; gap: 12px; padding: 14px 20px;
+           border-bottom: 1px solid var(--border); background: var(--panel); }
+  header h1 { font-size: 15px; margin: 0; font-weight: 600; }
+  .mono { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; }
+  .pill { padding: 2px 10px; border-radius: 12px; border: 1px solid var(--border);
+          font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  main { max-width: 980px; margin: 0 auto; padding: 20px; }
+  #stages { display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+            background: var(--panel); border: 1px solid var(--border);
+            border-radius: 8px; padding: 14px 16px; }
+  .stage { display: flex; align-items: center; gap: 6px; }
+  .stage .glyph { width: 18px; text-align: center; }
+  .arrow { color: var(--muted); margin: 0 2px; }
+  .ok { color: var(--green); } .run { color: var(--amber); }
+  .wait { color: var(--amber); } .fail { color: var(--red); } .idle { color: var(--muted); }
+  #log { margin-top: 16px; background: var(--panel); border: 1px solid var(--border);
+         border-radius: 8px; padding: 10px 16px; }
+  #log div { padding: 3px 0; border-bottom: 1px solid #21262d; font-size: 13px; }
+  #log div:last-child { border-bottom: none; }
+  #banner { margin-top: 12px; color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>⚖ Change Court · Run <span id="runid" class="mono"></span></h1>
+  <span id="status" class="pill">loading</span>
+  <span id="mode" class="pill" hidden></span>
+</header>
+<main>
+  <div id="stages"></div>
+  <div id="log"></div>
+  <div id="banner"></div>
+</main>
+<script>
+"use strict";
+const threadId = location.pathname.split("/").pop();
+const token = new URLSearchParams(location.search).get("t") || "";
+const TERMINAL = ["done", "rejected", "withdrawn", "blocked", "failed"];
+const STAGES = ["intake", "impact", "options", "policy", "verdict", "execute", "verify", "audit"];
+let lastSeq = 0, events = [], view = null, delay = 1500, failures = 0;
+
+document.getElementById("runid").textContent = "#" + threadId.slice(0, 8);
+
+function stageState(name, status) {
+  const started = events.some(e => e.kind === "node_started" && e.name === name);
+  const finished = events.some(e => e.kind === "node_finished" && e.name === name);
+  if (name === "verdict") {
+    if (events.some(e => e.kind === "node_started" && e.name === "execute")) return ["✓", "ok"];
+    if (["awaiting_verdict", "awaiting_approval", "awaiting_requester_review"].includes(status))
+      return ["⏸", "wait"];
+    if (["rejected", "withdrawn"].includes(status)) return ["⛔", "fail"];
+    return finishedAll(["policy"]) ? ["⏸", "wait"] : ["○", "idle"];
+  }
+  if (name === "intake" && status === "blocked") return ["⛔", "fail"];
+  if (name === "execute" && status === "failed" && finished) return ["⛔", "fail"];
+  if (finished) return ["✓", "ok"];
+  if (started) return ["⏳", "run"];
+  return ["○", "idle"];
+}
+function finishedAll(names) {
+  return names.every(n => events.some(e => e.kind === "node_finished" && e.name === n));
+}
+
+function render() {
+  const status = view ? view.summary.status : "";
+  const el = document.getElementById("status");
+  el.textContent = status || "loading";
+  el.className = "pill " + (TERMINAL.includes(status)
+    ? (status === "done" ? "ok" : "fail") : "run");
+  if (view && view.run_mode) {
+    const m = document.getElementById("mode");
+    m.hidden = false;
+    m.textContent = view.run_mode === "live" ? "LIVE" : "DRY-RUN";
+  }
+  document.getElementById("stages").innerHTML = STAGES.map((s, i) => {
+    const [glyph, cls] = stageState(s, status);
+    return (i ? '<span class="arrow">→</span>' : "") +
+      `<span class="stage"><span class="glyph ${cls}">${glyph}</span>${s}</span>`;
+  }).join("");
+  document.getElementById("log").innerHTML = events.map(e => {
+    const extra = e.payload && e.payload.duration_seconds !== undefined
+      ? ` <span class="idle">(${Number(e.payload.duration_seconds).toFixed(2)}s)</span>` : "";
+    const sys = e.payload && e.payload.system ? ` <span class="idle">[${e.payload.system}]</span>` : "";
+    return `<div class="mono">${e.seq}. ${e.kind} · ${e.name}${sys}` +
+      (e.status ? ` → <b>${e.status}</b>` : "") + extra + "</div>";
+  }).join("") || '<div class="idle">waiting for events…</div>';
+}
+
+async function poll() {
+  try {
+    const res = await fetch(`/api/runs/${threadId}/events?after=${lastSeq}&t=${encodeURIComponent(token)}`);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    view = await res.json();
+    failures = 0; delay = 1500;
+    for (const e of view.events) if (e.seq > lastSeq) events.push(e);
+    events.sort((a, b) => a.seq - b.seq);
+    lastSeq = Math.max(lastSeq, view.last_seq || 0);
+    render();
+    if (TERMINAL.includes(view.summary.status)) {
+      document.getElementById("banner").textContent = "Run concluded — polling stopped.";
+      return;
+    }
+  } catch (err) {
+    failures += 1; delay = Math.min(delay * 2, 6000);
+    document.getElementById("banner").textContent =
+      failures > 3 ? "Cannot reach the run — has the link expired?" : "Reconnecting…";
+  }
+  setTimeout(poll, delay);
+}
+poll();
+</script>
+</body>
+</html>

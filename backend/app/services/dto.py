@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
+from app.domain import RunEvent, TrialRecord
+
 
 class TrialSummary(BaseModel):
     """A compact view of a trial for the Change Court card and status queries."""
@@ -18,6 +20,33 @@ class TrialSummary(BaseModel):
     verdict_options: list[str] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
     acknowledged: bool = False  # requester confirmed the concluded outcome
+
+
+class ApprovalTimelineEntry(BaseModel):
+    """One approval action rendered for the run view (derived from the approval ledger)."""
+
+    decision: str
+    actor: str  # display label, not a delivery address
+    role: str | None = None
+    note: str = ""
+    at: str = ""
+
+
+class RunView(BaseModel):
+    """Everything a run-page poll needs: progress events, approval timeline, and trial detail.
+
+    ``events`` carries only events with ``seq > after_seq`` so a poller advances incrementally
+    via ``last_seq``; ``trial`` is the full current record (refreshed every poll) for the stage
+    detail panes.
+    """
+
+    summary: TrialSummary
+    trial: TrialRecord | None = None
+    events: list[RunEvent] = Field(default_factory=list)
+    approvals: list[ApprovalTimelineEntry] = Field(default_factory=list)
+    last_seq: int = 0
+    run_mode: str | None = None
+    audit_id: str | None = None
 
 
 class CastResult(BaseModel):
