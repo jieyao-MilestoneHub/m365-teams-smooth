@@ -35,12 +35,14 @@ from app.adapters.persistence.repositories import (
     SqlAuditRepository,
     SqlConversationStore,
     SqlPrecedentStore,
+    SqlRunEventSink,
     SqlVerdictLedger,
 )
 from app.agent.agentic.gatherer import LlmEvidenceGatherer
 from app.agent.agentic.planner import LlmPlanner
 from app.agent.gatherers import GATHERERS
 from app.agent.graph import build_court_graph
+from app.agent.instrument import RunEventEmitter, set_run_event_emitter
 from app.agent.nodes.audit import AuditNode
 from app.agent.nodes.execute import ExecuteNode
 from app.agent.nodes.impact import Gatherer, ImpactNode
@@ -53,6 +55,7 @@ from app.agent.policy_rules.models import RulePack
 from app.agent.policy_rules.packs import default_packs
 from app.agent.runner import CourtRunner
 from app.config import Settings
+from app.domain.run_events import RunEventKind
 from app.ports.conversation_store import ConversationStore
 from app.ports.integration import IntegrationAdapter
 from app.ports.knowledge import KnowledgePort
@@ -60,6 +63,7 @@ from app.ports.llm import LLMProvider
 from app.ports.notifier import ApprovalNotifier
 from app.ports.registry import IntegrationRegistry
 from app.ports.request_parser import RequestParser
+from app.ports.run_event_sink import RunEventSink
 from app.services.approver_directory import ApproverDirectory
 from app.services.court_service import CourtService
 from app.services.maintenance import MaintenanceService
@@ -83,6 +87,18 @@ def build_teams_notifier(settings: Settings) -> ApprovalNotifier | None:
             teams_app_id=settings.notify_teams_app_id,
         )
     return None
+
+
+def _run_event_emitter(sink: RunEventSink) -> RunEventEmitter:
+    """Adapt the node wrapper's (thread_id, phase, name, payload) calls to the durable sink."""
+
+    def emit(thread_id: str, phase: str, name: str, payload: dict[str, object]) -> None:
+        kind = RunEventKind.NODE_STARTED if phase == "started" else RunEventKind.NODE_FINISHED
+        data = dict(payload)
+        status = str(data.pop("status", "") or "")
+        sink.emit(thread_id, kind, name, status=status, payload=data)
+
+    return emit
 
 
 def build_conversation_store(settings: Settings) -> ConversationStore:
@@ -182,6 +198,12 @@ def build_court_service(
     directory = ApproverDirectory.from_settings(settings)
     memory = SqlPrecedentStore(session_factory)
 
+    # Durable per-node/per-step progress for the run view. The node emitter is a process-wide
+    # hook (mirroring the metrics duration hook): set once here, pointing at the same database
+    # the service reads, so a concurrent poll sees events while the graph is still running.
+    run_events = SqlRunEventSink(session_factory)
+    set_run_event_emitter(_run_event_emitter(run_events))
+
     # Approval notifications: Teams activity feed when configured, else none (workflow unchanged).
     if notifier is None:
         notifier = build_teams_notifier(settings)
@@ -239,7 +261,7 @@ def build_court_service(
         impact=ImpactNode(registry, knowledge, gatherers),
         options=OptionsNode(planners),
         policy=PolicyNode(packs, RulePackQuorumResolver()),
-        execute=ExecuteNode(registry),
+        execute=ExecuteNode(registry, sink=run_events),
         verify=VerifyNode(),
         audit=AuditNode(audit_repo, memory=memory),
         checkpointer=store.saver(),

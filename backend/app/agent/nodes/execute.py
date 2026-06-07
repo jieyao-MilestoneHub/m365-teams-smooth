@@ -19,8 +19,10 @@ from app.domain import (
     Verdict,
     VerdictType,
 )
+from app.domain.run_events import RunEventKind
 from app.observability import metrics
 from app.ports.registry import IntegrationRegistry
+from app.ports.run_event_sink import RunEventSink
 
 logger = logging.getLogger(__name__)
 
@@ -41,8 +43,24 @@ _TERMINAL_BY_VERDICT = {
 class ExecuteNode:
     """Runs the plan's write steps when the verdict approves; honors the run mode."""
 
-    def __init__(self, registry: IntegrationRegistry) -> None:
+    def __init__(
+        self, registry: IntegrationRegistry, *, sink: RunEventSink | None = None
+    ) -> None:
         self._registry = registry
+        self._sink = sink
+
+    def _emit(
+        self,
+        thread_id: str,
+        kind: RunEventKind,
+        step_id: str,
+        *,
+        status: str = "",
+        payload: dict[str, object] | None = None,
+    ) -> None:
+        # Per-step progress for the run view; the sink is best-effort and never raises.
+        if self._sink is not None:
+            self._sink.emit(thread_id, kind, step_id, status=status, payload=payload)
 
     def __call__(self, state: CourtState) -> CourtState:
         run_mode = RunMode(state["run_mode"])
@@ -58,8 +76,15 @@ class ExecuteNode:
             terminal = _TERMINAL_BY_VERDICT.get(verdict_type, ChangeStatus.DONE)
             return {"results": [], "status": terminal.value, "errors": errors}
 
+        thread_id = str(state.get("thread_id") or "")
         results: list[StepResult] = []
         for step in plan.steps:
+            step_meta: dict[str, object] = {
+                "system": step.capability.system,
+                "capability": step.capability.name,
+                "run_mode": run_mode.value,
+            }
+            self._emit(thread_id, RunEventKind.STEP_STARTED, step.step_id, payload=step_meta)
             adapter = self._registry.get(step.capability.system)
             if adapter is None:
                 logger.warning(
@@ -68,16 +93,27 @@ class ExecuteNode:
                            "error": "no adapter"},
                 )
                 metrics.increment("steps.failed")
+                error = f"no adapter for system '{step.capability.system}'"
                 results.append(
-                    StepResult(
-                        step_id=step.step_id,
-                        status=StepStatus.FAILED,
-                        error=f"no adapter for system '{step.capability.system}'",
-                    )
+                    StepResult(step_id=step.step_id, status=StepStatus.FAILED, error=error)
+                )
+                self._emit(
+                    thread_id,
+                    RunEventKind.STEP_FINISHED,
+                    step.step_id,
+                    status=StepStatus.FAILED.value,
+                    payload={**step_meta, "error": error},
                 )
                 continue
             result = adapter.execute(step, run_mode)
             results.append(result)
+            self._emit(
+                thread_id,
+                RunEventKind.STEP_FINISHED,
+                result.step_id,
+                status=result.status.value,
+                payload={**step_meta, "error": result.error or ""},
+            )
             if result.status is StepStatus.FAILED and result.error:
                 logger.warning(
                     "step.failed", extra={"step_id": result.step_id, "error": result.error}

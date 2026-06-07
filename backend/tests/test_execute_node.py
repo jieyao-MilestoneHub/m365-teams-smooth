@@ -14,7 +14,8 @@ from app.domain import (
     Verdict,
     VerdictType,
 )
-from tests.conftest import build_mock_registry
+from app.domain.run_events import RunEventKind
+from tests.conftest import InMemoryRunEventSink, build_mock_registry
 
 
 def _plan() -> ExecutionPlan:
@@ -77,3 +78,34 @@ def test_partial_failure_is_contained() -> None:
     assert statuses == ["ok", "failed"]
     assert result["status"] == ChangeStatus.FAILED.value
     assert any("s2 failed" in e for e in result["errors"])
+
+
+def test_steps_emit_started_and_finished_run_events() -> None:
+    sink = InMemoryRunEventSink()
+    node = ExecuteNode(build_mock_registry(), sink=sink)
+    node(_state(RunMode.DRY_RUN, _approve()))
+
+    assert [(e.kind, e.name) for e in sink.events] == [
+        (RunEventKind.STEP_STARTED, "s1"),
+        (RunEventKind.STEP_FINISHED, "s1"),
+        (RunEventKind.STEP_STARTED, "s2"),
+        (RunEventKind.STEP_FINISHED, "s2"),
+    ]
+    finished = sink.events[1]
+    assert finished.status == "dry_run"
+    assert finished.payload["system"] == "github"
+    assert finished.payload["capability"] == "github.update_milestone_due"
+    assert finished.payload["run_mode"] == "dry_run"
+
+
+def test_failed_step_run_event_carries_error() -> None:
+    sink = InMemoryRunEventSink()
+    node = ExecuteNode(
+        build_mock_registry(planner_fail_on="planner.shift_task_dates"), sink=sink
+    )
+    node(_state(RunMode.LIVE, _approve()))
+
+    failed = [e for e in sink.events if e.kind is RunEventKind.STEP_FINISHED][-1]
+    assert failed.name == "s2"
+    assert failed.status == "failed"
+    assert failed.payload["error"]

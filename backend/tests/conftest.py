@@ -14,10 +14,11 @@ from app.adapters.integrations.mock_teams import MockTeamsAdapter
 from app.adapters.integrations.registry import ConfigIntegrationRegistry
 from app.adapters.knowledge.fake_knowledge import FakeKnowledgeProvider
 from app.adapters.llm.fake_llm import FakeLLMProvider
-from app.domain import ApprovalDecision, ApprovalEvent, AuditRecord
+from app.domain import ApprovalDecision, ApprovalEvent, AuditRecord, RunEvent, RunEventKind
 from app.ports.conversation_store import ConversationStore
 from app.ports.integration import IntegrationAdapter
 from app.ports.repository import ApprovalLedger, AuditRepository, VerdictLedger
+from app.ports.run_event_sink import RunEventReader, RunEventSink
 
 
 class InMemoryAuditRepository(AuditRepository):
@@ -100,6 +101,39 @@ class InMemoryApprovalLedger(ApprovalLedger):
 
     def pending_thread_ids(self) -> list[str]:
         return sorted(self._pending, key=lambda t: self._pending[t])
+
+
+class InMemoryRunEventSink(RunEventSink, RunEventReader):
+    """In-memory run-event log for tests (mirrors SqlRunEventSink seq assignment)."""
+
+    def __init__(self) -> None:
+        self.events: list[RunEvent] = []
+
+    def emit(
+        self,
+        thread_id: str,
+        kind: RunEventKind,
+        name: str,
+        *,
+        status: str = "",
+        payload: dict[str, object] | None = None,
+    ) -> None:
+        if not thread_id:
+            return
+        seq = sum(1 for e in self.events if e.thread_id == thread_id) + 1
+        self.events.append(
+            RunEvent(
+                thread_id=thread_id,
+                seq=seq,
+                kind=kind,
+                name=name,
+                status=status,
+                payload=payload or {},
+            )
+        )
+
+    def list_after(self, thread_id: str, after_seq: int = 0) -> list[RunEvent]:
+        return [e for e in self.events if e.thread_id == thread_id and e.seq > after_seq]
 
 
 class InMemoryConversationStore(ConversationStore):

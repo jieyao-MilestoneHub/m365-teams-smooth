@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 
 from sqlalchemy import delete, func, select
@@ -14,12 +15,17 @@ from app.adapters.persistence.models import (
     ConversationReferenceRow,
     PendingApprovalRow,
     PrecedentRow,
+    RunEventRow,
     VerdictClaimRow,
 )
 from app.domain import ApprovalDecision, ApprovalEvent, AuditRecord
+from app.domain.run_events import RunEvent, RunEventKind
 from app.ports.conversation_store import ConversationStore
 from app.ports.memory import MemoryPort, PrecedentRecord
 from app.ports.repository import ApprovalLedger, AuditRepository, VerdictLedger
+from app.ports.run_event_sink import RunEventReader, RunEventSink
+
+logger = logging.getLogger(__name__)
 
 # How many same-subject candidates the precedent query pulls before ranking by tag overlap; the
 # scan stays bounded regardless of how much history accumulates.
@@ -175,6 +181,93 @@ class SqlApprovalLedger(ApprovalLedger):
         with self._session_factory() as session:
             stmt = select(PendingApprovalRow.thread_id).order_by(PendingApprovalRow.created_at)
             return list(session.execute(stmt).scalars().all())
+
+
+class SqlRunEventSink(RunEventSink, RunEventReader):
+    """Append-only run-event log over SQLAlchemy.
+
+    Each ``emit`` opens its own short-lived session and commits immediately, so an event is
+    visible to a concurrent run-view poll while the graph is still executing. Emission is
+    best-effort: any failure is logged and swallowed — observability must never fail a change.
+    """
+
+    # One retry absorbs the only realistic seq race (a parallel emit for the same thread); the
+    # unique constraint turns anything beyond that into a loud failure instead of a reorder.
+    _SEQ_RETRIES = 2
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    def emit(
+        self,
+        thread_id: str,
+        kind: RunEventKind,
+        name: str,
+        *,
+        status: str = "",
+        payload: dict[str, object] | None = None,
+    ) -> None:
+        if not thread_id:
+            return  # nodes exercised outside a trial (unit tests, ad-hoc runs) have no run log
+        try:
+            for _ in range(self._SEQ_RETRIES):
+                if self._try_insert(thread_id, kind, name, status, payload or {}):
+                    return
+        except Exception:
+            logger.warning("run_event.emit_failed", extra={"node": name}, exc_info=True)
+
+    def _try_insert(
+        self,
+        thread_id: str,
+        kind: RunEventKind,
+        name: str,
+        status: str,
+        payload: dict[str, object],
+    ) -> bool:
+        with self._session_factory() as session:
+            next_seq = session.execute(
+                select(func.coalesce(func.max(RunEventRow.seq), 0)).where(
+                    RunEventRow.thread_id == thread_id
+                )
+            ).scalar_one() + 1
+            session.add(
+                RunEventRow(
+                    thread_id=thread_id,
+                    seq=next_seq,
+                    kind=kind.value,
+                    name=name,
+                    status=status,
+                    created_at=datetime.now(UTC).isoformat(),
+                    payload=payload,
+                )
+            )
+            try:
+                session.commit()
+            except IntegrityError:  # lost the seq race; retry with a fresh MAX
+                session.rollback()
+                return False
+            return True
+
+    def list_after(self, thread_id: str, after_seq: int = 0) -> list[RunEvent]:
+        with self._session_factory() as session:
+            stmt = (
+                select(RunEventRow)
+                .where(RunEventRow.thread_id == thread_id, RunEventRow.seq > after_seq)
+                .order_by(RunEventRow.seq)
+            )
+            rows = session.execute(stmt).scalars().all()
+            return [
+                RunEvent(
+                    thread_id=r.thread_id,
+                    seq=r.seq,
+                    kind=RunEventKind(r.kind),
+                    name=r.name,
+                    status=r.status,
+                    payload=dict(r.payload),
+                    created_at=r.created_at,
+                )
+                for r in rows
+            ]
 
 
 class SqlConversationStore(ConversationStore):
