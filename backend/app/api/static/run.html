@@ -290,6 +290,10 @@ const STAGES = [
   { id: "audit",   role: "clerk" },
 ];
 let events = [], view = null, lastSeq = 0, delay = 1500, failures = 0, stopped = false;
+// Client-clock anchors for nodes observed running (node_started without node_finished).
+// Anchoring on first observation instead of the event's server timestamp sidesteps
+// server/browser clock skew; a page opened mid-node simply under-counts that node.
+const runStartedAt = {};
 
 document.getElementById("runid").textContent = "#" + threadId.slice(0, 8);
 
@@ -318,6 +322,30 @@ function nodeState(stage) {
   return "idle";
 }
 const GLYPH = { done: "✓", run: "⏳", wait: "⏸", fail: "⛔", skip: "⊘", idle: "○" };
+
+/* ---------- live elapsed ticker ---------- */
+const fmtElapsed = ms => {
+  const s = Math.floor(ms / 1000);
+  return s < 60 ? s + "s" : Math.floor(s / 60) + "m " + (s % 60) + "s";
+};
+const elapsedFor = id => (id in runStartedAt) ? fmtElapsed(Date.now() - runStartedAt[id]) : "";
+function reconcileRunning() {
+  for (const s of STAGES) {
+    if (s.gate) continue;
+    if (finished(s.id)) delete runStartedAt[s.id];
+    else if (started(s.id) && !(s.id in runStartedAt)) runStartedAt[s.id] = Date.now();
+  }
+}
+function tickElapsed() {
+  if (stopped) return;
+  for (const id of Object.keys(runStartedAt)) {
+    const txt = elapsedFor(id);
+    const rail = document.querySelector(`#rail .node[data-stage="${id}"] .dur`);
+    if (rail) rail.textContent = txt;
+    const stage = document.querySelector(`details.stage[data-id="${id}"] .s-dur`);
+    if (stage) stage.textContent = txt;
+  }
+}
 
 function quorumProgress() {
   const q = view && view.trial && view.trial.quorum;
@@ -357,11 +385,12 @@ function renderRail() {
   document.getElementById("rail").innerHTML = STAGES.map(s => {
     const state = nodeState(s);
     const fin = finished(s.id);
-    const dur = fin && fin.payload ? fmtDur(fin.payload.duration_seconds) : "";
+    const dur = fin && fin.payload ? fmtDur(fin.payload.duration_seconds)
+      : state === "run" ? elapsedFor(s.id) : "";
     const sub = s.gate
       ? `<div class="quorum">${state === "wait" && qp ? `quorum ${qp.have}/${qp.need}` : state === "wait" ? "awaiting verdict" : state === "fail" ? (status() === "withdrawn" ? "withdrawn" : "rejected") : state === "done" ? "passed" : "&nbsp;"}</div>`
       : `<div class="dur">${dur || "&nbsp;"}</div>`;
-    return `<div class="node ${s.gate ? "gate" : ""} ${state}">
+    return `<div class="node ${s.gate ? "gate" : ""} ${state}" data-stage="${s.id}">
       <div class="glyph">${GLYPH[state]}</div>
       <div class="lbl">${s.id}</div>
       <div class="role">${s.role || "&nbsp;"}</div>${sub}</div>`;
@@ -430,7 +459,7 @@ function renderStages() {
     return `<details class="stage" data-id="${s.id}" ${isOpen ? "open" : ""}>
       <summary><span class="chev">▶</span><span class="s-glyph ${cls}">${GLYPH[state]}</span>
         <span class="s-name">${s.id}</span>${s.role ? `<span class="s-role">${s.role}</span>` : ""}
-        <span class="s-dur">${fin && fin.payload ? fmtDur(fin.payload.duration_seconds) : ""}</span></summary>
+        <span class="s-dur">${fin && fin.payload ? fmtDur(fin.payload.duration_seconds) : state === "run" ? elapsedFor(s.id) : ""}</span></summary>
       <div class="s-body">${body || `<div class="row" style="color:var(--faint)">no record yet</div>`}</div>
     </details>`;
   }).join("");
@@ -535,6 +564,7 @@ function renderRecord() {
 }
 
 function render() {
+  reconcileRunning();
   renderHeader(); renderRail(); renderStages(); renderBench(); renderLanes(); renderRecord();
 }
 
@@ -565,6 +595,8 @@ async function poll() {
   setTimeout(poll, delay);
 }
 poll();
+// 1s in-place text updates between 1.5s polls keep open <details> intact; no-op once stopped.
+setInterval(tickElapsed, 1000);
 </script>
 </body>
 </html>
