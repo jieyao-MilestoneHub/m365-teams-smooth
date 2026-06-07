@@ -31,6 +31,25 @@ def test_update_announcement_live_and_rollback_snapshot() -> None:
     assert "2026-06-17" in str(data["message"])
 
 
+def test_seeded_meeting_notes_carry_spoken_followups() -> None:
+    adapter = MockTeamsAdapter()
+    data = adapter.read(
+        ReadQuery(capability="teams.read_meeting_notes", params={"channel": "standup"})
+    ).data
+    notes = data["notes"]
+    assert isinstance(notes, list) and len(notes) == 4
+    assert {n["author"] for n in notes} == {"Alex", "Jamie", "PM", "Sam"}
+    assert any("2026-06-12" in n["text"] for n in notes)  # follow-ups carry their dates
+
+
+def test_unknown_meeting_channel_returns_no_notes() -> None:
+    adapter = MockTeamsAdapter()
+    data = adapter.read(
+        ReadQuery(capability="teams.read_meeting_notes", params={"channel": "nope"})
+    ).data
+    assert data["notes"] == []
+
+
 def test_escalation_thread_created_live() -> None:
     adapter = MockTeamsAdapter()
     step = ExecutionStep(

@@ -1,7 +1,8 @@
-"""Mock Teams adapter: read/update a channel announcement and open an escalation thread.
+"""Mock Teams adapter: announcements, escalation threads, and meeting discussion notes.
 
-The seeded announcement references the original launch date, so the Launch Slip trial surfaces a
-pending communication that must be updated; the escalation thread backs the Customer Promise flow.
+The seeded announcement references the original launch date, so a reschedule surfaces a pending
+communication that must be updated; the seeded standup notes carry the spoken follow-ups the
+meeting-actions trial turns into tracked tasks.
 """
 
 from __future__ import annotations
@@ -28,6 +29,15 @@ class MockTeamsAdapter(BaseIntegrationAdapter):
             "launch": "Launch is scheduled for 2026-06-10.",
         }
         self._threads: list[dict[str, object]] = []
+        # Spoken follow-ups from the last standup — the raw material for tracked action items.
+        self._meeting_notes: dict[str, list[dict[str, str]]] = {
+            "standup": [
+                {"author": "Alex", "text": "I'll finish the API spec by 2026-06-12."},
+                {"author": "Jamie", "text": "Design sign-off needs confirming by 2026-06-13."},
+                {"author": "PM", "text": "The launch doc must be updated by 2026-06-14."},
+                {"author": "Sam", "text": "Let's review progress together next week."},
+            ],
+        }
 
     @property
     def system(self) -> str:
@@ -36,6 +46,7 @@ class MockTeamsAdapter(BaseIntegrationAdapter):
     def _capabilities(self) -> list[Capability]:
         return [
             Capability(system=_SYSTEM, name="teams.read_announcement", kind=CapabilityKind.READ),
+            Capability(system=_SYSTEM, name="teams.read_meeting_notes", kind=CapabilityKind.READ),
             Capability(
                 system=_SYSTEM,
                 name="teams.update_announcement",
@@ -57,6 +68,13 @@ class MockTeamsAdapter(BaseIntegrationAdapter):
             return ReadResult(
                 capability=query.capability,
                 data={"channel": channel, "message": message, "exists": bool(message)},
+            )
+        if query.capability == "teams.read_meeting_notes":
+            channel = str(query.params.get("channel", "standup"))
+            notes = self._meeting_notes.get(channel, [])
+            return ReadResult(
+                capability=query.capability,
+                data={"channel": channel, "notes": [dict(n) for n in notes]},
             )
         raise IntegrationError(f"{_SYSTEM}: unknown read capability '{query.capability}'")
 
