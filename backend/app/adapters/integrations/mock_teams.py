@@ -29,6 +29,7 @@ class MockTeamsAdapter(BaseIntegrationAdapter):
             "launch": "Launch is scheduled for 2026-06-10.",
         }
         self._threads: list[dict[str, object]] = []
+        self._posts: list[dict[str, object]] = []
         # Spoken follow-ups from the last standup — the raw material for tracked action items.
         self._meeting_notes: dict[str, list[dict[str, str]]] = {
             "standup": [
@@ -59,6 +60,12 @@ class MockTeamsAdapter(BaseIntegrationAdapter):
                 kind=CapabilityKind.WRITE,
                 params_schema={"required": ["channel", "title"]},
             ),
+            Capability(
+                system=_SYSTEM,
+                name="teams.post_message",
+                kind=CapabilityKind.WRITE,
+                params_schema={"required": ["channel", "message"]},
+            ),
         ]
 
     def _read(self, query: ReadQuery) -> ReadResult:
@@ -83,6 +90,10 @@ class MockTeamsAdapter(BaseIntegrationAdapter):
             return PredictedEffect(
                 summary="would update the channel announcement", diff=dict(step.params)
             )
+        if step.capability.name == "teams.post_message":
+            return PredictedEffect(
+                summary="would post a message to the channel", diff=dict(step.params)
+            )
         return PredictedEffect(summary="would open an escalation thread", diff=dict(step.params))
 
     def _apply(self, step: ExecutionStep) -> dict[str, object]:
@@ -94,18 +105,24 @@ class MockTeamsAdapter(BaseIntegrationAdapter):
             thread = dict(step.params)
             self._threads.append(thread)
             return {"thread": thread}
+        if step.capability.name == "teams.post_message":
+            post = dict(step.params)
+            self._posts.append(post)
+            return {"post": post}
         raise IntegrationError(f"{_SYSTEM}: unknown write capability '{step.capability.name}'")
 
     def _fetch_before(self, step: ExecutionStep) -> dict[str, object]:
         if step.capability.name == "teams.update_announcement":
             channel = str(step.params.get("channel", "launch"))
             return {"channel": channel, "message": self._announcements.get(channel, "")}
+        if step.capability.name == "teams.post_message":
+            return {"posts": len(self._posts)}
         return {"threads": len(self._threads)}
 
     def _rollback(self, step: ExecutionStep, before: dict[str, object]) -> RollbackHint:
         return RollbackHint(
             step_id=step.step_id,
             system=_SYSTEM,
-            instruction="restore the prior announcement / delete the escalation thread",
+            instruction="restore the prior announcement / delete the escalation thread or post",
             params=before,
         )

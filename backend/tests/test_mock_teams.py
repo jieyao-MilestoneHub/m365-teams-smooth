@@ -60,3 +60,19 @@ def test_escalation_thread_created_live() -> None:
     result = adapter.execute(step, RunMode.LIVE)
     assert result.status is StepStatus.OK
     assert result.after is not None and "thread" in result.after
+
+
+def test_post_message_live_and_dry_run() -> None:
+    adapter = MockTeamsAdapter()
+    step = ExecutionStep(
+        step_id="s1",
+        capability=CapabilityRef(system="teams", name="teams.post_message"),
+        params={"channel": "project-x", "message": "Weekly report: 4 issues closed."},
+    )
+    dry = adapter.execute(step, RunMode.DRY_RUN)
+    assert dry.status is StepStatus.DRY_RUN
+    assert dry.predicted is not None and "post" in dry.predicted.summary
+    live = adapter.execute(step, RunMode.LIVE)
+    assert live.status is StepStatus.OK
+    assert live.after is not None and "post" in live.after
+    assert live.before == {"posts": 0}  # snapshot taken before the post landed

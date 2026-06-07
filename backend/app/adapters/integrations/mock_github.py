@@ -34,6 +34,13 @@ class MockGitHubAdapter(BaseIntegrationAdapter):
         ]
         self._created_issues: list[dict[str, object]] = []
         self._comments: list[dict[str, object]] = []
+        # Recently closed work — the activity a status report aggregates.
+        self._closed_issues: list[dict[str, object]] = [
+            {"number": 31, "title": "Fix flaky webhook retries", "closed_at": "2026-06-02"},
+            {"number": 35, "title": "Add audit export", "closed_at": "2026-06-03"},
+            {"number": 38, "title": "Harden token refresh", "closed_at": "2026-06-05"},
+            {"number": 40, "title": "Polish run-page styles", "closed_at": "2026-06-06"},
+        ]
 
     @property
     def system(self) -> str:
@@ -44,6 +51,9 @@ class MockGitHubAdapter(BaseIntegrationAdapter):
             Capability(system=_SYSTEM, name="github.read_milestone", kind=CapabilityKind.READ),
             Capability(
                 system=_SYSTEM, name="github.read_blocking_issues", kind=CapabilityKind.READ
+            ),
+            Capability(
+                system=_SYSTEM, name="github.read_closed_issues", kind=CapabilityKind.READ
             ),
             Capability(
                 system=_SYSTEM,
@@ -81,6 +91,12 @@ class MockGitHubAdapter(BaseIntegrationAdapter):
             return ReadResult(
                 capability=query.capability, data={"issues": list(self._blocking_issues)}
             )
+        if query.capability == "github.read_closed_issues":
+            since = str(query.params.get("since", ""))
+            issues = [
+                dict(i) for i in self._closed_issues if not since or str(i["closed_at"]) >= since
+            ]
+            return ReadResult(capability=query.capability, data={"issues": issues})
         raise IntegrationError(f"{_SYSTEM}: unknown read capability '{query.capability}'")
 
     def _predict(self, step: ExecutionStep, before: dict[str, object]) -> PredictedEffect:

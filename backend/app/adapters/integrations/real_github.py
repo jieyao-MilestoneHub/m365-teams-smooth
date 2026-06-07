@@ -67,6 +67,9 @@ class RealGitHubAdapter(BaseIntegrationAdapter):
                 system=_SYSTEM, name="github.read_blocking_issues", kind=CapabilityKind.READ
             ),
             Capability(
+                system=_SYSTEM, name="github.read_closed_issues", kind=CapabilityKind.READ
+            ),
+            Capability(
                 system=_SYSTEM,
                 name="github.update_milestone_due",
                 kind=CapabilityKind.WRITE,
@@ -123,6 +126,26 @@ class RealGitHubAdapter(BaseIntegrationAdapter):
                 for item in raw
                 if "pull_request" not in item
             ]
+            return ReadResult(capability=query.capability, data={"issues": issues})
+        if query.capability == "github.read_closed_issues":
+            # ``since`` filters by update time on this endpoint — close enough for a recent-
+            # activity report. PRs are dropped and the list capped so evidence stays card-sized.
+            params: dict[str, object] = {"state": "closed", "per_page": 30}
+            since = str(query.params.get("since", ""))
+            if since:
+                if len(since) == 10:
+                    since = f"{since}T00:00:00Z"
+                params["since"] = since
+            raw = self._get(f"/repos/{repo}/issues", **params).json()
+            issues = [
+                {
+                    "number": item.get("number"),
+                    "title": item.get("title"),
+                    "closed_at": item.get("closed_at"),
+                }
+                for item in raw
+                if "pull_request" not in item
+            ][:10]
             return ReadResult(capability=query.capability, data={"issues": issues})
         raise IntegrationError(f"{_SYSTEM}: unknown read capability '{query.capability}'")
 

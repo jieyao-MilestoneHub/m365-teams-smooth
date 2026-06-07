@@ -17,6 +17,17 @@ def test_milestone_and_blockers_are_seeded() -> None:
     assert isinstance(blockers, list) and len(blockers) == 2
 
 
+def test_closed_issues_filter_by_since() -> None:
+    adapter = MockGitHubAdapter()
+    all_closed = adapter.read(ReadQuery(capability="github.read_closed_issues")).data["issues"]
+    assert isinstance(all_closed, list) and len(all_closed) == 4
+    recent = adapter.read(
+        ReadQuery(capability="github.read_closed_issues", params={"since": "2026-06-05"})
+    ).data["issues"]
+    assert isinstance(recent, list)
+    assert [i["number"] for i in recent] == [38, 40]
+
+
 def test_update_milestone_due_live_with_before_snapshot() -> None:
     adapter = MockGitHubAdapter()
     step = ExecutionStep(
