@@ -166,7 +166,8 @@ make check         # ruff + mypy + pytest
 the clickable [Playground bot](m365/playground-bot/) (`make bot` + the Microsoft 365 Agents
 Playground), or `make cards` and open a file from
 [`m365/adaptive-cards/generated/`](m365/adaptive-cards/generated) in the
-[Adaptive Cards Designer](https://adaptivecards.io/designer).
+[Adaptive Cards Designer](https://adaptivecards.io/designer). The full demo guide — every screen,
+the two-user approval flow, and the live demo-day checklist — is in [`docs/demo/`](docs/demo/).
 
 ## Configuration
 
