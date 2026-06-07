@@ -123,7 +123,7 @@ def _bot_with_fake() -> tuple[CourtBot, _FakeService]:
     bot = CourtBot(
         fake,
         request_card=lambda tid, trial, **kw: {"type": "AdaptiveCard", "_req": [tid, trial]},
-        result_card=lambda trial, *, status, audit_id: {
+        result_card=lambda trial, *, status, audit_id, **kw: {
             "type": "AdaptiveCard",
             "_res": [status, audit_id],
         },

@@ -63,7 +63,10 @@ def run() -> None:
         summary = service.submit_change(request)
         trial = service.get_trial(summary.thread_id)
         assert trial is not None
-        _write(_OUT_DIR / f"{slug}-court.json", build_change_court_card(summary.thread_id, trial))
+        _write(
+            _OUT_DIR / f"{slug}-court.json",
+            build_change_court_card(summary.thread_id, trial, status=summary.status),
+        )
 
         selected = (
             PlanKind.SAFE_ALTERNATIVE
@@ -76,7 +79,7 @@ def run() -> None:
         # A placeholder audit id keeps the exported file reproducible (the real id is per-run).
         _write(
             _OUT_DIR / f"{slug}-result.json",
-            build_verdict_result_card(trial, status=cast.status, audit_id="<audit-id>"),
+            build_verdict_result_card(trial, status=cast.execution_status, audit_id="<audit-id>"),
         )
 
 
