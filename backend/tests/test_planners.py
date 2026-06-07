@@ -78,6 +78,50 @@ def test_sso_ga_plan_is_a_safe_alternative_with_all_artifacts() -> None:
     }
 
 
+def test_sso_ga_comment_targets_the_evidenced_blocker() -> None:
+    # Live evidence carries the real open blockers; the comment must land on one of them,
+    # not on a fixture issue number that may not exist in the configured repository.
+    impact = ImpactEvidence(
+        items=[
+            EvidenceItem(
+                system="github",
+                kind="blockers",
+                summary="",
+                data={
+                    "issues": [{"number": 181, "state": "open"}, {"number": 180, "state": "open"}]
+                },
+            ),
+            EvidenceItem(
+                system="outlook",
+                kind="security_review",
+                summary="",
+                data={"review_date": "2026-06-18"},
+            ),
+        ],
+        tags=["github.blocking_issues_open", "security.review_after_due_date"],
+    )
+    plan = plan_sso_ga(Change(change_id="c1", raw_request="x", due_by="2026-06-17"), impact)
+    comment = next(s for s in plan.steps if s.capability.name == "github.comment_issue")
+    assert comment.params["issue"] == 180  # the lowest-numbered open blocker
+
+
+def test_sso_ga_comment_falls_back_to_the_fixture_blocker() -> None:
+    impact = ImpactEvidence(
+        items=[
+            EvidenceItem(
+                system="outlook",
+                kind="security_review",
+                summary="",
+                data={"review_date": "2026-06-18"},
+            )
+        ],
+        tags=["security.review_after_due_date"],
+    )
+    plan = plan_sso_ga(Change(change_id="c1", raw_request="x", due_by="2026-06-17"), impact)
+    comment = next(s for s in plan.steps if s.capability.name == "github.comment_issue")
+    assert comment.params["issue"] == 42
+
+
 def test_vendor_access_plan_is_least_privilege_and_time_boxed() -> None:
     impact = ImpactEvidence(tags=["access.overbroad_scope", "access.ambiguous_duration"])
     change = Change(
