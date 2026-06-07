@@ -34,6 +34,7 @@ _MEETING_WORDS = (
     "standup",
     "stand-up",
 )
+_REPORT_WORDS = ("weekly report", "status report", "weekly summary", "weekly update")
 
 _MONTHS = {
     "january": 1, "jan": 1, "february": 2, "feb": 2, "march": 3, "mar": 3,
@@ -136,6 +137,9 @@ class DeterministicRequestParser(RequestParser):
         elif _has(text, *_MEETING_WORDS):
             # Spoken follow-ups to track; the planner derives the tasks from the discussion.
             subject = "meeting-actions"
+        elif _has(text, *_REPORT_WORDS):
+            # An aggregation, not a requested capability; the planner composes the post.
+            subject = "weekly-report"
         elif (_has(text, *_PROMISE_VERBS) and _has(text, *_PROMISE_OBJECTS)) or (
             "generally available" in text
         ):

@@ -18,6 +18,7 @@ def test_default_packs_cover_every_trial_subject() -> None:
         "customer_promise",
         "vendor_access",
         "meeting_actions",
+        "weekly_report",
     ]
 
 
