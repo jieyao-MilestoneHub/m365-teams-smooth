@@ -112,6 +112,14 @@ resource "azurerm_container_app" "this" {
     }
   }
 
+  dynamic "secret" {
+    for_each = var.run_link_secret == "" ? [] : [1]
+    content {
+      name  = "run-link-secret"
+      value = var.run_link_secret
+    }
+  }
+
   ingress {
     external_enabled = true
     target_port      = 8000
@@ -171,6 +179,15 @@ resource "azurerm_container_app" "this" {
         content {
           name        = "GITHUB_TOKEN"
           secret_name = "github-token"
+        }
+      }
+
+      # Read-only run page: cards mint signed deep links only when this secret is present.
+      dynamic "env" {
+        for_each = var.run_link_secret == "" ? [] : [1]
+        content {
+          name        = "RUN_LINK_SECRET"
+          secret_name = "run-link-secret"
         }
       }
 

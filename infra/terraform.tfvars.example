@@ -12,6 +12,7 @@ location        = "eastus"
 # integration_mode = "github:real"   # used only when force_all_mock = false
 # github_token     = ""              # only for the real GitHub adapter
 # github_repo      = ""              # owner/name
+# run_link_secret  = ""              # 32+ random bytes; signs the read-only run-page links (empty disables the page)
 
 # Real Microsoft Graph evidence (set force_all_mock = false and
 # integration_mode = "github:real,outlook:real,sharepoint:real" to use these). All three graph_*
