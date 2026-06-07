@@ -48,8 +48,9 @@ ResultCardBuilder = Callable[..., Card]
 
 WELCOME = (
     "Put a risky decision on trial. Type a change request — for example:\n\n"
-    "*promise Customer A that SSO is GA by 2026-06-17*\n\n"
-    "Type *queue* to see trials awaiting your approval."
+    "*slip the launch to 2026-06-17*\n\n"
+    "*promise SSO GA by 2026-06-17*\n\n"
+    "*vendor access to Project X*"
 )
 
 _QUEUE_COMMANDS = {"queue", "/queue", "pending"}
