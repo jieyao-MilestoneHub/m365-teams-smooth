@@ -59,7 +59,7 @@
     },
     {
       "type": "TextBlock",
-      "text": "    ↩ rollback: remove the appended account note",
+      "text": "    ↩ rollback: shift the affected tasks back by 7 day(s)",
       "wrap": true
     },
     {
@@ -69,17 +69,7 @@
     },
     {
       "type": "TextBlock",
-      "text": "    ↩ rollback: delete the created event/draft to restore the prior state",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
-      "text": "• s5: dry_run (predicted)",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
-      "text": "    ↩ rollback: restore the prior announcement / delete the escalation thread",
+      "text": "    ↩ rollback: restore the prior announcement / delete the escalation thread or post",
       "wrap": true
     }
   ]

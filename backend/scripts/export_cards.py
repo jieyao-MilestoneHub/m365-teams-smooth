@@ -20,19 +20,16 @@ from app.mcp.cards import build_change_court_card, build_verdict_result_card
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _OUT_DIR = _REPO_ROOT / "m365" / "adaptive-cards" / "generated"
 
-# Same three trials and verdicts as the demo driver, so the exported cards match what runs.
+# Same trials and verdicts as the demo driver, so the exported cards match what runs.
 _TRIALS = [
     (
-        "customer-promise",
-        "promise Customer A that SSO is GA by 2026-06-17",
+        "reschedule-conflict",
+        "move the rehearsal to 2026-06-16",
         VerdictType.ACCEPT_ALTERNATIVE,
     ),
-    (
-        "vendor-access",
-        "give the vendor access to Project X until the campaign is done",
-        VerdictType.ACCEPT_ALTERNATIVE,
-    ),
-    ("launch-slip", "slip the launch from 2026-06-10 to 2026-06-17", VerdictType.APPROVE),
+    ("reschedule", "move the rehearsal to 2026-06-17", VerdictType.APPROVE),
+    ("meeting-actions", "create action items from standup", VerdictType.APPROVE),
+    ("weekly-report", "post the Project X weekly report", VerdictType.APPROVE),
 ]
 
 
@@ -68,18 +65,22 @@ def run() -> None:
             build_change_court_card(summary.thread_id, trial, status=summary.status),
         )
 
-        selected = (
-            PlanKind.SAFE_ALTERNATIVE
-            if summary.plan_kind == PlanKind.SAFE_ALTERNATIVE.value
-            else PlanKind.FEASIBLE
-        )
-        cast = service.cast_verdict(summary.thread_id, verdict_type, selected_plan=selected)
+        if summary.status == "awaiting_verdict":
+            selected = (
+                PlanKind.SAFE_ALTERNATIVE
+                if summary.plan_kind == PlanKind.SAFE_ALTERNATIVE.value
+                else PlanKind.FEASIBLE
+            )
+            cast = service.cast_verdict(summary.thread_id, verdict_type, selected_plan=selected)
+            status = cast.execution_status
+        else:
+            status = summary.status  # low risk: already executed on submission
         trial = service.get_trial(summary.thread_id)
         assert trial is not None
         # A placeholder audit id keeps the exported file reproducible (the real id is per-run).
         _write(
             _OUT_DIR / f"{slug}-result.json",
-            build_verdict_result_card(trial, status=cast.execution_status, audit_id="<audit-id>"),
+            build_verdict_result_card(trial, status=status, audit_id="<audit-id>"),
         )
 
 

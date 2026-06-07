@@ -1,8 +1,9 @@
-"""Run the three trials end-to-end, fully mocked, and print each Change Court.
+"""Run the demo trials end-to-end, fully mocked, and print each Change Court.
 
 The demo driver: ``cd backend && uv run python -m scripts.demo``. No credentials needed
-(FORCE_ALL_MOCK). It opens on the Customer Promise *refusal* (the killer moment), then Vendor
-Access, then Launch Slip — printing each court (decisive evidence, risk, plan) and its verdict.
+(FORCE_ALL_MOCK). It opens on the *refusal* (a reschedule onto an occupied day — the agent saying
+"no" and proposing a free one), then the feasible reschedule, then the two requester-authority
+flows — printing each court (decisive evidence, risk, plan) and its verdict.
 """
 
 from __future__ import annotations
@@ -11,23 +12,20 @@ import sys
 
 from app.config import Settings
 from app.container import build_court_service
-from app.domain import PlanKind, TrialRecord, VerdictType
+from app.domain import ChangeStatus, PlanKind, TrialRecord, VerdictType
 from app.services.court_service import CourtService
 from app.services.dto import TrialSummary
 
 # Demo order leads with the refusal — the agent saying "no" is the killer moment.
 _TRIALS = [
     (
-        "Customer Promise",
-        "promise Customer A that SSO is GA by 2026-06-17",
+        "Reschedule — conflicting date",
+        "move the rehearsal to 2026-06-16",
         VerdictType.ACCEPT_ALTERNATIVE,
     ),
-    (
-        "Vendor Access",
-        "give the vendor access to Project X until the campaign is done",
-        VerdictType.ACCEPT_ALTERNATIVE,
-    ),
-    ("Launch Slip", "slip the launch from 2026-06-10 to 2026-06-17", VerdictType.APPROVE),
+    ("Reschedule — feasible", "move the rehearsal to 2026-06-17", VerdictType.APPROVE),
+    ("Meeting Actions", "create action items from standup", VerdictType.APPROVE),
+    ("Weekly Report", "post the Project X weekly report", VerdictType.APPROVE),
 ]
 
 
@@ -67,13 +65,20 @@ def run() -> None:
         assert trial is not None
         _print_court(summary, trial)
 
+        if summary.status != ChangeStatus.AWAITING_VERDICT.value:
+            # Low risk, no approver: the court auto-approved and executed on submission.
+            print(f"  -> executed on the requester's authority: status={summary.status}")
+            continue
         selected = (
             PlanKind.SAFE_ALTERNATIVE
             if summary.plan_kind == PlanKind.SAFE_ALTERNATIVE.value
             else PlanKind.FEASIBLE
         )
         cast = service.cast_verdict(summary.thread_id, verdict_type, selected_plan=selected)
-        print(f"  -> verdict {verdict_type.value}: status={cast.status}  audit={cast.audit_id}")
+        print(
+            f"  -> verdict {verdict_type.value}: status={cast.execution_status}"
+            f"  audit={cast.audit_id}"
+        )
 
 
 if __name__ == "__main__":

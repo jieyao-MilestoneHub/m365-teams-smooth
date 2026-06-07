@@ -11,22 +11,22 @@
     },
     {
       "type": "TextBlock",
-      "text": "slip the launch from 2026-06-10 to 2026-06-17",
+      "text": "post the Project X weekly report",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "✓ intake → ✓ impact → ✓ options → ✓ policy → ⏸ verdict → ○ execute → ○ verify → ○ audit",
+      "text": "✓ intake → ✓ impact → ✓ options → ✓ policy → ✓ verdict → ✓ execute → ✓ verify → ✓ audit",
       "wrap": true,
       "isSubtle": true,
       "spacing": "Small"
     },
     {
       "type": "TextBlock",
-      "text": "Risk: HIGH",
+      "text": "Risk: LOW",
       "wrap": true,
       "weight": "Bolder",
-      "color": "Attention"
+      "color": "Good"
     },
     {
       "type": "TextBlock",
@@ -36,22 +36,22 @@
     },
     {
       "type": "TextBlock",
-      "text": "• [github] Milestone 'Launch' currently due 2026-06-10",
+      "text": "• [github] 4 issue(s) closed recently",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "• [outlook] Calendar events near the new date",
+      "text": "    ↳ Status reports follow a weekly cadence and post to the project channel as the single source of record. (Status Reporting Policy §2.1)",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "• [planner] 2 planner task(s) must shift",
+      "text": "• [planner] 2 task(s) tracked this week",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "• [teams] A pending announcement references the original date",
+      "text": "• [outlook] 1 meeting(s) on the calendar",
       "wrap": true
     },
     {
@@ -61,38 +61,18 @@
     },
     {
       "type": "TextBlock",
-      "text": "    ↳ Moving a launch milestone requires updating dependent schedules and pending communications. (Launch Playbook §3.2)",
+      "text": "    ↳ Status reports follow a weekly cadence and post to the project channel as the single source of record. (Status Reporting Policy §2.1)",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "Proposed plan: Move the launch to 2026-06-17; update calendar, schedule, and announcement.",
+      "text": "Proposed plan: Aggregate the week's activity once and post it to the project channel.",
       "wrap": true,
       "weight": "Bolder"
     },
     {
       "type": "TextBlock",
-      "text": "• github.update_milestone_due",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
-      "text": "• outlook.create_event",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
-      "text": "• planner.shift_task_dates",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
-      "text": "• teams.update_announcement",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
-      "text": "Approvers required (all): eng_lead, comms",
+      "text": "• teams.post_message",
       "wrap": true
     }
   ],
@@ -105,17 +85,6 @@
         "tool": "cast_verdict",
         "thread_id": "<thread-id>",
         "verdict_type": "approve",
-        "selected_plan": "feasible"
-      }
-    },
-    {
-      "type": "Action.Execute",
-      "title": "approve_internal_only",
-      "verb": "cast_verdict",
-      "data": {
-        "tool": "cast_verdict",
-        "thread_id": "<thread-id>",
-        "verdict_type": "approve_internal_only",
         "selected_plan": "feasible"
       }
     },

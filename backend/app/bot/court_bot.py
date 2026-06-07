@@ -47,10 +47,10 @@ RequestCardBuilder = Callable[..., Card]
 ResultCardBuilder = Callable[..., Card]
 
 WELCOME = (
-    "Put a risky decision on trial. Type a change request — for example:\n\n"
-    "*slip the launch to 2026-06-17*\n\n"
-    "*promise SSO GA by 2026-06-17*\n\n"
-    "*vendor access to Project X*"
+    "Put a cross-system change on trial. Type a request — for example:\n\n"
+    "*move the rehearsal to 2026-06-17*\n\n"
+    "*create action items from standup*\n\n"
+    "*post the Project X weekly report*"
 )
 
 _QUEUE_COMMANDS = {"queue", "/queue", "pending"}
