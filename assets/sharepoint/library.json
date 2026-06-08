@@ -1,0 +1,8 @@
+{
+  "_comment": "SharePoint document-library layout for the demo site (SHAREPOINT_SITE_ID), seeded by backend/scripts/seed_sharepoint.py so the sharepoint:real evidence path reads a genuine library. The Vendor Access trial reads the 'ProjectX' library root: the presence of a 'CustomerData' folder is the load-bearing signal (real_sharepoint.py detects the marker 'customerdata') that the requested over-broad access touches customer data -> refused -> least-privilege + expiry. 'LaunchAssets' is the safe, shareable folder. The files make the library look real rather than two demo folders.",
+  "library": "ProjectX",
+  "folders": [
+    {"name": "LaunchAssets", "files": ["launch-brief.docx", "timeline.xlsx", "press-release-draft.docx"]},
+    {"name": "CustomerData", "files": ["accounts.csv", "contacts.xlsx"]}
+  ]
+}

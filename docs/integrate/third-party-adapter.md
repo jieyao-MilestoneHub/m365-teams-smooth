@@ -61,6 +61,30 @@ hands it to `build_registry(settings, candidates)`. Add your system there:
 3. Select per system at runtime with `INTEGRATION_MODE` (e.g.
    `INTEGRATION_MODE=github:real,servicenow:mock`); anything unlisted falls back to mock.
 
+Selection is implemented by `select_adapters()` / `ConfigIntegrationRegistry`
+(`backend/app/adapters/integrations/registry.py`): it reads `INTEGRATION_MODE`, picks one adapter
+per system, and falls back to `mock` for any unset/unknown mode or under `FORCE_ALL_MOCK`.
+
+## Microsoft Graph services (Outlook, SharePoint, …)
+
+Microsoft 365 services share one app-only client, `GraphClient`
+(`backend/app/adapters/integrations/graph.py` — a cached client-credentials token plus GET/POST), so
+each new Graph-backed system is a thin adapter rather than a fresh auth stack. The container builds
+the client once behind a **`graph_ready` gate** (`backend/app/container.py`): when `GRAPH_TENANT_ID`,
+`GRAPH_CLIENT_ID`, and `GRAPH_CLIENT_SECRET` are all set (and `FORCE_ALL_MOCK` is false) it offers
+each Graph adapter whose own resource pointer is configured — `OUTLOOK_CALENDAR_UPN` for Outlook,
+`SHAREPOINT_SITE_ID` for SharePoint. Set the shared `GRAPH_*` once and each Graph system lights up as
+its pointer is filled in; switch it on with `INTEGRATION_MODE=…,outlook:real,sharepoint:real`.
+
+These real Graph adapters are **read-only evidence**: they implement the read capabilities (calendar
+events, a folder's contents) and leave writes **dry-run only** — `_apply()` refuses a live write, so
+`outlook.create_event` / `sharepoint.grant_folder_permission` are *predicted* under DRY_RUN and never
+mutate the tenant (ADR-0007). The reads need `Calendars.Read` / `Sites.Read.All`; seeding demo content
+needs the `…ReadWrite…` equivalents.
+
+Per-system setup — credentials, admin consent, what each adapter reads, and seeding realistic content:
+[GitHub](../deploy/github.md) · [Outlook](../deploy/outlook.md) · [SharePoint](../deploy/sharepoint.md).
+
 ## Checklist
 
 - [ ] Adapter module under `backend/app/adapters/integrations/` extending
