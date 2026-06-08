@@ -120,19 +120,7 @@ def test_real_outlook_dry_run_predicts_no_write() -> None:
     assert not respx.calls  # dry-run never calls Graph
 
 
-@respx.mock
-def test_real_outlook_live_write_predicts_instead_of_failing() -> None:
-    step = ExecutionStep(
-        step_id="s1",
-        capability=CapabilityRef(system="outlook", name="outlook.create_event"),
-        params={"title": "Review", "start": "2026-06-18"},
-    )
-    # Read-only-real: a LIVE write degrades to a predicted effect (not a failure) and never writes.
-    result = _outlook().execute(step, RunMode.LIVE)  # must not raise
-    assert result.status is StepStatus.DRY_RUN
-    assert result.predicted is not None
-    assert result.error is None
-    assert not respx.calls  # never calls Graph to write
+# Live Outlook writes (create_event / draft_email) are covered in test_real_outlook.py.
 
 
 # --- SharePoint (read-only) ------------------------------------------------------
