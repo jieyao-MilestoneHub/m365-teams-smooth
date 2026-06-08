@@ -44,6 +44,9 @@ LAUNCH_SLIP = RulePack(
             ApproverRule(role=ApproverRole.ENG_LEAD, when_tag="schedule.milestone_move"),
             ApproverRule(role=ApproverRole.COMMS, when_tag="comms.pending_announcement"),
         ],
+        # Both the engineering and comms leads are surfaced as stakeholders, but a single
+        # sign-off from either suffices to reach quorum (need = 1).
+        policy="any",
     ),
     verdict_options=VerdictOptionRules(
         default=[
