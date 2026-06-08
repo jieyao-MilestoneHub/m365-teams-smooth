@@ -14,6 +14,7 @@ extension.
 | You want to… | Read |
 | --- | --- |
 | Connect a third-party system (your ticketing tool, your CRM, …) | [third-party-adapter.md](third-party-adapter.md) |
+| Turn a Microsoft 365 service real (GitHub / Outlook / SharePoint) | [deploy/github.md](../deploy/github.md) · [deploy/outlook.md](../deploy/outlook.md) · [deploy/sharepoint.md](../deploy/sharepoint.md) |
 | Put a new kind of decision on trial (your own scenario) | [new-scenario.md](new-scenario.md) |
 | Ground the court's reasoning in your own knowledge base (Foundry IQ) | [foundry-iq.md](foundry-iq.md) |
 | Expose a new MCP tool / update the M365 agent manifests | [mcp-tools-and-agent-manifest.md](mcp-tools-and-agent-manifest.md) |

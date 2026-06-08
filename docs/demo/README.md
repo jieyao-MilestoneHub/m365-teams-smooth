@@ -84,5 +84,7 @@ verification gate (`scripts/verify.sh`) that must be green before any demo
 
 - **Reproduce every screen, credential-free** → [reproduce.md](reproduce.md)
 - **Run the two-user approval flow** → [two-user-demo.md](two-user-demo.md)
+- **Which trial exercises which system (the recording lineup)** →
+  [integration-coverage.md](integration-coverage.md)
 - **Prep a live, deployed demo** → [demo-day-checklist.md](demo-day-checklist.md) +
   the [deploy runbook](../deploy/runbook.md)
