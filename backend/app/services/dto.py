@@ -20,6 +20,7 @@ class TrialSummary(BaseModel):
     verdict_options: list[str] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
     acknowledged: bool = False  # requester confirmed the concluded outcome
+    run_url: str | None = None  # signed read-only run-page link; None when the run page is disabled
 
 
 class ApprovalTimelineEntry(BaseModel):
@@ -63,3 +64,4 @@ class CastResult(BaseModel):
     execution_status: str
     audit_id: str | None = None
     idempotent: bool = False
+    run_url: str | None = None  # signed read-only run-page link; None when the run page is disabled
