@@ -56,12 +56,27 @@ Search Standard ≈ $8/day): `az group delete --name iq-series-rg --yes --no-wai
 > The infrastructure-as-code choice is **Bicep** (Azure-native, `what-if` preview, no state store);
 > the cookbook's `main.bicep` is reused as-is rather than forked.
 
+## Seed the corpus (contextual retrieval)
+The corpus is version-controlled under [`knowledge/corpus/`](../../knowledge/corpus/) — a realistic
+company knowledge base (meeting notes + policies) seeded with adversarial near-misses and off-topic
+noise. `backend/scripts/seed_knowledge.py` rebuilds the index content using Anthropic's *Contextual
+Retrieval* on Azure: per-`##`-section context prefixes (`gpt-4o-mini`) stored in a searchable
+`context` field, embedded with `text-embedding-3-large`, retrieved hybrid (BM25 + vector) + semantic
+rerank. Run it after the Bicep deploy and after any corpus edit:
+
+```bash
+cd backend
+uv run python -m scripts.seed_knowledge      # --dry-run to preview chunking without writing
+uv run python -m scripts.eval_retrieval      # asserts each trial target ranks #1 over its near-miss
+```
+
+Keyless auth (`DefaultAzureCredential`); the runner needs **Search Index Data Contributor** +
+**Search Service Contributor** on the search service and **Cognitive Services OpenAI User** on the
+OpenAI account. The seed reuses the existing index's vectorizer + semantic configuration (it only
+adds the `context` field), so it needs no Foundry IQ reconfiguration.
+
 ## Testing
 `backend/tests/test_foundry_iq.py` injects a stub retrieval client (no network) and asserts the
-reference → `GroundedFact` mapping, `top_k`, and skip-empty behavior. The fake provider remains the
-default in `conftest.py`, so the three trials stay credential-free.
-
-## Follow-up
-The currently-seeded knowledge base holds the cookbook's NASA sample corpus, not the governance
-policies the trials reason about. Seeding a governance corpus (so the **real** provider grounds the
-trials as the fake's corpus does) is a separate task; the fake remains the default until then.
+reference → `GroundedFact` mapping, `top_k`, skip-empty, and the configurable reasoning effort;
+`test_seed_knowledge.py` covers the chunker and index-definition shaping. The fake provider remains
+the default in `conftest.py`, so the three trials stay credential-free.
