@@ -109,6 +109,10 @@ class Settings(BaseSettings):
     notify_link_url: str = ""
     # The catalog app id of the Teams app (disambiguates the installed app for notifications).
     notify_teams_app_id: str = ""
+    # When INTEGRATION_MODE includes teams:real, downstream Teams writes (weekly-report post,
+    # reschedule announcement) send a real Graph activity notification to this UPN. Reuses GRAPH_*
+    # + the admin-consented TeamsActivity.Send; empty -> teams falls back to the in-memory mock.
+    teams_notify_recipient: str = ""
 
     # --- Bot surface (POST /api/messages) ---
     # The Azure Bot's app registration. Empty bot_app_id -> anonymous Bot Framework auth, which is

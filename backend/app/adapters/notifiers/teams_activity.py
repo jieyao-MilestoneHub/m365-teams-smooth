@@ -34,6 +34,40 @@ def _chain_id(thread_id: str) -> int:
     return int.from_bytes(digest[:8], "big") & 0x7FFF_FFFF_FFFF_FFFF
 
 
+def send_activity_notification(
+    graph: GraphClient,
+    *,
+    recipient_upn: str,
+    text: str,
+    chain_seed: str,
+    link_url: str,
+    teams_app_id: str = "",
+    topic_value: str = _TOPIC_VALUE,
+) -> None:
+    """Send one Graph ``sendActivityNotification`` (reserved ``systemDefault`` type) to a feed.
+
+    Shared by the approval notifier and the real Teams integration adapter, so the Graph payload and
+    error handling live in one place. ``chain_seed`` derives the chainId (a newer event for the same
+    seed overrides the prior toast). Raises with Graph's error body so the caller can surface the
+    actionable reason.
+    """
+    payload: dict[str, object] = {
+        "topic": {"source": "text", "value": topic_value, "webUrl": link_url},
+        "activityType": "systemDefault",
+        "previewText": {"content": text[:150]},
+        "templateParameters": [{"name": "systemDefaultText", "value": text[:150]}],
+        "chainId": _chain_id(chain_seed),
+    }
+    if teams_app_id:
+        payload["teamsAppId"] = teams_app_id
+    try:
+        graph.post(f"/users/{recipient_upn}/teamwork/sendActivityNotification", payload)
+    except httpx.HTTPStatusError as err:
+        # Surface Graph's error body — the status line alone ("400 Bad Request") hides the
+        # actionable reason (e.g. an activity-type/template mismatch with the installed app).
+        raise RuntimeError(f"{err} — {err.response.text[:300]}") from err
+
+
 class TeamsActivityNotifier(ApprovalNotifier):
     """Delivers approval notifications to users' Teams activity feeds via Graph."""
 
@@ -43,21 +77,14 @@ class TeamsActivityNotifier(ApprovalNotifier):
         self._teams_app_id = teams_app_id
 
     def _send(self, upn: str, text: str, thread_id: str) -> None:
-        payload: dict[str, object] = {
-            "topic": {"source": "text", "value": _TOPIC_VALUE, "webUrl": self._link_url},
-            "activityType": "systemDefault",
-            "previewText": {"content": text[:150]},
-            "templateParameters": [{"name": "systemDefaultText", "value": text[:150]}],
-            "chainId": _chain_id(thread_id),
-        }
-        if self._teams_app_id:
-            payload["teamsAppId"] = self._teams_app_id
-        try:
-            self._graph.post(f"/users/{upn}/teamwork/sendActivityNotification", payload)
-        except httpx.HTTPStatusError as err:
-            # Surface Graph's error body — the status line alone ("400 Bad Request") hides the
-            # actionable reason (e.g. an activity-type/template mismatch with the installed app).
-            raise RuntimeError(f"{err} — {err.response.text[:300]}") from err
+        send_activity_notification(
+            self._graph,
+            recipient_upn=upn,
+            text=text,
+            chain_seed=thread_id,
+            link_url=self._link_url,
+            teams_app_id=self._teams_app_id,
+        )
 
     def approval_requested(
         self,

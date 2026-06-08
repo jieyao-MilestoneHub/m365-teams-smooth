@@ -19,6 +19,7 @@ from app.adapters.integrations.mock_teams import MockTeamsAdapter
 from app.adapters.integrations.real_github import RealGitHubAdapter
 from app.adapters.integrations.real_outlook import RealOutlookAdapter
 from app.adapters.integrations.real_sharepoint import RealSharePointAdapter
+from app.adapters.integrations.real_teams import RealTeamsAdapter
 from app.adapters.integrations.registry import build_registry
 from app.adapters.integrations.retry import RetryPolicy
 from app.adapters.knowledge.fake_knowledge import FakeKnowledgeProvider
@@ -138,10 +139,12 @@ def build_court_service(
                 settings.github_token, settings.github_repo, retry=retry
             )
 
-        # Read-only real evidence over Microsoft Graph (Outlook calendar, SharePoint folders).
-        # One shared app-only client; a real adapter is offered only when its target is configured.
+        # Real evidence + contained writes over Microsoft Graph (Outlook calendar, SharePoint
+        # folders, Teams activity feed). One shared app-only client; a real adapter is offered only
+        # when its target is configured.
         outlook: dict[str, IntegrationAdapter] = {"mock": MockOutlookAdapter()}
         sharepoint: dict[str, IntegrationAdapter] = {"mock": MockSharePointAdapter()}
+        teams: dict[str, IntegrationAdapter] = {"mock": MockTeamsAdapter()}
         graph_ready = bool(
             not settings.force_all_mock
             and settings.graph_tenant_id
@@ -162,13 +165,21 @@ def build_court_service(
                 sharepoint["real"] = RealSharePointAdapter(
                     graph, settings.sharepoint_site_id, retry=retry
                 )
+            if settings.teams_notify_recipient:
+                teams["real"] = RealTeamsAdapter(
+                    graph,
+                    recipient_upn=settings.teams_notify_recipient,
+                    link_url=settings.notification_link_url(),
+                    teams_app_id=settings.notify_teams_app_id,
+                    retry=retry,
+                )
 
         candidates: dict[str, dict[str, IntegrationAdapter]] = {
             "github": github,
             "outlook": outlook,
             "planner": {"mock": MockPlannerAdapter()},
             "sharepoint": sharepoint,
-            "teams": {"mock": MockTeamsAdapter()},
+            "teams": teams,
             "crm": {"mock": MockCRMAdapter()},
             "entra": {"mock": MockEntraAdapter()},
         }

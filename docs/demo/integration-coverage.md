@@ -1,9 +1,12 @@
 # Demo coverage — which trial exercises which system
 
 Which integration each trial reads (**R**) and writes (**W**), derived from
-`backend/app/agent/gatherers.py` (reads) and `backend/app/agent/planners.py` (writes). Writes to the
-real **GitHub** adapter apply for real (with `dry_run_default=false`); writes to **Outlook/SharePoint**
-stay dry-run only (read-only-real adapters), so their `W` is a *predicted* effect.
+`backend/app/agent/gatherers.py` (reads) and `backend/app/agent/planners.py` (writes). With
+`dry_run_default=false`, writes to the real **GitHub**, **Outlook**, and **SharePoint** adapters apply
+for real (a milestone PATCH; a calendar event / unsent draft; a folder-permission invite). A real
+**Teams** write (`teams:real`) sends a genuine Graph **activity-feed notification** — a real channel
+post/read is a *protected* Graph API and is out of scope. **Planner/CRM/Entra** stay in-memory mocks.
+Under dry-run every `W` is a *predicted* effect.
 
 | Trial | GitHub | Outlook | SharePoint | Planner | Teams | CRM | Entra |
 | --- | --- | --- | --- | --- | --- | --- | --- |
