@@ -31,9 +31,12 @@ is faster; this is the real, repeatable path.
   `terraform.tfvars`. The `azuread` provider then creates nothing and authenticates against
   `azure_tenant_id`. Expose an `api://<client-id>/court.use` scope and a Teams redirect URI on that
   app; it backs both `OAUTH_AUDIENCE` and the Phase 3 OAuth connection.
-- **(Optional) Azure OpenAI** deployment (GPT-4o-class, accepts `max_tokens`) if you want the
-  agentic roles live; **(optional)** a throwaway GitHub repo with a `Launch Rehearsal` milestone
-  (the real milestone write) and some closed issues (real evidence for the weekly report).
+- **A chat LLM powers the agentic roles** (Prosecutor/Defender/precedent reasoning) — configure one
+  to demonstrate the agent; the reference uses **Azure OpenAI** (GPT-4o-class, `max_tokens`), other
+  providers plug in via the `LLMProvider` port (one adapter, not config-only —
+  [llm-provider.md](../integrate/llm-provider.md)). Without it the deterministic fallback still runs
+  the trials, but shows no agentic reasoning. *(Optional)* a throwaway GitHub repo (`Launch Rehearsal`
+  milestone + closed issues) for live GitHub evidence.
 
 ---
 
@@ -184,16 +187,14 @@ App's SQLite is ephemeral — deploy first, freeze deploys, then do everything s
 ## Known issues (open — plan around these)
 
 - **Activity-feed toast action is inert** — a declarative agent has no in-Teams surface to land on;
-  the approver opens Copilot Chat and runs `list_pending_approvals`
-  ([#256](https://github.com/jieyao-MilestoneHub/m365-teams-smooth/issues/256) adds the bot surface).
-- **A package update doesn't reach users until they remove + re-add the agent** — Copilot caches the
-  manifest + auth. Per user: remove, fully quit Teams, re-add from "Built for your org", re-consent.
-  Never ship a package update on demo day (platform behaviour).
-- **The proactive approval card needs `APPROVER_DIRECTORY` keyed on the Entra oid, not the UPN** — a
-  Teams activity carries the oid, not the UPN, so a UPN entry misses and only the toast lands
-  (`proactive.skipped`). The oid also serves the toast and verdict authorization
-  ([#276](https://github.com/jieyao-MilestoneHub/m365-teams-smooth/issues/276)).
+  the approver opens Copilot Chat and runs `list_pending_approvals`. (Microsoft —
+  [Copilot extensibility known issues](https://learn.microsoft.com/en-us/microsoft-365/copilot/extensibility/known-issues).)
+- **A package update needs remove + re-add** — Copilot caches the manifest + auth: remove, fully quit
+  Teams, re-add from "Built for your org", re-consent. Never ship one on demo day. (Microsoft —
+  [Copilot extensibility known issues](https://learn.microsoft.com/en-us/microsoft-365/copilot/extensibility/known-issues).)
+- **`APPROVER_DIRECTORY` must use the Entra oid, not the UPN** — a Teams bot activity carries the
+  user's `aadObjectId`, and the conversation reference is stored by it; a UPN entry misses
+  (`proactive.skipped`). (Microsoft — [Send proactive messages](https://learn.microsoft.com/en-us/microsoftteams/platform/bots/how-to/conversations/send-proactive-messages).)
 - **An agent silently won't call the tool** (no `POST /mcp` logged) — a client-side cache/consent
-  issue, not the backend. Diagnose with `-developer on` + the console logs; fixes: remove + re-add the
-  app, or clear the persisted OAuth token (`revokeSignInSessions`)
-  ([#273](https://github.com/jieyao-MilestoneHub/m365-teams-smooth/issues/273) has the full playbook).
+  issue, not the backend: diagnose with `-developer on`; fixes: remove + re-add the app, or clear the
+  persisted OAuth token. (Microsoft — [Troubleshoot MCP apps](https://learn.microsoft.com/en-us/microsoft-365/copilot/extensibility/plugin-mcp-apps-troubleshooting).)
