@@ -1,16 +1,13 @@
-# Deploy runbook — Azure Container Apps → Teams demo (Path C)
+# Deploy runbook — Azure Container Apps → Teams demo
 
-A copy-paste runbook that takes the backend from source to a **stable, machine-independent** Teams
-demo: provision the backend as a cloud web service (Azure Container Apps), enable the agentic and
-approval features, wire the Teams entry point, and run the three trials in Copilot Chat. Once
-applied, your laptop can be off and the demo still works — the FQDN is fixed and the compute is in
-Azure.
+A copy-paste runbook from source to a **stable, machine-independent** Teams demo: provision the
+backend on Azure Container Apps, enable the agentic + approval features, wire the Teams entry point,
+run the trials in Copilot Chat. Once applied the demo works with your laptop off (fixed FQDN, compute
+in Azure). For a throwaway "does it work today" test, the dev-tunnel path in [`deploy.md`](deploy.md)
+is faster; this is the real, repeatable path.
 
-This is the production path. For a throwaway "does the pipeline work today" test, the dev-tunnel
-path in [`deploy.md`](deploy.md) is faster; this runbook is for a real, repeatable demo.
-
-> Conventions: run from the **repo root** unless noted. `terraform` commands run in `infra/`.
-> Values flow between steps via `terraform output` — copy them as shown.
+> Conventions: run from the **repo root** unless noted; `terraform` commands run in `infra/`; values
+> flow between steps via `terraform output`.
 
 ---
 
@@ -156,49 +153,20 @@ custom app, or via Agents Toolkit). The declarative agent now appears in Copilot
 ## Phase 5 — Run the demo in Teams
 
 > **Prerequisite to *use* the agent — Copilot entitlement.** A declarative agent with actions is
-> gated: the **Add** button stays disabled until the account is entitled. Either assign a Microsoft
-> 365 Copilot license, or set up **pay-as-you-go**: in the Microsoft 365 admin center → **Copilot →
-> Billing & usage**, create a billing policy (Azure subscription + resource group, scope it to the
-> demo accounts, set a budget), then connect it to **Microsoft 365 Copilot Chat**. The billing
-> subscription must be visible in the M365 tenant's directory. Entitlement can take up to ~2 hours to
-> propagate. See [`pay-as-you-go/setup`](https://learn.microsoft.com/en-us/copilot/microsoft-365/pay-as-you-go/setup).
+> gated until the account is entitled: assign a Microsoft 365 Copilot license, or connect
+> **pay-as-you-go** (M365 admin centre → Copilot → Billing & usage → a billing policy scoped to the
+> demo accounts → connect to Copilot Chat). Propagation can take ~2 hours.
+> See [pay-as-you-go/setup](https://learn.microsoft.com/en-us/copilot/microsoft-365/pay-as-you-go/setup).
 
-Single-flow (any signed-in user):
+Then run the trials in Copilot Chat / Teams. The step-by-step **recording script** — the three
+routes, the windows to capture, the expected effect of each, and the second-screen run page — is in
+[`docs/demo/recording-runbook.md`](../demo/recording-runbook.md); the two-user approval flow and its
+negative cases (no self-approval; outside-directory cannot decide) are in
+[`two-user-demo.md`](../demo/two-user-demo.md). Per-trial expected outcomes: [`trials.md`](../reference/trials.md).
 
-1. In Copilot Chat, invoke the agent and type a trial request, e.g.
-   `move the rehearsal to 2026-06-17` (or the conflicting-date variant `…to 2026-06-16` to see the
-   refusal + safe alternative).
-2. The **Change Court card** renders: impact evidence, the plan (or the refusal + safe
-   alternative), required approvers, verdict buttons.
-3. Click the verdict → `cast_verdict` resumes the run from its checkpoint and returns the result card.
-
-Two-user separation of duties (needs Phase 2 `APPROVER_DIRECTORY` + a low-privilege requester
-account; full script in [`two-user-demo.md`](../demo/two-user-demo.md)):
-
-1. **Requester** (low-priv) submits the change → card holds at requester review → **Send for
-   approval** with a note.
-2. **Approver** (a different account in `APPROVER_DIRECTORY`) → the approval card lands in their
-   bot chat proactively (typing `queue` pulls it as a fallback) → **Approve**.
-3. Quorum satisfied → executes (DRY_RUN by default, ADR-0007) → audit recorded. Confirm the
-   requester **cannot** approve their own change, and an account outside the directory cannot decide.
-
-The three trials and their expected outcomes are in [`trials.md`](../reference/trials.md).
-
-**Second screen — the pipeline run page.** With `run_link_secret` set in `terraform.tfvars`, every
-Change Court card carries a **View pipeline run** link to a read-only, signed-link-gated run log
-(`/runs/<thread_id>?t=…`). Open it on a second screen before approving: the stage rail advances
-live, the verdict gate shows quorum progress, and after approval the execution lanes fill in with
-per-step before→after results and the audit id. The page only inspects — every decision still
-happens on the card.
-
----
-
-## Demo-day prep
-
-The day-of ordered checklist (the deploy-first rule, data resets, conversation re-registration,
-warm-up, smoke, and the operational notes) lives in
-[`docs/demo/demo-day-checklist.md`](../demo/demo-day-checklist.md). The short version: the
-Container App's SQLite is ephemeral — deploy first, freeze deploys, then do everything stateful.
+**Day-of prep** (deploy-first rule, data resets, conversation re-registration, warm-up, smoke) is the
+ordered checklist in [`docs/demo/demo-day-checklist.md`](../demo/demo-day-checklist.md): the Container
+App's SQLite is ephemeral — deploy first, freeze deploys, then do everything stateful.
 
 ---
 
@@ -215,51 +183,17 @@ Container App's SQLite is ephemeral — deploy first, freeze deploys, then do ev
 
 ## Known issues (open — plan around these)
 
-- **The activity-feed toast's "Open with Copilot" action is inert.** The notification deep link
-  (`NOTIFY_LINK_URL`) targets the app, but a declarative agent has no in-Teams surface to land on,
-  so the button does nothing. Workaround: the approver opens Copilot Chat and runs
-  `list_pending_approvals`. Fix tracked in
-  [#256](https://github.com/jieyao-MilestoneHub/m365-teams-smooth/issues/256) (bot surface with
-  actionable cards).
-- **An updated app package does not reach users until they remove and re-add the agent.** Copilot
-  caches the installed manifest and the plugin's auth state; after a catalog update users may see
-  stale tools or silent auth failures (MCP calls sent without a token, no sign-in prompt). Per user:
-  remove the app, fully quit and reopen Teams, re-add it from "Built for your org", and complete the
-  sign-in on the first tool call. Platform behaviour, not ours — see Microsoft's
-  [Copilot extensibility known issues](https://learn.microsoft.com/en-us/microsoft-365/copilot/extensibility/known-issues).
-  Never ship a package update on demo day.
-- **The proactive approval card needs `APPROVER_DIRECTORY` keyed on the Entra object id, not the
-  UPN.** A Teams activity gives the bot the user's Entra **oid** and display name but **no UPN**, so
-  the bot stores each user's conversation reference under their oid. The proactive card is delivered
-  by looking that reference up by the directory identity — which therefore must also be the **oid**,
-  or the lookup misses and only the activity-feed toast lands (a `proactive.skipped` log line marks
-  the miss). Set e.g. `APPROVER_DIRECTORY="eng_lead:<approver-oid>,comms:<approver-oid>,…"`. The oid
-  also works for the toast (`/users/{oid}/…`) and verdict authorization. Alternatively, grant the
-  Graph app `User.Read.All` and resolve the UPN in the bot. Tracked in
-  [#276](https://github.com/jieyao-MilestoneHub/m365-teams-smooth/issues/276).
-- **A user's agent silently won't call the tool ("the tool didn't return any data").** The agent
-  confabulates a failure and offers a manual fallback, but the backend logs **zero `POST /mcp`** for
-  the attempt — the call never left the client. Backend, OAuth, and manifest are fine (a known-good
-  account on the same package still works). Diagnose and fix per the playbook in
-  [#273](https://github.com/jieyao-MilestoneHub/m365-teams-smooth/issues/273):
-  - **Confirm it's client-side:** the attempt produces no `POST /mcp` line
-    (`az containerapp logs show -n changecourt -g changecourt-rg --type console`); a healthy call
-    logs `POST /mcp/ 200` then `trial.submitted source="mcp"`.
-  - **Verify with developer mode:** type `-developer on` in Copilot, retry, expand the debug card's
-    **Actions** — tools missing ⇒ the client hasn't loaded the plugin; an OAuth error string ⇒ map it
-    via Microsoft's [MCP troubleshooting](https://learn.microsoft.com/en-us/microsoft-365/copilot/extensibility/plugin-mcp-apps-troubleshooting).
-  - **Mind the surface:** `trial.submitted source="playground"` is the **bot** path; `source="mcp"`
-    is the **Copilot plugin** path — a bot success does not prove the plugin works.
-  - **Fix (lightest first):** (1) stale client cache → remove app, *fully quit* Teams, re-add,
-    new chat; (2) persisted OAuth token (reinstall does **not** clear it) → Graph
-    `revokeSignInSessions` or remove the user's consent in Entra, then sign in again; (3) a locked
-    bot compose box is a per-user Teams messaging policy / incomplete consent, not a license gap.
-
----
-
-## The machine question
-
-Nothing in this runbook is tied to a specific machine. The backend runs in Azure (fixed FQDN); the
-demo runs in the Teams client (cloud); the only "where" that matters is **a host with `az`/Terraform
-access** to run Phase 1–4 — that can be any laptop, VM, or CI runner. After Phase 4, the demo is
-fully cloud-resident.
+- **Activity-feed toast action is inert** — a declarative agent has no in-Teams surface to land on;
+  the approver opens Copilot Chat and runs `list_pending_approvals`
+  ([#256](https://github.com/jieyao-MilestoneHub/m365-teams-smooth/issues/256) adds the bot surface).
+- **A package update doesn't reach users until they remove + re-add the agent** — Copilot caches the
+  manifest + auth. Per user: remove, fully quit Teams, re-add from "Built for your org", re-consent.
+  Never ship a package update on demo day (platform behaviour).
+- **The proactive approval card needs `APPROVER_DIRECTORY` keyed on the Entra oid, not the UPN** — a
+  Teams activity carries the oid, not the UPN, so a UPN entry misses and only the toast lands
+  (`proactive.skipped`). The oid also serves the toast and verdict authorization
+  ([#276](https://github.com/jieyao-MilestoneHub/m365-teams-smooth/issues/276)).
+- **An agent silently won't call the tool** (no `POST /mcp` logged) — a client-side cache/consent
+  issue, not the backend. Diagnose with `-developer on` + the console logs; fixes: remove + re-add the
+  app, or clear the persisted OAuth token (`revokeSignInSessions`)
+  ([#273](https://github.com/jieyao-MilestoneHub/m365-teams-smooth/issues/273) has the full playbook).
