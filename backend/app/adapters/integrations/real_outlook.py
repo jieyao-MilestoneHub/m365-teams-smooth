@@ -28,6 +28,9 @@ _SYSTEM = "outlook"
 class RealOutlookAdapter(BaseIntegrationAdapter):
     """Reads a configured user's Outlook calendar via Graph; writes stay dry-run only."""
 
+    # Read-only-real: a LIVE write step is predicted (not applied), never a failure.
+    _writes_enabled = False
+
     def __init__(
         self, graph: GraphClient, calendar_upn: str, *, retry: RetryPolicy | None = None
     ) -> None:

@@ -108,19 +108,10 @@ async def test_invoke_routes_through_service_gates_and_refreshes_in_place() -> N
     assert verbs == ["decide", "decide"]
     assert service.requester_note(summary.thread_id) == "ship it safely"
 
-    # The first approver (eng_lead) approves: quorum still pending, so the refreshed card
-    # stays in the approval phase for the remaining role.
+    # With the "any" policy a single sign-off completes the quorum: the first approver (eng_lead)
+    # approves and the terminal result card replaces the approval card in place.
     response = await bot.on_adaptive_card_invoke(
         _turn_context(APPROVER),
-        _invoke("decide", {"thread_id": summary.thread_id, "approve": True}),
-    )
-    assert response.status_code == 200
-    assert "⛔" not in str(response.value)
-    assert [a["verb"] for a in response.value["actions"]] == ["decide", "decide"]
-
-    # The second approver (comms) completes the quorum: the terminal result card replaces it.
-    response = await bot.on_adaptive_card_invoke(
-        _turn_context(APPROVER2),
         _invoke("decide", {"thread_id": summary.thread_id, "approve": True}),
     )
     assert response.status_code == 200

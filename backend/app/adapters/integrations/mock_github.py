@@ -18,6 +18,8 @@ from app.domain.errors import IntegrationError
 from app.ports.integration import ReadQuery, ReadResult
 
 _SYSTEM = "github"
+# Mock web links, so a mocked/local run surfaces a clickable "view resource" like the real adapter.
+_REPO_URL = "https://github.com/jieyao-MilestoneHub/m365-teams-smooth"
 
 
 class MockGitHubAdapter(BaseIntegrationAdapter):
@@ -116,13 +118,17 @@ class MockGitHubAdapter(BaseIntegrationAdapter):
             milestone = str(step.params["milestone"])
             record = self._milestones.setdefault(milestone, {"title": milestone})
             record["due_on"] = step.params["due_on"]
-            return {"milestone": dict(record)}
+            after = dict(record)
+            after.setdefault("html_url", f"{_REPO_URL}/milestone/7")
+            return {"milestone": after}
         if name == "github.create_issue":
             issue = dict(step.params)
+            issue.setdefault("html_url", f"{_REPO_URL}/issues")
             self._created_issues.append(issue)
             return {"issue": issue}
         if name == "github.comment_issue":
             comment = dict(step.params)
+            comment.setdefault("html_url", f"{_REPO_URL}/issues/{comment.get('issue')}")
             self._comments.append(comment)
             return {"comment": comment}
         raise IntegrationError(f"{_SYSTEM}: unknown write capability '{name}'")

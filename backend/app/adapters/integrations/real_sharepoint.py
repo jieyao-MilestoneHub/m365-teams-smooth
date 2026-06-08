@@ -31,6 +31,9 @@ _CUSTOMER_DATA_MARKER = "customerdata"
 class RealSharePointAdapter(BaseIntegrationAdapter):
     """Reads a configured site's document library via Graph; the grant stays dry-run only."""
 
+    # Read-only-real: a LIVE grant step is predicted (not applied), never a failure.
+    _writes_enabled = False
+
     def __init__(
         self, graph: GraphClient, site_id: str, *, retry: RetryPolicy | None = None
     ) -> None:

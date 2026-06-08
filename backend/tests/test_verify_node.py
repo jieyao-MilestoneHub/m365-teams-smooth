@@ -30,6 +30,31 @@ def test_verify_effect_matches_mismatches_and_skips_unreported_keys() -> None:
     assert clean.matched is True and clean.mismatches == []
 
 
+def test_verify_effect_matches_across_type_and_date_representation() -> None:
+    # str vs int (planner delta_days) and ISO datetime vs plain date (github due_on) both match.
+    verification = verify_effect(
+        "s3",
+        params={"delta_days": "7", "due_on": "2026-06-17"},
+        after={"delta_days": 7, "due_on": "2026-06-17T00:00:00Z", "shifted": 2},
+    )
+    assert verification.matched is True
+    assert verification.checked == ["delta_days", "due_on"]
+    assert verification.mismatches == []
+
+
+def test_verify_effect_skips_structured_after_values() -> None:
+    # The github milestone after-state holds the whole object under the same key as the title param;
+    # a scalar-vs-object compare is meaningless, so the key is skipped — not flagged as a mismatch.
+    verification = verify_effect(
+        "s1",
+        params={"milestone": "Launch Rehearsal", "due_on": "2026-06-17"},
+        after={"milestone": {"title": "Launch Rehearsal", "html_url": "https://x"}},
+    )
+    assert verification.matched is True
+    assert verification.checked == []  # milestone skipped (object); due_on not reported
+    assert verification.mismatches == []
+
+
 def _state(run_mode: RunMode, results: list[StepResult]) -> dict[str, object]:
     state = initial_state(
         thread_id="t1", change_id="c1", raw_request="x", source="t", run_mode=run_mode

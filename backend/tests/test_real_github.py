@@ -94,11 +94,20 @@ def test_live_update_milestone_due() -> None:
         )
     )
     patch = respx.patch(f"{_API}/repos/octo/launch/milestones/1").mock(
-        return_value=httpx.Response(200, json={"title": "Launch", "due_on": "2026-06-17T00:00:00Z"})
+        return_value=httpx.Response(
+            200,
+            json={
+                "title": "Launch",
+                "due_on": "2026-06-17T00:00:00Z",
+                "html_url": "https://github.com/octo/launch/milestone/1",
+            },
+        )
     )
     result = _adapter().execute(_update_step(), RunMode.LIVE)
     assert result.status is StepStatus.OK
     assert patch.called
+    # The modified resource's web link is surfaced so a reviewer can open it from the run page/card.
+    assert result.resource_url == "https://github.com/octo/launch/milestone/1"
     # Plans carry plain dates; the GitHub API requires a full timestamp.
     import json
 

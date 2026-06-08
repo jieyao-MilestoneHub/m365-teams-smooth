@@ -121,15 +121,18 @@ def test_real_outlook_dry_run_predicts_no_write() -> None:
 
 
 @respx.mock
-def test_real_outlook_live_write_is_refused_and_contained() -> None:
+def test_real_outlook_live_write_predicts_instead_of_failing() -> None:
     step = ExecutionStep(
         step_id="s1",
         capability=CapabilityRef(system="outlook", name="outlook.create_event"),
         params={"title": "Review", "start": "2026-06-18"},
     )
+    # Read-only-real: a LIVE write degrades to a predicted effect (not a failure) and never writes.
     result = _outlook().execute(step, RunMode.LIVE)  # must not raise
-    assert result.status is StepStatus.FAILED
-    assert result.error is not None
+    assert result.status is StepStatus.DRY_RUN
+    assert result.predicted is not None
+    assert result.error is None
+    assert not respx.calls  # never calls Graph to write
 
 
 # --- SharePoint (read-only) ------------------------------------------------------
@@ -170,6 +173,21 @@ def test_read_folder_flags_customer_data() -> None:
     assert data["contains_customer_data"] is True
     items = data["items"]
     assert isinstance(items, list) and "CustomerData" in items
+
+
+@respx.mock
+def test_real_sharepoint_live_grant_predicts_instead_of_failing() -> None:
+    step = ExecutionStep(
+        step_id="s1",
+        capability=CapabilityRef(system="sharepoint", name="sharepoint.grant_folder_permission"),
+        params={"path": "/ProjectX", "principal": "vendor@x.com", "role": "read"},
+    )
+    # Read-only-real: the grant is predicted (not applied) and never reaches Graph.
+    result = _sharepoint().execute(step, RunMode.LIVE)  # must not raise
+    assert result.status is StepStatus.DRY_RUN
+    assert result.predicted is not None
+    assert result.error is None
+    assert not respx.calls
 
 
 @respx.mock
