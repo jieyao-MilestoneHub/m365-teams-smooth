@@ -1,10 +1,11 @@
-"""Real SharePoint adapter (read-only evidence path) over Microsoft Graph.
+"""Real SharePoint adapter over Microsoft Graph: reads folder evidence and grants scoped access.
 
 Provides the *read* capability the Vendor Access trial relies on — listing a folder and detecting
 whether it holds customer data (the decisive evidence behind the over-broad-scope refusal) — from a
-configured SharePoint site's default document library. The grant (write) is intentionally NOT
-performed: under DRY_RUN the base class predicts the effect, and a LIVE write is refused and
-contained. Selected when ``sharepoint`` runs in ``real`` mode with Graph credentials configured.
+configured SharePoint site's document libraries. The grant is contained: a LIVE
+``grant_folder_permission`` issues a real least-privilege, time-boxed Microsoft Graph invite; under
+DRY_RUN the base class predicts the effect instead. Selected when ``sharepoint`` runs in ``real``
+mode with Graph credentials configured.
 """
 
 from __future__ import annotations
@@ -12,7 +13,7 @@ from __future__ import annotations
 from app.adapters.integrations.base import BaseIntegrationAdapter
 from app.adapters.integrations.graph import GraphClient
 from app.adapters.integrations.retry import RetryPolicy
-from app.adapters.integrations.validation import safe_path
+from app.adapters.integrations.validation import safe_email, safe_path
 from app.domain import (
     Capability,
     CapabilityKind,
@@ -26,13 +27,12 @@ from app.ports.integration import ReadQuery, ReadResult
 _SYSTEM = "sharepoint"
 # A child folder by this name marks its parent as holding customer data.
 _CUSTOMER_DATA_MARKER = "customerdata"
+# Plan roles → Graph driveItem permission roles.
+_ROLE_MAP = {"read": ["read"], "write": ["write"]}
 
 
 class RealSharePointAdapter(BaseIntegrationAdapter):
-    """Reads a configured site's document library via Graph; the grant stays dry-run only."""
-
-    # Read-only-real: a LIVE grant step is predicted (not applied), never a failure.
-    _writes_enabled = False
+    """Reads a configured site's document library via Graph and grants scoped folder access."""
 
     def __init__(
         self, graph: GraphClient, site_id: str, *, retry: RetryPolicy | None = None
@@ -53,7 +53,13 @@ class RealSharePointAdapter(BaseIntegrationAdapter):
                 system=_SYSTEM,
                 name="sharepoint.grant_folder_permission",
                 kind=CapabilityKind.WRITE,
-                params_schema={"required": ["path", "principal", "role"]},
+                params_schema={
+                    "required": ["path", "principal", "role"],
+                    "properties": {
+                        "role": {"pattern": "read|write"},
+                        "expiry": {"format": "date"},
+                    },
+                },
             ),
         ]
 
@@ -115,17 +121,76 @@ class RealSharePointAdapter(BaseIntegrationAdapter):
             summary="would grant scoped folder permission", diff=dict(step.params)
         )
 
+    def _resolve_item(self, path: str) -> tuple[str, str]:
+        """Return ``(drive_id, driveItem_id)`` for a validated in-site path; raise on a bad path."""
+        parts = [p for p in safe_path(path).strip("/").split("/") if p]
+        if not parts:
+            raise IntegrationError(
+                f"{_SYSTEM}: path must name a document library, e.g. '/ProjectX'"
+            )
+        library, rest = parts[0], "/".join(parts[1:])
+        drive_id = self._drive_id(library)
+        segment = f"root:/{rest}:" if rest else "root"
+        data = self._graph.get(
+            f"/sites/{self._site_id}/drives/{drive_id}/{segment}", **{"$select": "id"}
+        )
+        item_id = str(data.get("id", ""))
+        if not item_id:
+            raise IntegrationError(f"{_SYSTEM}: folder '{path}' not found")
+        return drive_id, item_id
+
     def _apply(self, step: ExecutionStep) -> dict[str, object]:
-        # Read-only evidence adapter: real writes are out of scope; execution runs in DRY_RUN.
-        raise IntegrationError(f"{_SYSTEM}: real writes are disabled (dry-run only)")
+        if step.capability.name != "sharepoint.grant_folder_permission":
+            raise IntegrationError(
+                f"{_SYSTEM}: unknown write capability '{step.capability.name}'"
+            )
+        params = step.params
+        principal = safe_email(str(params["principal"]))
+        role = str(params["role"]).lower()
+        roles = _ROLE_MAP.get(role)
+        if roles is None:
+            raise IntegrationError(f"{_SYSTEM}: unsupported role '{role}'")
+        drive_id, item_id = self._resolve_item(str(params["path"]))
+        body: dict[str, object] = {
+            "recipients": [{"email": principal}],
+            "roles": roles,
+            "requireSignIn": True,
+            "sendInvitation": False,
+        }
+        expiry = str(params.get("expiry", "")).strip()
+        if expiry:
+            # Plans carry a plain date; Graph wants an ISO-8601 timestamp. Best-effort on app-only
+            # invites — the entra.schedule_access_revoke step is the authoritative time-box.
+            body["expirationDateTime"] = expiry if len(expiry) > 10 else f"{expiry}T00:00:00Z"
+        result = self._graph.post_json(
+            f"/sites/{self._site_id}/drives/{drive_id}/items/{item_id}/invite", body
+        )
+        granted = result.get("value")
+        perm = granted[0] if isinstance(granted, list) and granted else {}
+        permission_id = str(perm.get("id", "")) if isinstance(perm, dict) else ""
+        return {
+            "grant": {
+                "path": str(params["path"]),
+                "principal": principal,
+                "role": role,
+                "expiry": expiry or None,
+                "drive_id": drive_id,
+                "item_id": item_id,
+                "permission_id": permission_id,
+            }
+        }
 
     def _fetch_before(self, step: ExecutionStep) -> dict[str, object]:
-        return {}
+        return {}  # a grant is additive — the new permission id is recorded in the after-state
 
     def _rollback(self, step: ExecutionStep, before: dict[str, object]) -> RollbackHint:
         return RollbackHint(
             step_id=step.step_id,
             system=_SYSTEM,
-            instruction="revoke the granted folder permission",
+            instruction=(
+                "revoke the granted folder permission — DELETE "
+                "/drives/{drive_id}/items/{item_id}/permissions/{permission_id} using the ids "
+                "recorded in the step's after-state"
+            ),
             params=dict(step.params),
         )

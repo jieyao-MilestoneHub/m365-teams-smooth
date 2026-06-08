@@ -3,8 +3,8 @@
 Shared by the read-only real Graph adapters (Outlook calendar, SharePoint folders) and the Teams
 activity notifier. App-only auth keeps the backend free of a user-delegated flow: with
 admin-consented *application* permissions it reads a specific user's calendar and a specific
-site's drive. Integration adapters stay read-only — they predict effects under DRY_RUN and never
-mutate; POST exists solely for non-mutating signalling such as activity-feed notifications.
+site's drive. ``post`` signals activity-feed notifications and ``post_json`` performs the contained
+calendar/draft writes; the base adapter still predicts (never mutates) under DRY_RUN.
 
 Errors surface as raised exceptions; ``BaseIntegrationAdapter`` maps them to ``IntegrationError`` at
 the boundary, so a Graph failure is contained like any other adapter error.
@@ -80,3 +80,17 @@ class GraphClient:
             json=payload,
         )
         resp.raise_for_status()
+
+    def post_json(self, path: str, payload: dict[str, object]) -> dict[str, object]:
+        """POST a JSON payload and return the parsed response body (raises on non-success).
+
+        Like :meth:`post`, but for the contained writes that need the created resource back (its id
+        and ``webLink``); an empty body (e.g. a ``202 Accepted``) maps to ``{}``.
+        """
+        resp = self._http.post(
+            f"{self._graph_url}{path}",
+            headers={"Authorization": f"Bearer {self._bearer()}"},
+            json=payload,
+        )
+        resp.raise_for_status()
+        return dict(resp.json()) if resp.content else {}

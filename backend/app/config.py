@@ -32,8 +32,9 @@ class Settings(BaseSettings):
     # Target repository for the real GitHub adapter, as "owner/name" (a throwaway test repo).
     github_repo: str = ""
 
-    # --- Microsoft Graph (read-only real evidence: Outlook calendar, SharePoint folders) ---
-    # App-only (client-credentials) auth; needs admin-consented Calendars.Read + Sites.Read.All.
+    # --- Microsoft Graph (real evidence + contained writes: Outlook, SharePoint) ---
+    # App-only (client-credentials) auth; needs admin-consented Calendars.ReadWrite + Mail.ReadWrite
+    # (Outlook evidence + contained event/draft writes) and Sites.Read.All (SharePoint evidence).
     graph_tenant_id: str = ""
     graph_client_id: str = ""
     graph_client_secret: str = ""
