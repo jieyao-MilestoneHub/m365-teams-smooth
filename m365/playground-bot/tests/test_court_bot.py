@@ -287,7 +287,9 @@ def test_two_user_approval_round_trip(approval_service: CourtService) -> None:
         value={"tool": "decide", "thread_id": thread_id, "approve": True},
         actor=USER_C,
     )
-    assert any("Status: done" in t for t in _texts(result))
+    # The result card is a TL;DR: a success headline + one-line outcome, not a status/step log.
+    assert any("Verdict recorded" in t for t in _texts(result))
+    assert not any("hit a failure" in t for t in _texts(result))
 
 
 def test_self_approval_renders_refusal(approval_service: CourtService) -> None:
