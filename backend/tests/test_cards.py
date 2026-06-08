@@ -74,7 +74,7 @@ def test_verdict_result_card_for_accepted_alternative_reads_as_refusal() -> None
     assert "Refused the request as posed" in blob
 
 
-def test_verdict_result_card_lists_steps_and_predicted() -> None:
+def test_verdict_result_card_is_a_one_line_outcome() -> None:
     service = _service()
     summary = service.submit_change("slip the launch from 2026-06-10 to 2026-06-17")
     cast = service.cast_verdict(summary.thread_id, VerdictType.APPROVE)
@@ -85,7 +85,11 @@ def test_verdict_result_card_lists_steps_and_predicted() -> None:
         build_verdict_result_card(trial, status=cast.execution_status, audit_id=cast.audit_id)
     )
     assert "Verdict recorded" in blob
-    assert "predicted" in blob  # dry-run steps are labelled predicted
+    # TL;DR: a one-line outcome ("N step(s) predicted (dry-run)"), not a per-step log or rollback
+    # hints — those live on the run page and the audit.
+    assert "predicted" in blob
+    assert "rollback" not in blob
+    assert "• s1" not in blob and "s1: ok" not in blob
 
 
 def _trial(service: CourtService, raw: str):  # type: ignore[no-untyped-def]
@@ -210,19 +214,19 @@ def test_result_card_carries_run_link_when_thread_known() -> None:
     assert not any("View pipeline run" in t for t in _texts(bare))
 
 
-def test_stage_strip_traces_the_pipeline_by_status() -> None:
+def test_card_is_tldr_omitting_pipeline_strip_and_grounding_walls() -> None:
+    # The card carries no pipeline stage strip and no verbose grounded-policy text — that detail
+    # lives on the run page. The prosecutor's executed reads and prose assessment are dropped too.
+    thread_id, trial = _trial(_service(), "promise Customer A that SSO is GA by 2026-06-17")
+    blob = _texts(build_change_court_card(thread_id, trial, status="awaiting_verdict"))
+    assert "→ ✓" not in blob and "○ execute" not in blob  # no stage strip
+    assert "[prosecutor]" not in blob  # the prosecutor's read selection stays on the run page
+    # Grounding collapses to a compact pointer, not the full multi-paragraph policy text.
+    assert "governance fact" in blob
+    assert "just-in-time" not in blob  # a full policy paragraph never reaches the card
+
+
+def test_blocked_card_states_the_refusal() -> None:
     thread_id, trial = _trial(_service(), "slip the launch from 2026-06-10 to 2026-06-17")
-
-    waiting = _texts(build_change_court_card(thread_id, trial, status="awaiting_approval"))
-    assert "⏸ verdict" in waiting
-    assert "✓ policy" in waiting
-    assert "○ execute" in waiting
-
-    done = _texts(build_verdict_result_card(trial, status="done", audit_id=None))
-    assert "✓ audit" in done and "⏸" not in done
-
     blocked = _texts(build_change_court_card(thread_id, trial, status="blocked"))
-    assert "⛔ intake" in blocked  # the hallucination guard is visible at a glance
-
-    # An unknown/empty status renders no strip rather than a wrong one.
-    assert "○ execute" not in _texts(build_change_court_card(thread_id, trial, status=""))
+    assert "Blocked" in blocked and "unsupported action" in blocked

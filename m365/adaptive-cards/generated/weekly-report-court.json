@@ -16,13 +16,6 @@
     },
     {
       "type": "TextBlock",
-      "text": "✓ intake → ✓ impact → ✓ options → ✓ policy → ✓ verdict → ✓ execute → ✓ verify → ✓ audit",
-      "wrap": true,
-      "isSubtle": true,
-      "spacing": "Small"
-    },
-    {
-      "type": "TextBlock",
       "text": "Risk: LOW",
       "wrap": true,
       "weight": "Bolder",
@@ -41,11 +34,6 @@
     },
     {
       "type": "TextBlock",
-      "text": "    ↳ Status reports follow a weekly cadence and post to the project channel as the single source of record. (Status Reporting Policy §2.1)",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
       "text": "• [planner] 2 task(s) tracked this week",
       "wrap": true
     },
@@ -56,13 +44,10 @@
     },
     {
       "type": "TextBlock",
-      "text": "• [knowledge] grounded governance facts",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
-      "text": "    ↳ Status reports follow a weekly cadence and post to the project channel as the single source of record. (Status Reporting Policy §2.1)",
-      "wrap": true
+      "text": "grounded in 2 governance fact(s) — see the run page",
+      "wrap": true,
+      "isSubtle": true,
+      "spacing": "Small"
     },
     {
       "type": "TextBlock",

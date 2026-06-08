@@ -16,13 +16,6 @@
     },
     {
       "type": "TextBlock",
-      "text": "✓ intake → ✓ impact → ✓ options → ✓ policy → ✓ verdict → ✓ execute → ✓ verify → ✓ audit",
-      "wrap": true,
-      "isSubtle": true,
-      "spacing": "Small"
-    },
-    {
-      "type": "TextBlock",
       "text": "Risk: LOW",
       "wrap": true,
       "weight": "Bolder",
@@ -41,23 +34,15 @@
     },
     {
       "type": "TextBlock",
-      "text": "    ↳ Action items agreed in a meeting must be tracked with an owner and a due date, not left in the discussion. (Meeting Follow-through Policy §1.2)",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
       "text": "• [outlook] Calendar events near the proposed review slot",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "• [knowledge] grounded governance facts",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
-      "text": "    ↳ Action items agreed in a meeting must be tracked with an owner and a due date, not left in the discussion. (Meeting Follow-through Policy §1.2)",
-      "wrap": true
+      "text": "grounded in 2 governance fact(s) — see the run page",
+      "wrap": true,
+      "isSubtle": true,
+      "spacing": "Small"
     },
     {
       "type": "TextBlock",

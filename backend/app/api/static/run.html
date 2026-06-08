@@ -197,17 +197,24 @@
   }
   .step { padding: 9px 12px; border-bottom: 1px solid #1a202a; font-size: 12px; }
   .step:last-child { border-bottom: none; }
-  .step .cap { color: var(--ink); }
-  .st { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; padding: 1px 7px; border-radius: 4px; }
+  /* Header row: the capability wraps freely; the status chip never shrinks or clips. */
+  .step-h { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .step .cap { color: var(--ink); min-width: 0; overflow-wrap: anywhere; }
+  .st { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; padding: 1px 7px; border-radius: 4px; white-space: nowrap; flex: none; }
   .st.dry_run { color: var(--blue); background: rgba(91,163,255,.1); }
   .st.ok { color: var(--green); background: rgba(63,214,142,.1); }
   .st.failed { color: var(--red); background: rgba(240,109,106,.12); }
   .st.skipped { color: var(--faint); background: rgba(118,128,143,.1); }
   .st.running { color: var(--amber); background: rgba(232,179,57,.12); animation: breathe 1.4s infinite; }
-  .diff { margin-top: 5px; color: var(--muted); font-size: 11.5px; }
-  .diff .arrow { color: var(--amber); }
-  .err { color: var(--red); margin-top: 4px; font-size: 11.5px; }
-  .rollback { color: var(--faint); margin-top: 4px; font-size: 11px; }
+  /* Before→after and predicted effects read as a changeset: full text wraps, never clipped. */
+  .diff, .err, .rollback { margin-top: 5px; overflow-wrap: anywhere; word-break: break-word; line-height: 1.5; }
+  .diff { color: var(--muted); font-size: 11.5px; padding-left: 9px; border-left: 2px solid var(--border-strong); }
+  .diff + .diff { margin-top: 3px; }
+  .diff .k { color: var(--faint); }
+  .diff .arrow { color: var(--amber); padding: 0 2px; }
+  .diff b { color: var(--ink); font-weight: 600; }
+  .err { color: var(--red); font-size: 11.5px; }
+  .rollback { color: var(--faint); font-size: 11px; }
   .rollback::before { content: "↩ "; }
 
   /* ---------- transcript + audit ---------- */
@@ -546,14 +553,16 @@ function renderLanes() {
       if (r && r.before && r.after) {
         const keys = [...new Set([...Object.keys(r.before), ...Object.keys(r.after)])]
           .filter(k => JSON.stringify(r.before[k]) !== JSON.stringify(r.after[k]));
-        diff = keys.slice(0, 3).map(k =>
-          `<div class="diff">${esc(k)}: ${esc(fmtVal(r.before[k]))} <span class="arrow">→</span> <b>${esc(fmtVal(r.after[k]))}</b></div>`).join("");
+        diff = keys.map(k =>
+          `<div class="diff"><span class="k">${esc(k)}:</span> ${esc(fmtVal(r.before[k]))} <span class="arrow">→</span> <b>${esc(fmtVal(r.after[k]))}</b></div>`).join("");
       } else if (r && r.predicted) {
-        diff = `<div class="diff">predicted: ${esc(JSON.stringify(r.predicted).slice(0, 90))}</div>`;
+        const p = r.predicted;
+        const ptext = (p && typeof p === "object" && p.summary) ? p.summary : JSON.stringify(p);
+        diff = `<div class="diff"><span class="k">predicted:</span> ${esc(ptext)}</div>`;
       }
       const st = s.status || (r ? r.status : "running");
       const label = st === "dry_run" ? "predicted" : st === "ok" ? "applied" : st;
-      return `<div class="step"><div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
+      return `<div class="step"><div class="step-h">
         <span class="cap">${esc(s.cap)}</span><span class="st ${esc(st)}">${esc(label)}</span></div>${diff}` +
         (s.error || (r && r.error) ? `<div class="err">${esc(s.error || r.error)}</div>` : "") +
         (r && r.rollback ? `<div class="rollback">${esc(r.rollback.instruction)}</div>` : "") + `</div>`;

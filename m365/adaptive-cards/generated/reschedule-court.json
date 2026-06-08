@@ -16,13 +16,6 @@
     },
     {
       "type": "TextBlock",
-      "text": "✓ intake → ✓ impact → ✓ options → ✓ policy → ⏸ verdict → ○ execute → ○ verify → ○ audit",
-      "wrap": true,
-      "isSubtle": true,
-      "spacing": "Small"
-    },
-    {
-      "type": "TextBlock",
       "text": "Risk: HIGH",
       "wrap": true,
       "weight": "Bolder",

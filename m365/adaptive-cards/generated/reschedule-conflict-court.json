@@ -16,13 +16,6 @@
     },
     {
       "type": "TextBlock",
-      "text": "✓ intake → ✓ impact → ✓ options → ✓ policy → ⏸ verdict → ○ execute → ○ verify → ○ audit",
-      "wrap": true,
-      "isSubtle": true,
-      "spacing": "Small"
-    },
-    {
-      "type": "TextBlock",
       "text": "Risk: HIGH",
       "wrap": true,
       "weight": "Bolder",
@@ -56,8 +49,10 @@
     },
     {
       "type": "TextBlock",
-      "text": "    ↳ Moving a launch milestone requires updating dependent schedules and pending communications. (Launch Playbook §3.2)",
-      "wrap": true
+      "text": "    ↳ Launch Playbook §3.2",
+      "wrap": true,
+      "isSubtle": true,
+      "spacing": "Small"
     },
     {
       "type": "TextBlock",
@@ -82,8 +77,10 @@
     },
     {
       "type": "TextBlock",
-      "text": "• [teams] A pending announcement references the original date",
-      "wrap": true
+      "text": "+1 more impact item(s) · grounded in 1 governance fact(s) — see the run page",
+      "wrap": true,
+      "isSubtle": true,
+      "spacing": "Small"
     },
     {
       "type": "TextBlock",
