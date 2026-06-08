@@ -159,30 +159,31 @@ def _open_urls(card: dict[str, object]) -> list[dict[str, object]]:
     return [a for a in actions if isinstance(a, dict) and a.get("type") == "Action.OpenUrl"]
 
 
-def test_run_link_adds_open_url_button_and_fallback_link() -> None:
+def test_run_link_renders_a_single_body_link_not_a_button() -> None:
     thread_id, trial = _trial(_service(), "slip the launch from 2026-06-10 to 2026-06-17")
     url = f"https://court.example.com/runs/{thread_id}?t=tok"
     card = build_change_court_card(
         thread_id, trial, status="awaiting_approval", run_link=lambda _tid: url
     )
 
-    buttons = _open_urls(card)
-    assert len(buttons) == 1
-    assert buttons[0]["title"] == "View pipeline run"
-    assert buttons[0]["url"] == url
-    assert f"[Pipeline run log]({url})" in _texts(card)  # webview-safe fallback
-    # The decision buttons stay first and unchanged.
+    # One link, one place: a body markdown link, never a parallel OpenUrl button.
+    assert _open_urls(card) == []
+    assert f"[View pipeline run]({url})" in _texts(card)
+    # The action row stays dedicated to the decision buttons.
     actions = card["actions"]
     assert isinstance(actions, list)
     assert [a["data"]["tool"] for a in actions if "data" in a] == ["decide", "decide"]
 
 
-def test_no_run_link_renders_no_open_url() -> None:
+def test_no_run_link_renders_no_link() -> None:
     thread_id, trial = _trial(_service(), "slip the launch from 2026-06-10 to 2026-06-17")
-    assert _open_urls(build_change_court_card(thread_id, trial)) == []
+    card = build_change_court_card(thread_id, trial)
+    assert _open_urls(card) == []
+    assert not any("View pipeline run" in t for t in _texts(card))
     # A generator returning None (RUN_LINK_SECRET unset) is equally a no-op.
     card = build_change_court_card(thread_id, trial, run_link=lambda _tid: None)
     assert _open_urls(card) == []
+    assert not any("View pipeline run" in t for t in _texts(card))
 
 
 def test_result_card_carries_run_link_when_thread_known() -> None:
@@ -200,14 +201,13 @@ def test_result_card_carries_run_link_when_thread_known() -> None:
         thread_id=summary.thread_id,
         run_link=lambda _tid: url,
     )
-    assert _open_urls(card) == [
-        {"type": "Action.OpenUrl", "title": "View pipeline run", "url": url}
-    ]
+    assert _open_urls(card) == []
+    assert f"[View pipeline run]({url})" in _texts(card)
     # Without a thread_id the result card cannot mint a link and must not guess one.
     bare = build_verdict_result_card(
         trial, status=cast.execution_status, audit_id=cast.audit_id, run_link=lambda _tid: url
     )
-    assert _open_urls(bare) == []
+    assert not any("View pipeline run" in t for t in _texts(bare))
 
 
 def test_stage_strip_traces_the_pipeline_by_status() -> None:
