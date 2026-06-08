@@ -5,66 +5,22 @@
   "body": [
     {
       "type": "TextBlock",
-      "text": "Verdict recorded",
+      "text": "✅ Verdict recorded",
       "wrap": true,
-      "weight": "Bolder"
+      "weight": "Bolder",
+      "color": "Good"
     },
     {
       "type": "TextBlock",
-      "text": "✓ intake → ✓ impact → ✓ options → ✓ policy → ✓ verdict → ✓ execute → ✓ verify → ✓ audit",
-      "wrap": true,
-      "isSubtle": true,
-      "spacing": "Small"
-    },
-    {
-      "type": "TextBlock",
-      "text": "Status: done",
+      "text": "4 step(s) predicted (dry-run)",
       "wrap": true
     },
     {
       "type": "TextBlock",
       "text": "Audit: <audit-id>",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
-      "text": "• s1: dry_run (predicted)",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
-      "text": "    ↩ rollback: delete the created task",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
-      "text": "• s2: dry_run (predicted)",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
-      "text": "    ↩ rollback: delete the created task",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
-      "text": "• s3: dry_run (predicted)",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
-      "text": "    ↩ rollback: delete the created task",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
-      "text": "• s4: dry_run (predicted)",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
-      "text": "    ↩ rollback: delete the created event/draft to restore the prior state",
-      "wrap": true
+      "wrap": true,
+      "isSubtle": true,
+      "spacing": "Small"
     }
   ]
 }
