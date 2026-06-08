@@ -1,10 +1,10 @@
 """Retrieval-quality eval for the contextual-retrieval knowledge base.
 
-Runs the **production** retrieval path (`FoundryIqKnowledgeProvider.ground`, hybrid BM25 + vector +
-semantic rerank over the contextual index) for each trial's grounding query and checks that the
-intended **target** policy ranks #1 — above the deliberately-seeded **adversarial near-miss** (a
-same-vocabulary distractor, a deprecated policy version, a different project's notes). This is the
-concrete proof that retrieval discriminates, rather than "grabbing chunks".
+Runs the retrieval path (`FoundryIqKnowledgeProvider.ground`, hybrid BM25 + vector + semantic rerank
+over the contextual index) for each trial's grounding query and checks that the intended **target**
+policy ranks #1 — above the deliberately-seeded **adversarial near-miss** (a same-vocabulary
+distractor, a deprecated policy version, a different project's notes). It verifies that retrieval
+distinguishes the intended policy from those distractors.
 
 Run (against the live, seeded index):  ``uv run python -m scripts.eval_retrieval``
 Auth is keyless (``DefaultAzureCredential``); exits non-zero if any target fails to rank #1.

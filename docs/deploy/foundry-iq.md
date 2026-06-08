@@ -57,7 +57,7 @@ Search Standard ≈ $8/day): `az group delete --name iq-series-rg --yes --no-wai
 > the cookbook's `main.bicep` is reused as-is rather than forked.
 
 ## Seed the corpus (contextual retrieval)
-The corpus is version-controlled under [`knowledge/corpus/`](../../knowledge/corpus/) — a realistic
+The corpus is version-controlled under [`assets/knowledge-corpus/`](../../assets/knowledge-corpus/) — a realistic
 company knowledge base (meeting notes + policies) seeded with adversarial near-misses and off-topic
 noise. `backend/scripts/seed_knowledge.py` rebuilds the index content using Anthropic's *Contextual
 Retrieval* on Azure: per-`##`-section context prefixes (`gpt-4o-mini`) stored in a searchable

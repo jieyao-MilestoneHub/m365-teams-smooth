@@ -45,7 +45,7 @@ EMBED_DEPLOYMENT = os.environ.get("KNOWLEDGE_EMBED_DEPLOYMENT", "text-embedding-
 CONTEXT_DEPLOYMENT = os.environ.get("KNOWLEDGE_CONTEXT_DEPLOYMENT", "gpt-4o-mini")
 OPENAI_API_VERSION = os.environ.get("KNOWLEDGE_OPENAI_API_VERSION", "2024-10-21")
 SEARCH_API_VERSION = "2024-07-01"
-_DEFAULT_CORPUS = Path(__file__).resolve().parents[2] / "knowledge" / "corpus"
+_DEFAULT_CORPUS = Path(__file__).resolve().parents[2] / "assets" / "knowledge-corpus"
 CORPUS_DIR = Path(os.environ.get("KNOWLEDGE_CORPUS_DIR", _DEFAULT_CORPUS))
 
 _SEARCH_SCOPE = "https://search.azure.com/.default"
