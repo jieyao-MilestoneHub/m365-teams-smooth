@@ -67,28 +67,22 @@ def _stage_strip(status: str) -> dict[str, object] | None:
     return block
 
 
-def _run_link_parts(
-    run_link: RunLink | None, thread_id: str
-) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
-    """The run-page deep link as ``(body_rows, actions)`` — empty when no link is available.
+def _run_link_row(run_link: RunLink | None, thread_id: str) -> list[dict[str, object]]:
+    """The run-page deep link as a single subtle body row — empty when no link is available.
 
-    Both forms ship: the ``Action.OpenUrl`` button, plus a subtle markdown link in the body as
-    a fallback for hosts whose webview suppresses OpenUrl actions.
+    One link, one place: a markdown link in the body rather than a parallel ``Action.OpenUrl``
+    button. It renders in every host (including webviews that suppress OpenUrl actions) and keeps
+    the card's action row dedicated to decisions, so each surface carries a single focus.
     """
     if run_link is None or not thread_id:
-        return [], []
+        return []
     url = run_link(thread_id)
     if not url:
-        return [], []
-    fallback = _text(f"[Pipeline run log]({url})")
-    fallback["isSubtle"] = True
-    fallback["spacing"] = "Small"
-    action: dict[str, object] = {
-        "type": "Action.OpenUrl",
-        "title": "View pipeline run",
-        "url": url,
-    }
-    return [fallback], [action]
+        return []
+    row = _text(f"[View pipeline run]({url})")
+    row["isSubtle"] = True
+    row["spacing"] = "Small"
+    return [row]
 
 
 def _text(
@@ -239,9 +233,7 @@ def build_change_court_card(
                     )
                 )
 
-    link_rows, link_actions = _run_link_parts(run_link, thread_id)
-    body.extend(link_rows)
-    actions.extend(link_actions)
+    body.extend(_run_link_row(run_link, thread_id))
 
     return {
         "type": "AdaptiveCard",
@@ -297,14 +289,10 @@ def build_verdict_result_card(
                     color="Warning",
                 )
             )
-    link_rows, link_actions = _run_link_parts(run_link, thread_id)
-    body.extend(link_rows)
-    card: dict[str, object] = {
+    body.extend(_run_link_row(run_link, thread_id))
+    return {
         "type": "AdaptiveCard",
         "$schema": _SCHEMA,
         "version": "1.5",
         "body": body,
     }
-    if link_actions:
-        card["actions"] = link_actions
-    return card
