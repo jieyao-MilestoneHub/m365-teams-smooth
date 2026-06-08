@@ -1,0 +1,20 @@
+{
+  "_comment": "Realistic Outlook calendar for the demo mailbox (an eng lead's week around the Project X launch). Seeded into a real calendar by backend/scripts/seed_calendar.py so the outlook:real evidence path reads genuine Microsoft Graph events. Two entries are load-bearing for the trials: 'Board review' on 2026-06-16 (the reschedule-conflict driver) and 'SSO Security Review' on 2026-06-18 (after the promised 2026-06-17 GA date — the Customer Promise blocker). The rest is ordinary calendar noise so the mailbox looks like a real person's, not two demo events.",
+  "timezone": "UTC",
+  "events": [
+    {"subject": "Company All-Hands", "start": "2026-06-01T16:00:00", "end": "2026-06-01T17:00:00"},
+    {"subject": "Project X daily standup", "start": "2026-06-08T09:00:00", "end": "2026-06-08T09:15:00"},
+    {"subject": "1:1 with Priya", "start": "2026-06-08T13:00:00", "end": "2026-06-08T13:30:00"},
+    {"subject": "Project X daily standup", "start": "2026-06-09T09:00:00", "end": "2026-06-09T09:15:00"},
+    {"subject": "Sprint planning", "start": "2026-06-09T10:00:00", "end": "2026-06-09T11:00:00"},
+    {"subject": "Project X daily standup", "start": "2026-06-10T09:00:00", "end": "2026-06-10T09:15:00"},
+    {"subject": "Launch Rehearsal", "start": "2026-06-10T14:00:00", "end": "2026-06-10T15:30:00"},
+    {"subject": "Focus time — release prep", "start": "2026-06-11T09:30:00", "end": "2026-06-11T11:30:00"},
+    {"subject": "Design review: approval cards", "start": "2026-06-12T15:00:00", "end": "2026-06-12T16:00:00"},
+    {"subject": "Dentist", "start": "2026-06-15T08:00:00", "end": "2026-06-15T09:00:00"},
+    {"subject": "Board review", "start": "2026-06-16T09:00:00", "end": "2026-06-16T10:30:00"},
+    {"subject": "Customer sync — Contoso renewal", "start": "2026-06-17T13:00:00", "end": "2026-06-17T13:45:00"},
+    {"subject": "SSO Security Review", "start": "2026-06-18T11:00:00", "end": "2026-06-18T12:00:00"},
+    {"subject": "Team retro", "start": "2026-06-19T15:00:00", "end": "2026-06-19T16:00:00"}
+  ]
+}
