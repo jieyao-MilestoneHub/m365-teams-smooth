@@ -17,6 +17,10 @@ from app.domain.errors import IntegrationError
 _SEGMENT = re.compile(r"^[A-Za-z0-9._-]+$")
 # SharePoint path segments additionally allow spaces (folder display names).
 _PATH_SEGMENT = re.compile(r"^[A-Za-z0-9._ -]+$")
+# A single email recipient (addr-spec) — enough to reject header-injection and bad principals.
+_EMAIL = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
+# CR/LF must never appear in a header-like value (an email subject, an event title).
+_CRLF = re.compile(r"[\r\n]")
 
 
 def safe_repo(value: str) -> str:
@@ -37,3 +41,18 @@ def safe_path(value: str) -> str:
     if any(s in {".", ".."} or not _PATH_SEGMENT.fullmatch(s) for s in segments):
         raise IntegrationError(f"invalid path '{value}'")
     return "/" + "/".join(segments)
+
+
+def safe_email(value: str) -> str:
+    """Return the trimmed address if it is a single well-formed email, else raise."""
+    candidate = value.strip()
+    if _EMAIL.fullmatch(candidate) is None:
+        raise IntegrationError(f"invalid email address '{value}'")
+    return candidate
+
+
+def safe_header(value: str, *, field: str = "value") -> str:
+    """Return ``value`` if it carries no CR/LF (no header injection), else raise."""
+    if _CRLF.search(value):
+        raise IntegrationError(f"invalid {field}: control characters not allowed")
+    return value
