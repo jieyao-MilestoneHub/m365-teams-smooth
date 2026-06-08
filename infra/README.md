@@ -24,6 +24,19 @@ retrieval) into the app: the `KNOWLEDGE_*` env is injected only when set, and th
 identity is granted the Search/OpenAI data-plane roles via the provided resource ids — keyless auth,
 no secrets.
 
+Two further optional surfaces, both off by default and modeled the same way (set the variables and
+they ship with `apply`, leave them empty and the app simply omits the env):
+
+- **Bot surface** (`create_bot`, `bot_app_*`) — an Azure Bot + Teams channel pointing at the
+  backend's `/api/messages`, so the court card's buttons work natively in Teams.
+- **Approval notifications** (`notify_mode`, `notify_teams_app_id`, `notify_link_url`) — best-effort
+  decision toasts via the Microsoft Graph activity feed; delivery never blocks a trial.
+
+> **`apply` is declarative and idempotent — keep `terraform.tfvars` complete.** Every secret and
+> optional surface is conditional on its variable, so an `apply` with a value left blank *removes*
+> that secret/env from the live app. Always re-apply from a tfvars that carries the full intended
+> state (all secrets + any bot/notify/graph values you rely on). See *Updating vs reconciling* below.
+
 ## Prerequisites
 
 - Terraform ≥ 1.5, Azure CLI logged in to the subscription's tenant (`az login --tenant <id>`),
@@ -49,6 +62,31 @@ docker push "$ACR/change-court:latest"
 # 3) Create everything else (Container App + Entra app).
 terraform apply
 ```
+
+## Updating vs reconciling
+
+Two distinct situations, two safe paths — don't mix them:
+
+- **Ship a new backend build to an instance Terraform owns.** Build/push a new image tag, set
+  `image_tag`, and `terraform apply`. The single-responsibility revision roll is expected.
+- **Update an instance that was tuned out-of-band** (env or secrets changed with `az` after the
+  original apply — e.g. a quick config fix during a demo window). Terraform's state no longer
+  reflects the live app, so a blind `apply` would revert those out-of-band changes. To push *only*
+  a new image without disturbing them, swap it in place:
+
+  ```bash
+  az containerapp update -n changecourt -g changecourt-rg \
+    --image "$(terraform -chdir=infra output -raw acr_login_server)/change-court:<new-tag>"
+  ```
+
+  To bring such an instance **back under full Terraform control**, reconcile deliberately (never
+  mid-demo): copy every out-of-band value into `terraform.tfvars` (all secrets + any bot/notify
+  env), `terraform import` any resources created with `az` (e.g. the Azure Bot), then review
+  `terraform plan` until it shows no unintended removals before applying.
+
+> Any `apply` rolls a new Container App revision, and the app's SQLite is **ephemeral** — a new
+> revision wipes all trials and the bot's conversation references. Never apply during a demo window
+> (see [`../docs/demo/demo-day-checklist.md`](../docs/demo/demo-day-checklist.md)).
 
 ## Wire up the agent
 

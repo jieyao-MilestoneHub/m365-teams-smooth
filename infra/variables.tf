@@ -185,6 +185,28 @@ variable "approver_directory" {
   default     = ""
 }
 
+# --- Approval notifications (Teams activity feed) ---
+# Best-effort decision/approval toasts pushed through Microsoft Graph's activity feed; delivery
+# never blocks a trial. notify_mode selects the channel; the Teams app id and link target apply to
+# the "teams" mode. Leave notify_mode empty to run without notifications.
+variable "notify_mode" {
+  type        = string
+  description = "Optional: approval-notification channel (\"teams\" for the Graph activity feed). Empty disables notifications."
+  default     = ""
+}
+
+variable "notify_teams_app_id" {
+  type        = string
+  description = "Optional: Teams app (catalog) id the activity-feed toast targets. Used when notify_mode = \"teams\"."
+  default     = ""
+}
+
+variable "notify_link_url" {
+  type        = string
+  description = "Optional: override URL for the notification deep link. Defaults to the app surface when empty."
+  default     = ""
+}
+
 # --- Entra app registration (cross-tenant) ---
 # Same-tenant: leave create_entra_app = true and Terraform registers the app. Cross-tenant (the
 # deployer cannot write to the sign-in tenant): set false and supply entra_client_id from an app

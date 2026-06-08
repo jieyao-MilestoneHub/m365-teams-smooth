@@ -284,6 +284,30 @@ resource "azurerm_container_app" "this" {
         }
       }
 
+      # Approval notifications (Microsoft Graph activity feed). Best-effort and never blocks a trial;
+      # injected only when a channel is selected so an unset deployment simply sends nothing.
+      dynamic "env" {
+        for_each = var.notify_mode == "" ? [] : [1]
+        content {
+          name  = "NOTIFY_MODE"
+          value = var.notify_mode
+        }
+      }
+      dynamic "env" {
+        for_each = var.notify_teams_app_id == "" ? [] : [1]
+        content {
+          name  = "NOTIFY_TEAMS_APP_ID"
+          value = var.notify_teams_app_id
+        }
+      }
+      dynamic "env" {
+        for_each = var.notify_link_url == "" ? [] : [1]
+        content {
+          name  = "NOTIFY_LINK_URL"
+          value = var.notify_link_url
+        }
+      }
+
       # Bot surface (Azure Bot Service). Empty BOT_APP_ID leaves the endpoint in anonymous mode
       # (local Playground); these wire it to the registered bot so Teams can authenticate.
       dynamic "env" {
