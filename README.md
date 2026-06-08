@@ -96,24 +96,6 @@ flowchart TB
   SVC --> DB[("SQLite → Postgres")]
 ```
 
-The same shape in text:
-
-```
-Microsoft 365 Copilot Chat / Teams
-  └─ Declarative Agent (m365/)              the chat entry point
-        │  MCP + OAuth 2.0
-        ▼
-  FastAPI service (backend/)
-     ├─ MCP server      tools + resources the chat agent calls (OAuth2-secured)
-     ├─ REST API        minimal: health (audit/trial inspection is an MCP resource)
-     ├─ Services        single business layer shared by MCP and REST
-     ├─ Agent           LangGraph court: intake → impact → options → policy+quorum → [verdict] → execute → audit
-     ├─ Ports           abstract interfaces (the dependency-inversion boundary)
-     └─ Adapters        GitHub (real) + Outlook/Planner/SharePoint/Teams/CRM/Entra (mock)
-  Knowledge grounding   KnowledgePort → Azure AI Foundry (Foundry IQ); offline fake locally
-  SQLite (local) → Postgres (later)
-```
-
 Design highlights:
 
 - **Durable verdict interrupt.** The run suspends to a checkpoint at the verdict gate and resumes

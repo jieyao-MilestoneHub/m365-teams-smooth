@@ -82,6 +82,8 @@ verification gate (`scripts/verify.sh`) that must be green before any demo
 
 ## Where to go
 
+- **Record the live demo (real GitHub/Outlook/SharePoint), step by step** →
+  [recording-runbook.md](recording-runbook.md)
 - **Reproduce every screen, credential-free** → [reproduce.md](reproduce.md)
 - **Run the two-user approval flow** → [two-user-demo.md](two-user-demo.md)
 - **Which trial exercises which system (the recording lineup)** →
