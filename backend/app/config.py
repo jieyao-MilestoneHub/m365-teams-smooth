@@ -56,6 +56,8 @@ class Settings(BaseSettings):
     knowledge_search_endpoint: str = ""
     knowledge_base_name: str = ""
     knowledge_source_name: str = ""
+    # Query planning depth before hybrid + semantic rerank: "minimal" | "low" | "medium".
+    knowledge_reasoning_effort: str = "medium"
 
     # --- MCP OAuth2 resource server (empty -> local dev issuer) ---
     oauth_issuer: str = ""

@@ -103,3 +103,27 @@ def test_ground_skips_references_without_text() -> None:
 
 def test_ground_handles_no_references() -> None:
     assert _provider(_StubResult(references=None)).ground("q") == []
+
+
+def test_reasoning_effort_is_configurable_and_defaults_to_medium() -> None:
+    from azure.search.documents.knowledgebases.models import (
+        KnowledgeRetrievalLowReasoningEffort,
+        KnowledgeRetrievalMediumReasoningEffort,
+    )
+
+    def _effort_for(value: str | None) -> object:
+        stub = _StubClient(_StubResult(references=[]))
+        kwargs = {} if value is None else {"reasoning_effort": value}
+        FoundryIqKnowledgeProvider(
+            endpoint="https://example.search.windows.net",
+            knowledge_base_name="kb",
+            knowledge_source_name="ks",
+            client=cast(KnowledgeBaseRetrievalClient, stub),
+            **kwargs,  # type: ignore[arg-type]
+        ).ground("q")
+        return stub.calls[0].retrieval_reasoning_effort  # type: ignore[attr-defined]
+
+    assert isinstance(_effort_for("low"), KnowledgeRetrievalLowReasoningEffort)
+    assert isinstance(_effort_for(None), KnowledgeRetrievalMediumReasoningEffort)
+    # An unknown value falls back to the medium default rather than raising.
+    assert isinstance(_effort_for("bogus"), KnowledgeRetrievalMediumReasoningEffort)

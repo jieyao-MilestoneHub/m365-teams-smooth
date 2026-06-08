@@ -187,6 +187,7 @@ def build_court_service(
             knowledge_base_name=settings.knowledge_base_name,
             knowledge_source_name=settings.knowledge_source_name,
             timeout=settings.http_timeout_seconds,
+            reasoning_effort=settings.knowledge_reasoning_effort,
         )
 
     engine = make_engine(settings.db_url)

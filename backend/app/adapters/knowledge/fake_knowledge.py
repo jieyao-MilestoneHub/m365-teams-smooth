@@ -9,7 +9,9 @@ from __future__ import annotations
 from app.domain import GroundedFact
 from app.ports.knowledge import KnowledgePort
 
-# (keywords, fact) pairs. A fact is surfaced when any of its keywords appears in the query.
+# (keywords, fact) pairs. A fact is surfaced when any of its keywords appears in the query. The
+# citations mirror the live Foundry IQ corpus titles (knowledge/corpus/) so local and live ground
+# the same policies.
 _DEFAULT_CORPUS: list[tuple[tuple[str, ...], GroundedFact]] = [
     (
         ("ga", "general availability", "promise", "sso"),
@@ -19,7 +21,7 @@ _DEFAULT_CORPUS: list[tuple[tuple[str, ...], GroundedFact]] = [
                 "security review completes."
             ),
             source_id="policy/ga-readiness",
-            citation="GA Readiness Policy §2.1",
+            citation="Customer Commitment & GA Readiness Policy — No commitment before sign-off",
         ),
     ),
     (
@@ -29,8 +31,8 @@ _DEFAULT_CORPUS: list[tuple[tuple[str, ...], GroundedFact]] = [
                 "External access should be least-privilege and time-boxed, with an "
                 "explicit revoke date."
             ),
-            source_id="policy/access-control",
-            citation="Access Control Policy §4.3",
+            source_id="policy/vendor-access",
+            citation="Third-Party Vendor & Contractor Access Policy — Time-bound access",
         ),
     ),
     (
@@ -40,16 +42,16 @@ _DEFAULT_CORPUS: list[tuple[tuple[str, ...], GroundedFact]] = [
                 "Moving a launch milestone requires updating dependent schedules and "
                 "pending communications."
             ),
-            source_id="playbook/launch",
-            citation="Launch Playbook §3.2",
+            source_id="policy/release-change-management",
+            citation="Release & Change Management Policy — Coordinated downstream updates",
         ),
     ),
     (
         ("renewal", "customer", "commitment"),
         GroundedFact(
             claim="Commitments affecting an at-risk renewal require account-owner sign-off.",
-            source_id="policy/commercial",
-            citation="Commercial Commitments Policy §1.4",
+            source_id="policy/ga-readiness",
+            citation="Customer Commitment & GA Readiness Policy — Approval and quorum",
         ),
     ),
     (
@@ -60,7 +62,7 @@ _DEFAULT_CORPUS: list[tuple[tuple[str, ...], GroundedFact]] = [
                 "as the single source of record."
             ),
             source_id="policy/status-reporting",
-            citation="Status Reporting Policy §2.1",
+            citation="Status Reporting Policy — Weekly cadence, single source",
         ),
     ),
     (
@@ -71,7 +73,7 @@ _DEFAULT_CORPUS: list[tuple[tuple[str, ...], GroundedFact]] = [
                 "date, not left in the discussion."
             ),
             source_id="policy/meeting-follow-through",
-            citation="Meeting Follow-through Policy §1.2",
+            citation="Meeting Follow-through Policy — Action items must be tracked, not remembered",
         ),
     ),
 ]

@@ -17,7 +17,8 @@ def test_fake_knowledge_grounds_by_keyword() -> None:
     kb = FakeKnowledgeProvider()
     facts = kb.ground("promise SSO is GA by next week")
     assert facts, "expected a grounded fact for a GA promise"
-    assert facts[0].citation == "GA Readiness Policy §2.1"
+    assert facts[0].citation.startswith("Customer Commitment & GA Readiness Policy")
+    assert "GA Readiness Policy" in facts[0].citation
     assert facts[0].source_id
 
 

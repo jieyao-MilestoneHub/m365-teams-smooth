@@ -16,6 +16,8 @@ from azure.search.documents.knowledgebases.models import (
     KnowledgeBaseMessageTextContent,
     KnowledgeBaseRetrievalRequest,
     KnowledgeRetrievalLowReasoningEffort,
+    KnowledgeRetrievalMediumReasoningEffort,
+    KnowledgeRetrievalMinimalReasoningEffort,
     SearchIndexKnowledgeSourceParams,
 )
 
@@ -28,6 +30,14 @@ _CLAIM_KEYS = ("content", "page_chunk", "chunk", "text", "body", "summary", "des
 _TITLE_KEYS = ("title", "name", "heading", "source")
 _MAX_CLAIM_CHARS = 600
 
+# How hard the knowledge base plans/decomposes the query before hybrid (BM25+vector) + semantic
+# rerank. Medium copes better than Low with a larger, noisier corpus (adversarial near-misses).
+_REASONING_EFFORTS = {
+    "minimal": KnowledgeRetrievalMinimalReasoningEffort,
+    "low": KnowledgeRetrievalLowReasoningEffort,
+    "medium": KnowledgeRetrievalMediumReasoningEffort,
+}
+
 
 class FoundryIqKnowledgeProvider(KnowledgePort):
     """Grounds queries against a Foundry IQ knowledge base and returns cited facts."""
@@ -39,11 +49,15 @@ class FoundryIqKnowledgeProvider(KnowledgePort):
         knowledge_base_name: str,
         knowledge_source_name: str,
         timeout: float | None = None,
+        reasoning_effort: str = "medium",
         credential: TokenCredential | None = None,
         client: KnowledgeBaseRetrievalClient | None = None,
     ) -> None:
         self._knowledge_source_name = knowledge_source_name
         self._timeout = timeout
+        self._reasoning_effort = _REASONING_EFFORTS.get(
+            reasoning_effort.lower(), KnowledgeRetrievalMediumReasoningEffort
+        )()
         self._client = client or KnowledgeBaseRetrievalClient(
             endpoint=endpoint,
             knowledge_base_name=knowledge_base_name,
@@ -66,7 +80,7 @@ class FoundryIqKnowledgeProvider(KnowledgePort):
                 )
             ],
             include_activity=False,
-            retrieval_reasoning_effort=KnowledgeRetrievalLowReasoningEffort(),
+            retrieval_reasoning_effort=self._reasoning_effort,
         )
         # Bound the outbound search call; azure-core honors a per-operation timeout kwarg.
         if self._timeout is not None:
