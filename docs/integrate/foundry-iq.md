@@ -40,10 +40,10 @@ No key goes in the configuration — grant your identity (or the hosting platfor
 identity) access to the Search service instead.
 
 **What to put in the KB — and how retrieval works.** The corpus is version-controlled under
-[`knowledge/corpus/`](../../knowledge/corpus/): a *realistic* company knowledge base (everyday
-meeting notes + policies), deliberately mixed with **adversarial near-misses and off-topic noise** so
-retrieval quality is demonstrable, not assumed. Retrieval is **professional-grade RAG**, adapting
-Anthropic's *Contextual Retrieval* onto Azure / Foundry IQ:
+[`assets/knowledge-corpus/`](../../assets/knowledge-corpus/): a *realistic* company knowledge base
+(everyday meeting notes + policies), deliberately mixed with **adversarial near-misses and off-topic
+noise** so retrieval is tested against distractors, not assumed. Retrieval adapts Anthropic's
+*Contextual Retrieval* onto Azure / Foundry IQ:
 
 - **Contextual chunking** — `backend/scripts/seed_knowledge.py` generates a short LLM context prefix
   per `##` section (situating it in its document) and stores it in a searchable `context` field, so

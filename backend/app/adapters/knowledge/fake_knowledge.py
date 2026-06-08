@@ -10,8 +10,8 @@ from app.domain import GroundedFact
 from app.ports.knowledge import KnowledgePort
 
 # (keywords, fact) pairs. A fact is surfaced when any of its keywords appears in the query. The
-# citations mirror the live Foundry IQ corpus titles (knowledge/corpus/) so local and live ground
-# the same policies.
+# citations mirror the live Foundry IQ corpus titles (assets/knowledge-corpus/) so local and live
+# ground the same policies.
 _DEFAULT_CORPUS: list[tuple[tuple[str, ...], GroundedFact]] = [
     (
         ("ga", "general availability", "promise", "sso"),

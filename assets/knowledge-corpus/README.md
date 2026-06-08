@@ -6,7 +6,8 @@ docs — not as demo-tailored snippets. `backend/scripts/seed_knowledge.py` chun
 section, generates an Anthropic-style **contextual prefix** per chunk, embeds `context + chunk`, and
 pushes to the index; retrieval is hybrid (BM25 + vector) + semantic rerank.
 
-The corpus is deliberately **noisy** so retrieval quality is demonstrable, not assumed. Three roles:
+The corpus is deliberately **noisy** so retrieval can be tested against distractors, not assumed.
+Three roles:
 
 ## Targets (a trial should retrieve these)
 - `policies/release-change-management.md` — Reschedule trial (controlling policy for a date change).

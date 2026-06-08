@@ -22,7 +22,7 @@ Foundry IQ as the retrieval surface rather than replace it with a bespoke pipeli
 
 ## Decision
 
-1. **A realistic, version-controlled corpus** under `knowledge/corpus/`: everyday meeting notes +
+1. **A realistic, version-controlled corpus** under `assets/knowledge-corpus/`: everyday meeting notes +
    company policies written as a believable company KB, *not* demo-tailored. It deliberately includes
    **adversarial near-misses** (a deprecated policy version, a same-vocabulary room-booking doc, a
    different project's standup) and **off-topic noise**, so retrieval quality is demonstrable.
@@ -40,11 +40,11 @@ Foundry IQ as the retrieval surface rather than replace it with a bespoke pipeli
 
 ## Consequences
 
-- Grounding is now a credible, professional-grade RAG capability, not a plausible-looking lookup: the
-  corpus is realistic and the eval proves the right policy wins over deliberate distractors.
+- Grounding is now a tested retrieval capability rather than an untested lookup: the corpus is
+  realistic and the eval shows the right policy wins over deliberate distractors.
 - The KB is reproducible from source: re-seeding is one idempotent command, keyless.
-- Foundry IQ stays the retrieval surface (requirement preserved); the professionalism lives in corpus
-  construction + the contextual index, not in a replacement pipeline.
+- Foundry IQ stays the retrieval surface (requirement preserved); retrieval quality comes from corpus
+  construction + the contextual index, not from a replacement pipeline.
 - The offline `FakeKnowledgeProvider` remains the default for local/credential-free runs, with its
   citations mirroring the live corpus so the two surfaces ground the same policies.
 - Cost: seeding makes one small `gpt-4o-mini` call per chunk plus one embedding; trivial and one-off.
