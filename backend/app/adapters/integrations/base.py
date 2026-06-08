@@ -36,6 +36,9 @@ class BaseIntegrationAdapter(IntegrationAdapter):
 
     # Adapters that do real I/O receive a config-driven policy; mocks keep this disabled default.
     _retry: RetryPolicy = RetryPolicy.disabled()
+    # Read-only-real adapters read live data but never mutate; a LIVE write against one degrades to
+    # a predicted effect (as a dry-run would) instead of failing the run. Default: writes apply.
+    _writes_enabled: bool = True
 
     def __init__(self, *, retry: RetryPolicy | None = None) -> None:
         if retry is not None:
@@ -67,8 +70,9 @@ class BaseIntegrationAdapter(IntegrationAdapter):
         except Exception as exc:  # noqa: BLE001
             return self._failed(step, self._map_error(exc), before=None)
         try:
-            if mode is RunMode.DRY_RUN:
-                # A dry-run predicts only — no side effects, so retry liberally.
+            if mode is RunMode.DRY_RUN or not self._writes_enabled:
+                # A dry-run — or any write against a read-only-real adapter — predicts only, with no
+                # side effects, so retry liberally.
                 predicted = self._with_retry(
                     lambda: self._predict(step, before), RetryClass.LIBERAL
                 )
@@ -86,6 +90,7 @@ class BaseIntegrationAdapter(IntegrationAdapter):
                 status=StepStatus.OK,
                 before=before,
                 after=after,
+                resource_url=self._resource_url(after),
                 rollback=self._rollback(step, before),
             )
         except Exception as exc:  # noqa: BLE001
@@ -150,6 +155,30 @@ class BaseIntegrationAdapter(IntegrationAdapter):
             error=str(error),
             rollback=rollback,
         )
+
+    # --- resource link -----------------------------------------------------
+    _URL_KEYS = ("html_url", "webUrl", "webLink", "url")
+
+    def _resource_url(self, after: dict[str, object]) -> str | None:
+        """A web link to the modified resource, if the after-state carries one. Scans the top level
+        and one level into nested objects (e.g. ``after['milestone']['html_url']``)."""
+
+        def _link_in(obj: dict[str, object]) -> str | None:
+            for key in self._URL_KEYS:
+                value = obj.get(key)
+                if isinstance(value, str) and value.startswith("http"):
+                    return value
+            return None
+
+        direct = _link_in(after)
+        if direct is not None:
+            return direct
+        for value in after.values():
+            if isinstance(value, dict):
+                nested = _link_in(value)
+                if nested is not None:
+                    return nested
+        return None
 
     # --- subclass hooks ----------------------------------------------------
     @abstractmethod

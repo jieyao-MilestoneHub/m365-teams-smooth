@@ -49,6 +49,9 @@ class StepResult(BaseModel):
     status: StepStatus
     before: dict[str, object] | None = None
     after: dict[str, object] | None = None
+    # A web link to the resource this step modified (e.g. the updated GitHub milestone), when the
+    # adapter's after-state carries one — so a reviewer can open it from the run page or card.
+    resource_url: str | None = None
     predicted: PredictedEffect | None = None
     error: str | None = None
     rollback: RollbackHint | None = None

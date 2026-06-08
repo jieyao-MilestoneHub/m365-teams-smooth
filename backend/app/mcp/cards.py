@@ -127,7 +127,20 @@ def _outcome_line(results: list[StepResult]) -> str:
         if predicted == total
         else f"{applied}/{total} step(s) applied"
     )
+    if 0 < predicted < total:
+        line += f" ({predicted} predicted)"
     return f"{line}, {failed} failed" if failed else line
+
+
+def _resource_label(url: str) -> str:
+    """A human label for a modified-resource link, inferred from the URL shape."""
+    if "/milestone" in url:
+        return "View the updated milestone"
+    if "#issuecomment" in url:
+        return "View the comment"
+    if "/issues/" in url or "/pull/" in url:
+        return "View the issue"
+    return "View the updated resource"
 
 
 def _note_input(placeholder: str, *, required: bool) -> dict[str, object]:
@@ -299,6 +312,11 @@ def build_verdict_result_card(
         body.append(_text(outcome))
     if audit_id:
         body.append(_subtle(_text(f"Audit: {audit_id}")))
+
+    # A direct link to each resource the run actually modified, so a reviewer can open it.
+    for result in trial.results:
+        if result.status is StepStatus.OK and result.resource_url:
+            body.append(_text(f"[{_resource_label(result.resource_url)} ↗]({result.resource_url})"))
 
     # Surface only what needs attention; successful steps need no per-step recap here.
     for result in trial.results:

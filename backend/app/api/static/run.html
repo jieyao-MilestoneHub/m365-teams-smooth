@@ -216,6 +216,9 @@
   .err { color: var(--red); font-size: 11.5px; }
   .rollback { color: var(--faint); font-size: 11px; }
   .rollback::before { content: "↩ "; }
+  .reslink-row { margin-top: 5px; }
+  a.reslink { color: var(--blue); font-size: 11.5px; text-decoration: none; }
+  a.reslink:hover { text-decoration: underline; }
 
   /* ---------- transcript + audit ---------- */
   .transcript { max-height: 300px; overflow-y: auto; background: #0c0f15; border: 1px solid var(--border); border-radius: 8px; padding: 8px 0; }
@@ -467,6 +470,28 @@ function stageBody(id) {
       ? `<div class="row">✓ ${esc(x.step_id)} — effect matches the approved parameters</div>`
       : `<div class="row sev-high">⚠ ${esc(x.step_id)} — ${esc((x.mismatches || []).join("; "))}</div>`).join("");
   }
+  if (id === "execute") {
+    // Every executed step — applied, predicted, or failed — with a link to any modified resource.
+    const stepEvents = events.filter(e => (e.kind === "step_started" || e.kind === "step_finished") && e.name);
+    if (!stepEvents.length) return "";
+    const results = Object.fromEntries(((t.results) || []).map(r => [r.step_id, r]));
+    const byStep = {};
+    for (const e of stepEvents) {
+      const slot = byStep[e.name] = byStep[e.name] || { id: e.name };
+      slot.system = (e.payload && e.payload.system) || slot.system || "";
+      slot.cap = (e.payload && e.payload.capability) || slot.cap || e.name;
+      if (e.kind === "step_finished") { slot.status = e.status; slot.error = e.payload && e.payload.error; }
+      else if (!slot.status) slot.status = "running";
+    }
+    return Object.values(byStep).map(s => {
+      const r = results[s.id];
+      const label = s.status === "dry_run" ? "predicted" : s.status === "ok" ? "applied" : (s.status || "running");
+      const cls = s.status === "failed" ? " sev-high" : "";
+      const err = s.error ? ` <span class="sev-high">— ${esc(s.error)}</span>` : "";
+      const link = (r && r.resource_url) ? ` <a class="reslink" href="${esc(r.resource_url)}" target="_blank" rel="noopener">↗ resource</a>` : "";
+      return `<div class="row${cls}">• <span class="sys">[${esc(s.system)}]</span> ${esc(s.cap)} → <b>${esc(label)}</b>${err}${link}</div>`;
+    }).join("");
+  }
   if (id === "audit") {
     return view.audit_id ? `<div class="row">append-only record <span class="sys">${esc(view.audit_id)}</span> written</div>` : "";
   }
@@ -476,11 +501,11 @@ function stageBody(id) {
 function renderStages() {
   const open = new Set([...document.querySelectorAll("details.stage[open]")].map(d => d.dataset.id));
   const first = !document.querySelector("details.stage");
-  document.getElementById("stages").innerHTML = STAGES.filter(s => !s.gate && s.id !== "execute").map(s => {
+  document.getElementById("stages").innerHTML = STAGES.filter(s => !s.gate).map(s => {
     const state = nodeState(s.id === "verdict" ? s : s), fin = finished(s.id);
     const body = stageBody(s.id);
     const cls = { done: "ok", run: "warn", fail: "bad" }[state] || "";
-    const isOpen = open.has(s.id) || (first && body && ["impact", "policy"].includes(s.id));
+    const isOpen = open.has(s.id) || (first && body && ["impact", "policy", "execute"].includes(s.id));
     return `<details class="stage" data-id="${s.id}" ${isOpen ? "open" : ""}>
       <summary><span class="chev">▶</span><span class="s-glyph ${cls}">${GLYPH[state]}</span>
         <span class="s-name">${s.id}</span>${s.role ? `<span class="s-role">${s.role}</span>` : ""}
@@ -564,6 +589,7 @@ function renderLanes() {
       const label = st === "dry_run" ? "predicted" : st === "ok" ? "applied" : st;
       return `<div class="step"><div class="step-h">
         <span class="cap">${esc(s.cap)}</span><span class="st ${esc(st)}">${esc(label)}</span></div>${diff}` +
+        (r && r.resource_url ? `<div class="reslink-row"><a class="reslink" href="${esc(r.resource_url)}" target="_blank" rel="noopener">↗ View resource</a></div>` : "") +
         (s.error || (r && r.error) ? `<div class="err">${esc(s.error || r.error)}</div>` : "") +
         (r && r.rollback ? `<div class="rollback">${esc(r.rollback.instruction)}</div>` : "") + `</div>`;
     }).join("");
