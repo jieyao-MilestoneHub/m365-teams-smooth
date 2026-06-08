@@ -234,6 +234,7 @@ class CourtService:
                 execution_status=status,
                 audit_id=audit_id,
                 idempotent=True,
+                run_url=self.run_link(thread_id),
             )
 
         verdict = Verdict(
@@ -275,6 +276,7 @@ class CourtService:
             thread_id=thread_id,
             execution_status=str(state.get("status", "")),
             audit_id=audit_id if isinstance(audit_id, str) else None,
+            run_url=self.run_link(thread_id),
         )
 
     # --- Identity-aware approval routing (two-gate workflow + separation of duties) ---
@@ -759,4 +761,5 @@ class CourtService:
                 self._approvals is not None
                 and any(e.decision is ApprovalDecision.ACK for e in self._events(thread_id))
             ),
+            run_url=self.run_link(thread_id),
         )

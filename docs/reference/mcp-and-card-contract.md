@@ -15,11 +15,16 @@ the service DTOs and domain types in [domain & capability schema](./domain-and-c
 
 `TrialSummary` (also the card's primary payload):
 `{ thread_id, change_id, status, risk_level, requires_approval, unsafe, plan_kind,
-verdict_options: string[], errors: string[] }`.
+verdict_options: string[], errors: string[], run_url: string | null }`.
 
-`CastResult`: `{ thread_id, status, audit_id, idempotent }`. `cast_verdict` is **idempotent** — the
-same `(thread_id, idempotency_key)` returns the recorded result with `idempotent: true` and never
-re-executes. This parity holds across MCP and the (health-only) REST surface.
+`CastResult`: `{ thread_id, verdict_recorded, execution_status, audit_id, idempotent, run_url: string
+| null }`. `cast_verdict` is **idempotent** — the same `(thread_id, idempotency_key)` returns the
+recorded result with `idempotent: true` and never re-executes. This parity holds across MCP and the
+(health-only) REST surface.
+
+`run_url` is the signed, read-only run-page deep link for the trial (`/runs/{thread_id}?t=…`), or
+`null` when the run page is disabled (no `RUN_LINK_SECRET`). The agent links to it for the full
+pipeline and audit instead of re-listing them in chat.
 
 ## MCP resources
 

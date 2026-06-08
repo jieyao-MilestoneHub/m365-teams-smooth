@@ -69,3 +69,33 @@ def test_low_risk_change_auto_completes() -> None:
     trial = service.get_trial(summary.thread_id)
     assert trial is not None
     assert trial.change.change_id == summary.change_id
+
+
+def test_run_url_surfaced_in_summary_and_cast_when_run_page_enabled() -> None:
+    # With a run-page secret configured, both the summary and the cast result carry the signed
+    # deep link so the agent can hand the user one place to inspect the full pipeline and audit.
+    service = build_court_service(
+        Settings(
+            force_all_mock=True,
+            db_url="sqlite:///:memory:",
+            dry_run_default=True,
+            run_link_secret="test-secret",
+            public_base_url="https://court.example.com",
+        )
+    )
+    summary = service.submit_change("slip the launch from 2026-06-10 to 2026-06-17")
+    assert summary.run_url is not None
+    assert f"/runs/{summary.thread_id}" in summary.run_url
+
+    cast = service.cast_verdict(summary.thread_id, VerdictType.APPROVE)
+    assert cast.run_url is not None
+    assert f"/runs/{summary.thread_id}" in cast.run_url
+
+
+def test_run_url_is_none_when_run_page_disabled() -> None:
+    service = build_court_service(_settings())  # no run_link_secret
+    summary = service.submit_change("slip the launch from 2026-06-10 to 2026-06-17")
+    assert summary.run_url is None
+
+    cast = service.cast_verdict(summary.thread_id, VerdictType.APPROVE)
+    assert cast.run_url is None
