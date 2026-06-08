@@ -42,3 +42,18 @@ location        = "eastus"
 # azure_openai_deployment = "gpt-4o"        # must accept the max_tokens parameter
 # llm_api_key             = ""              # demo: an Azure OpenAI key; omit for keyless (managed identity)
 # approver_directory      = "eng_lead:<approver-upn>,comms:<approver-upn>,security_lead:<approver-upn>,account_owner:<approver-upn>,manager:<approver-upn>"
+
+# --- Bot surface (Teams approval cards with native buttons) ---
+# create_bot registers an Azure Bot + Teams channel pointing at the backend's /api/messages. Leave
+# create_bot_app = true to let Terraform register the bot's multi-tenant app, or supply one you
+# registered yourself. Without these the backend still serves the bot endpoint anonymously (local
+# Playground only) — Teams needs the registration to authenticate and deliver activities.
+# create_bot       = false
+# create_bot_app   = true
+# bot_app_id       = ""              # only when create_bot_app = false (externally-registered bot app)
+# bot_app_password = ""              # only when create_bot_app = false (stored as a Container App secret)
+
+# --- Approval notifications (Teams activity-feed toasts; all optional, best-effort) ---
+# notify_mode        = "teams"      # empty leaves notifications off
+# notify_teams_app_id = ""          # Teams app (catalog) id the toast targets
+# notify_link_url     = ""          # override the deep-link target; defaults to the app surface

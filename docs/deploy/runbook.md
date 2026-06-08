@@ -94,10 +94,18 @@ azure_openai_endpoint   = "https://<your>.openai.azure.com"
 azure_openai_deployment = "gpt-4o"           # must accept the max_tokens parameter
 llm_api_key             = "<azure-openai-key>"   # demo route; omit for keyless (see note)
 approver_directory      = "eng_lead:<approver-upn>,comms:<approver-upn>,security_lead:<approver-upn>,account_owner:<approver-upn>,manager:<approver-upn>"
+notify_mode             = "teams"            # best-effort approval toasts via the Graph activity feed
+notify_teams_app_id     = "<teams-app-catalog-id>"
 ```
 
 Then `terraform apply` (Phase 1 step 3, or re-apply if you set these after the first apply).
 `DRY_RUN_DEFAULT` stays true, so every write is predicted — the demo is safe.
+
+> `terraform.tfvars` must stay **complete**: each secret and optional surface (graph/bot/notify) is
+> conditional on its variable, so re-applying with one left blank removes it from the live app. If an
+> instance was tuned with `az` after the original apply, push a new build with
+> `az containerapp update --image` rather than a blind `apply`, and reconcile deliberately later —
+> see [`../../infra/README.md`](../../infra/README.md) (*Updating vs reconciling*).
 
 Notes:
 - **Keyless instead of a key** (preferred for production): omit `llm_api_key`, and grant the
