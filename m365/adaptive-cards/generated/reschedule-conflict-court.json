@@ -49,7 +49,7 @@
     },
     {
       "type": "TextBlock",
-      "text": "    ↳ Launch Playbook §3.2",
+      "text": "    ↳ Release & Change Management Policy — Coordinated downstream updates",
       "wrap": true,
       "isSubtle": true,
       "spacing": "Small"
@@ -110,7 +110,7 @@
     },
     {
       "type": "TextBlock",
-      "text": "Approvers required (all): eng_lead, comms",
+      "text": "Approvers required (any): eng_lead, comms",
       "wrap": true
     }
   ],

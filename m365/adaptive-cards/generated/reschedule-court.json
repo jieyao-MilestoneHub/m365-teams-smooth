@@ -75,7 +75,7 @@
     },
     {
       "type": "TextBlock",
-      "text": "Approvers required (all): eng_lead, comms",
+      "text": "Approvers required (any): eng_lead, comms",
       "wrap": true
     }
   ],
