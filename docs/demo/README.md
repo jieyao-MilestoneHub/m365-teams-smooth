@@ -1,105 +1,79 @@
-# The demo — what it shows, why it exists, and where it goes from here
+# The demo — Informed Approval
 
-This folder is the home of everything demo-related: what the demonstration proves, how to
-reproduce every screen of it ([reproduce.md](reproduce.md)), the two-user approval walkthrough
-([two-user-demo.md](two-user-demo.md)), and the ordered prep list for running it live on a
-deployed environment ([demo-day-checklist.md](demo-day-checklist.md)).
+*One request. Four systems. No blind approval.* Approval is common; **informed** approval is rare.
+This single scenario shows the difference end to end, and it runs **credential-free** on a laptop.
 
-## Why this exists
+## The scenario
 
-Everyday decisions are made in chat faster than governance can keep up — "move the rehearsal",
-"create the action items", "post the weekly report", "promise the customer the feature". Each one
-quietly touches GitHub, calendars, task boards, channels, CRM. By the time anyone reviews the
-decision, the action has already happened, scattered across systems with no record of who agreed
-to what.
+A program manager types one sentence in Teams — **"move the rehearsal to 2026-06-16"** — and to
+them it's just changing a date. The court treats it as the cross-system change it really is, in
+three beats:
 
-AI Change Court puts the decision **on trial before it becomes action**: gather the cross-system
-impact evidence, draft a feasible plan — or refuse and propose a safer alternative — resolve who
-must approve, collect the verdict, execute, and keep an append-only audit. The differentiator is
-the refusal: the court doesn't just ask *how* to do something, it asks **whether it should be done
-at all** — and when the answer is no, it offers the safe path instead of a dead end.
-
-## What the demo shows
-
-The headline is one scenario — **Informed Approval** — shown end to end. *One request. Four systems.
-No blind approval.* The recording script is in [recording-runbook.md](recording-runbook.md); golden
-expectations in [reference/trials.md](../reference/trials.md).
-
-A program manager types one sentence in Teams — **"move the rehearsal to 2026-06-16"** — and to them
-it's just changing a date. The court treats it as the cross-system change it really is:
-
-1. **Impact before approval** — it reads the load-bearing date across four systems: the **GitHub**
+1. **Impact before approval.** It reads the load-bearing date across four systems: the **GitHub**
    `Launch Rehearsal` milestone, the **Outlook** calendar, dependent **Planner** tasks, and the
-   **Teams** announcement. Risk: HIGH.
-2. **Safety before execution** — 2026-06-16 collides with a real **Board review**, so the court
-   **refuses the request as posed** and proposes the next free day, 2026-06-17, as a safe
-   alternative (no plain approve is offered). The requester can propose it but cannot self-approve;
+   **Teams** announcement. Risk: **HIGH**, with an `eng_lead` + `comms` quorum.
+2. **Safety before execution.** 2026-06-16 collides with a real **Board review**, so the court
+   **refuses the request as posed** and proposes the next free day, **2026-06-17**, as a safe
+   alternative — no plain "approve" is offered. The requester can propose it but cannot self-approve;
    an *informed* approver — seeing the impact, the alternative, and the rollback hints — decides, and
    the run resumes from its durable checkpoint to execute.
-3. **Audit after action** — an append-only record of evidence, approvers, verdict, before/after, and
-   rollback hints.
+3. **Audit after action.** An append-only record of evidence, approvers, verdict, before/after
+   snapshots, and rollback hints.
 
-A fourth moment worth showing: appending "**and delete the old repo**" is **blocked at intake** —
-no registered capability supports it, so it is never planned or executed.
+One more moment worth showing: appending **"and delete the repo"** is **blocked at intake** — no
+registered capability supports it, so it is never planned or executed.
 
-The same engine handles more than the headline — show these for breadth if the audience wants it:
-**Meeting Actions** ("create action items from standup" — LOW risk, executes on the requester's
-authority), **Weekly Report** ("post the Project X weekly report" — cross-system activity aggregated
-into one post), and the governance trials (an unsafe customer promise → private-preview alternative;
-over-broad vendor access → least-privilege + auto-revoke). All are wired and tested.
+Every step runs through the same surfaces: the **Change Court Adaptive Card** (the decision UI), the
+**read-only pipeline run page** on a second screen (signed links, CI-style stage rail), and the
+append-only audit at the end.
 
-Every scenario runs through the same surfaces: the **Change Court Adaptive Card** (the decision UI),
-the **read-only pipeline run page** on a second screen (signed links, CI-style stage rail), and
-the append-only audit at the end.
+## Reproduce it (credential-free)
 
-## Why it matters — the potential
+Everything below is mocked, dry-run by default, and needs no Microsoft 365 tenant. Prerequisites:
+Python 3.11+ with [`uv`](https://docs.astral.sh/uv/), Node (for the Playground), and
+`cd backend && uv sync`.
 
-- **The pattern generalizes.** Anything that mutates systems on someone's say-so — access grants,
-  config changes, schedule moves, announcements, spend — fits the same trial shape. A new scenario
-  is one rule pack + one gatherer + one planner ([integrate/new-scenario.md](../integrate/new-scenario.md));
-  a new system is one adapter + one registration ([integrate/third-party-adapter.md](../integrate/third-party-adapter.md)).
-- **Refusal with an alternative is the missing primitive.** Automation that can only comply is
-  dangerous; automation that can only block is ignored. Proposing the safer path is what makes
-  governance something people accept.
-- **The audit is the product for the enterprise.** Every trial leaves evidence, approvers,
-  verdict, before/after, and rollback hints in an append-only record — the artifact compliance
-  actually asks for.
+```bash
+make demo     # runs the scenario end to end and prints each Change Court
+              # (evidence, safe alternative, approvers, verdict, audit id)
+make cards    # exports the Adaptive Card JSON to m365/adaptive-cards/generated/
+```
 
-## How it's technically realized
+Open any exported card in the [Adaptive Cards Designer](https://adaptivecards.io/designer) for a
+pixel-faithful, tenant-free preview.
 
-High level only — the six architecture views carry the detail
-([architecture/index.html](../architecture/index.html)):
+**Clickable cards with live verdict buttons** — the [Playground bot](../../m365/playground-bot/)
+renders the real cards with no tenant:
 
-- One LangGraph **court pipeline** with courtroom roles; the agent's freedom lives in perception
-  and generation, while risk, quorum, refusal, and execution gating stay deterministic
-  ([view ②](../architecture/02-court-pipeline.html)).
-- The **verdict is a durable interrupt** — submit returns immediately, the run resumes from its
-  checkpoint when a human decides, and a repeated verdict can never execute twice
-  ([view ③](../architecture/03-approval-sequence.html)).
-- **Microsoft platform integration**: Copilot/Teams entry, Azure AI Foundry for reasoning and
-  Foundry IQ knowledge grounding (keyless), Microsoft Graph and GitHub for evidence and execution
-  ([view ⑥](../architecture/06-platform-integration.html)).
-- **Dry-run by default**, real-vs-mock per system from configuration, and a kill-switch that runs
-  the entire pipeline with zero external credentials — which is exactly what makes the demo
-  reproducible on any laptop ([ADR-0007](../reference/adr/0007-dry-run-default-and-live-write-gating.md)).
+```bash
+make bot                                           # terminal 1 — bot + backend in-process
+npx @microsoft/teams-app-test-tool@latest start    # terminal 2 — opens the Playground UI
+```
 
-## How it extends and stays maintainable
+Type `move the rehearsal to 2026-06-16` into the Playground chat, watch the Change Court card
+render, and click the verdict buttons (`queue` lists pending approvals). With `RUN_LINK_SECRET` set,
+each card also carries a **View pipeline run** link to the read-only, signed run log
+(`/runs/<thread_id>`) — it inspects; decisions still happen only on the card.
 
-The extension seams are documented goal-by-goal in [integrate/](../integrate/README.md). The
-properties that keep maintenance honest: ports-and-adapters layering (the core never imports an
-SDK), rules as data (scenarios don't add code to the policy node), golden trial expectations
-enforced by tests, an append-only audit with a retention policy that reclaims working storage but
-never the record ([ADR-0008](../reference/adr/0008-context-and-storage-bounds.md)), and a
-verification gate (`scripts/verify.sh`) that must be green before any demo
-([../../verify.md](../../verify.md)).
+Verify before showing anyone:
 
-## Where to go
+```bash
+scripts/verify.sh   # trials + safety + MCP + quality gates (tenant checks report PENDING)
+```
 
-- **Record the live demo (real GitHub/Outlook/SharePoint), step by step** →
-  [recording-runbook.md](recording-runbook.md)
-- **Reproduce every screen, credential-free** → [reproduce.md](reproduce.md)
-- **Run the two-user approval flow** → [two-user-demo.md](two-user-demo.md)
-- **Which trial exercises which system (the recording lineup)** →
-  [integration-coverage.md](integration-coverage.md)
-- **Prep a live, deployed demo** → [demo-day-checklist.md](demo-day-checklist.md) +
-  the [deploy runbook](../deploy/runbook.md)
+## Grounding in real GitHub (optional)
+
+The reschedule moves a milestone titled `Launch Rehearsal`. To run it against a live repository,
+create that milestone in a throwaway repo (any due date) and point the GitHub adapter at it:
+
+```bash
+INTEGRATION_MODE=github:real GITHUB_TOKEN=<token> GITHUB_REPO=<owner/name> make demo
+```
+
+Every other system stays mocked. To run inside Copilot Chat / Teams, deploy the backend over public
+HTTPS with Entra ID OAuth2 and sideload the declarative agent in `m365/` (the codebase and the
+[Microsoft 365 service docs](../README.md#microsoft-365--azure-service-reference) cover the steps).
+
+> The same engine also handles additional capabilities that stay wired and tested — *Meeting Actions*
+> (standup follow-ups become owned, dated tasks) and *Weekly Report* (cross-system activity
+> aggregated into one channel post). They are not part of the headline demo.

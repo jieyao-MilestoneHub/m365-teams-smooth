@@ -1,8 +1,7 @@
 # Adaptive Cards
 
 The **Change Court card** is built at runtime from a trial's data by `backend/app/mcp/cards.py`
-(`build_change_court_card` / `build_verdict_result_card`), following the bindings in
-[`docs/reference/mcp-and-card-contract.md`](../../docs/reference/mcp-and-card-contract.md).
+(`build_change_court_card` / `build_verdict_result_card`).
 
 - [`change-court.sample.json`](./change-court.sample.json) — an illustrative card rendered for the
   Customer Promise trial (the unsafe-promise → safe-alternative case), with the live `thread_id`

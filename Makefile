@@ -19,7 +19,7 @@ help:
 	@echo "  setup-demo-apply  create the missing demo resources (idempotent)"
 	@echo "  compose-up   run the backend in Docker (fully mocked)"
 	@echo "  bot          run the Change Court Playground bot (tenant-free; see m365/playground-bot)"
-	@echo "  package      build the M365 app package (m365/build/appPackage.zip; see docs/deploy.md)"
+	@echo "  package      build the M365 app package (m365/build/appPackage.zip)"
 
 sync:
 	cd backend && uv sync

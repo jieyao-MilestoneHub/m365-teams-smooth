@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AI Change Court — Data flow diagram</title>
+<style>
+  :root {
+    --ink:#1c2430; --muted:#5b6675; --line:#d8dee6; --bg:#fff; --page:#f4f6f9;
+    --entry:#6d4ca8; --facade:#2a6fb0; --core:#1f7a8c; --port:#46708a;
+    --adapter:#b5651d; --domain:#1f9d57; --data:#5b6675; --gate:#c9851b; --danger:#c0392b;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--page); color:var(--ink);
+    font:16px/1.6 -apple-system,"Segoe UI","Noto Sans TC",Roboto,sans-serif; }
+  .wrap { max-width:1040px; margin:0 auto; padding:32px 20px 72px; }
+  header.hero { background:linear-gradient(135deg,#2a6fb0,#1c4f80); color:#fff;
+    border-radius:14px; padding:22px 28px; margin-bottom:16px; }
+  header.hero h1 { margin:0 0 6px; font-size:25px; }
+  header.hero p { margin:0; opacity:.93; font-size:14.5px; }
+  nav.pager { display:flex; justify-content:space-between; gap:12px; font-size:13.5px;
+    color:var(--muted); margin:0 2px 18px; }
+  nav.pager a { color:#2a6fb0; text-decoration:none; }
+  nav.pager a:hover { text-decoration:underline; }
+  figure { margin:0 0 8px; background:var(--bg); border:1px solid var(--line);
+    border-radius:12px; padding:16px 16px 10px; overflow-x:auto; }
+  figcaption { color:var(--muted); font-size:13px; padding:6px 4px 2px; }
+  svg { display:block; width:100%; height:auto; min-width:560px; max-width:560px; margin:0 auto; }
+  .legend { display:flex; flex-wrap:wrap; gap:8px 16px; margin:10px 2px 16px; font-size:13px;
+    color:var(--muted); }
+  .legend span { display:inline-flex; align-items:center; gap:6px; }
+  .legend i { width:14px; height:14px; border-radius:3px; display:inline-block;
+    border:1px solid rgba(0,0,0,.12); }
+  .legend i.sq { border-radius:0; }
+  .legend i.store { border-radius:0; border-top:3px solid #5b6675; }
+  h2 { font-size:18px; margin:28px 0 6px; }
+  ul { margin:8px 0 16px; padding-left:20px; }
+  ul li { margin:5px 0; color:var(--muted); font-size:14px; }
+  code { font-family:"SFMono-Regular",Consolas,monospace; font-size:12.5px;
+    background:#f0f3f7; padding:1px 5px; border-radius:4px; }
+  footer { margin-top:32px; color:var(--muted); font-size:13px; text-align:center; }
+  text { font-family:-apple-system,"Segoe UI","Noto Sans TC",sans-serif; fill:var(--ink); }
+  .t-title { font-size:13px; font-weight:700; }
+  .t-sub { font-size:10.5px; fill:#5b6675; }
+  .t-white { fill:#fff; }
+  .t-flow { font-size:10.5px; fill:#3a4654; }
+  .t-lbl { font-size:10px; fill:#5b6675; }
+  .edge { stroke:#9aa7b4; stroke-width:1.6; fill:none; }
+  .edge-dash { stroke:#9aa7b4; stroke-width:1.4; fill:none; stroke-dasharray:5 4; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>Data flow diagram</h1>
+  <p>What each pipeline stage produces and consumes: a request becomes a validated change, evidence,
+     a plan, a verdict, results, and finally an immutable audit record.</p>
+</header>
+
+<nav class="pager">
+  <span><a href="layers.html">← Layers</a></span>
+  <span><a href="index.html">⌂ All diagrams</a></span>
+  <span><a href="sequence.html">Sequence →</a></span>
+</nav>
+
+<div class="legend">
+  <span><i style="background:#e3f1f3;border-color:#1f7a8c"></i>process (graph node)</span>
+  <span><i class="sq" style="background:#6d4ca8;border-color:#6d4ca8"></i>external entity</span>
+  <span><i class="store" style="background:#eef1f4;border-color:#8893a0"></i>data store</span>
+  <span><i style="background:#fff4e0;border-color:#c9851b"></i>durable interrupt</span>
+  <span>→ data flow (labeled)</span>
+</div>
+
+<figure>
+<svg viewBox="0 0 560 770" role="img" aria-label="Data flow diagram of the court pipeline">
+  <defs>
+    <marker id="a" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#6b7886"/>
+    </marker>
+    <marker id="as" markerWidth="9" markerHeight="9" refX="2" refY="4.5" orient="auto">
+      <path d="M9,0 L0,4.5 L9,9 z" fill="#6b7886"/>
+    </marker>
+  </defs>
+
+  <!-- ===== center vertical pipeline ===== -->
+  <!-- Requester (external entity) -->
+  <rect x="170" y="14" width="220" height="40" fill="#6d4ca8"/>
+  <text x="280" y="39" text-anchor="middle" class="t-title t-white">Requester — Teams / Copilot</text>
+
+  <!-- intake -->
+  <rect x="170" y="92" width="220" height="46" rx="10" fill="#e3f1f3" stroke="#1f7a8c"/>
+  <text x="280" y="112" text-anchor="middle" class="t-title" fill="#1f7a8c">intake</text>
+  <text x="280" y="128" text-anchor="middle" class="t-sub">parse → Change · validate vs capabilities</text>
+
+  <!-- impact -->
+  <rect x="170" y="174" width="220" height="46" rx="10" fill="#e3f1f3" stroke="#1f7a8c"/>
+  <text x="280" y="194" text-anchor="middle" class="t-title" fill="#1f7a8c">impact</text>
+  <text x="280" y="210" text-anchor="middle" class="t-sub">gather cross-system evidence (reads)</text>
+
+  <!-- options -->
+  <rect x="170" y="256" width="220" height="46" rx="10" fill="#e3f1f3" stroke="#1f7a8c"/>
+  <text x="280" y="276" text-anchor="middle" class="t-title" fill="#1f7a8c">options</text>
+  <text x="280" y="292" text-anchor="middle" class="t-sub">feasible plan · or safe alternative</text>
+
+  <!-- policy -->
+  <rect x="170" y="338" width="220" height="46" rx="10" fill="#e3f1f3" stroke="#1f7a8c"/>
+  <text x="280" y="358" text-anchor="middle" class="t-title" fill="#1f7a8c">policy + quorum</text>
+  <text x="280" y="374" text-anchor="middle" class="t-sub">risk score · required approvers (rules = data)</text>
+
+  <!-- verdict gate (durable interrupt) -->
+  <rect x="170" y="420" width="220" height="62" rx="10" fill="#fff4e0" stroke="#c9851b"/>
+  <text x="280" y="442" text-anchor="middle" class="t-title" fill="#b5731a">verdict gate — durable interrupt</text>
+  <text x="280" y="458" text-anchor="middle" class="t-sub">interrupt_before=[execute]</text>
+  <text x="280" y="472" text-anchor="middle" class="t-sub">checkpointed by thread_id · idempotent resume</text>
+
+  <!-- execute -->
+  <rect x="170" y="520" width="220" height="46" rx="10" fill="#e3f1f3" stroke="#1f7a8c"/>
+  <text x="280" y="540" text-anchor="middle" class="t-title" fill="#1f7a8c">execute</text>
+  <text x="280" y="556" text-anchor="middle" class="t-sub">per adapter · DRY_RUN predicts, no writes</text>
+
+  <!-- verify -->
+  <rect x="170" y="602" width="220" height="46" rx="10" fill="#e3f1f3" stroke="#1f7a8c"/>
+  <text x="280" y="622" text-anchor="middle" class="t-title" fill="#1f7a8c">verify</text>
+  <text x="280" y="638" text-anchor="middle" class="t-sub">live writes checked vs reviewed plan</text>
+
+  <!-- audit -->
+  <rect x="170" y="684" width="220" height="46" rx="10" fill="#e3f1f3" stroke="#1f7a8c"/>
+  <text x="280" y="704" text-anchor="middle" class="t-title" fill="#1f7a8c">audit</text>
+  <text x="280" y="720" text-anchor="middle" class="t-sub">append-only before/after + rollback hints</text>
+
+  <!-- ===== vertical data flows ===== -->
+  <line x1="280" y1="54"  x2="280" y2="90"  class="edge" marker-end="url(#a)"/>
+  <text x="290" y="76"  class="t-flow">raw request</text>
+  <line x1="280" y1="138" x2="280" y2="172" class="edge" marker-end="url(#a)"/>
+  <text x="290" y="160" class="t-flow">Change (validated)</text>
+  <line x1="280" y1="220" x2="280" y2="254" class="edge" marker-end="url(#a)"/>
+  <text x="290" y="242" class="t-flow">ImpactEvidence</text>
+  <line x1="280" y1="302" x2="280" y2="336" class="edge" marker-end="url(#a)"/>
+  <text x="290" y="324" class="t-flow">ExecutionPlan | safe alternative</text>
+  <line x1="280" y1="384" x2="280" y2="418" class="edge" marker-end="url(#a)"/>
+  <text x="290" y="406" class="t-flow">Risk + Quorum + verdict options</text>
+  <line x1="280" y1="482" x2="280" y2="518" class="edge" marker-end="url(#a)"/>
+  <text x="290" y="504" class="t-flow">approved → resume (honors run mode)</text>
+  <line x1="280" y1="566" x2="280" y2="600" class="edge" marker-end="url(#a)"/>
+  <text x="290" y="588" class="t-flow">Results (before/after)</text>
+  <line x1="280" y1="648" x2="280" y2="682" class="edge" marker-end="url(#a)"/>
+  <text x="290" y="670" class="t-flow">verified results</text>
+
+  <!-- ===== right-side data stores ===== -->
+  <!-- capability registry -->
+  <rect x="430" y="96" width="120" height="40" fill="#eef1f4" stroke="#8893a0"/>
+  <line x1="430" y1="103" x2="550" y2="103" stroke="#8893a0"/>
+  <text x="490" y="118" text-anchor="middle" class="t-sub" font-weight="700">capability</text>
+  <text x="490" y="130" text-anchor="middle" class="t-sub">registry</text>
+  <line x1="430" y1="115" x2="392" y2="115" class="edge" marker-end="url(#a)"/>
+  <text x="406" y="90" text-anchor="middle" class="t-lbl">allowed actions</text>
+
+  <!-- integrated systems -->
+  <rect x="430" y="318" width="120" height="58" fill="#eef1f4" stroke="#8893a0"/>
+  <line x1="430" y1="325" x2="550" y2="325" stroke="#8893a0"/>
+  <text x="490" y="342" text-anchor="middle" class="t-sub" font-weight="700">integrated</text>
+  <text x="490" y="354" text-anchor="middle" class="t-sub">systems</text>
+  <text x="490" y="368" text-anchor="middle" class="t-lbl">via adapters</text>
+  <!-- impact reads -->
+  <line x1="392" y1="197" x2="430" y2="334" class="edge-dash" marker-end="url(#a)"/>
+  <text x="430" y="270" class="t-lbl">reads</text>
+  <!-- execute writes -->
+  <line x1="392" y1="540" x2="430" y2="360" class="edge" marker-end="url(#a)"/>
+  <text x="398" y="470" class="t-lbl">writes (live / dry-run)</text>
+
+  <!-- checkpoint store -->
+  <rect x="430" y="430" width="120" height="44" fill="#eef1f4" stroke="#8893a0"/>
+  <line x1="430" y1="437" x2="550" y2="437" stroke="#8893a0"/>
+  <text x="490" y="452" text-anchor="middle" class="t-sub" font-weight="700">checkpoint</text>
+  <text x="490" y="464" text-anchor="middle" class="t-sub">store (thread_id)</text>
+  <line x1="392" y1="451" x2="430" y2="451" class="edge" marker-start="url(#as)" marker-end="url(#a)"/>
+  <text x="411" y="423" text-anchor="middle" class="t-lbl">suspend / resume</text>
+
+  <!-- ===== left-side: approver + audit store ===== -->
+  <!-- approver -->
+  <rect x="10" y="424" width="150" height="46" fill="#6d4ca8"/>
+  <text x="85" y="446" text-anchor="middle" class="t-title t-white">Approver</text>
+  <text x="85" y="462" text-anchor="middle" class="t-sub t-white">(≠ requester)</text>
+  <line x1="160" y1="450" x2="168" y2="450" class="edge" marker-end="url(#a)"/>
+  <text x="120" y="416" text-anchor="middle" class="t-lbl">Verdict (approve / reject)</text>
+
+  <!-- append-only audit log -->
+  <rect x="10" y="686" width="150" height="44" fill="#eef1f4" stroke="#8893a0"/>
+  <line x1="10" y1="693" x2="160" y2="693" stroke="#8893a0"/>
+  <text x="85" y="708" text-anchor="middle" class="t-sub" font-weight="700">append-only</text>
+  <text x="85" y="720" text-anchor="middle" class="t-sub">audit log (immutable)</text>
+  <line x1="168" y1="707" x2="160" y2="707" class="edge" marker-end="url(#a)"/>
+  <text x="120" y="678" text-anchor="middle" class="t-lbl">AuditRecord</text>
+</svg>
+</figure>
+<figcaption>Boxes are processes (graph nodes); the purple squares are external entities; the
+  open-topped rectangles are data stores; each arrow is a labeled data flow. The orange node is the
+  durable interrupt where the run suspends for a verdict.</figcaption>
+
+<h2>Notes</h2>
+<ul>
+  <li>Dry-run is a state field, not a separate path: in <code>DRY_RUN</code> the execute node
+    predicts effects and performs no writes.</li>
+  <li>The verdict gate is a durable interrupt — the run is checkpointed by <code>thread_id</code> and
+    resumed when a verdict is cast; casting the same verdict twice is idempotent (no double execute).</li>
+  <li>Reads (impact) and writes (execute) reach every system only through adapters behind ports; the
+    capability registry blocks unsupported actions at intake before anything is planned.</li>
+</ul>
+
+<nav class="pager">
+  <span><a href="layers.html">← Layers</a></span>
+  <span><a href="index.html">⌂ All diagrams</a></span>
+  <span><a href="sequence.html">Sequence →</a></span>
+</nav>
+
+<footer>Self-contained static page — inline SVG, no external dependencies, works offline.</footer>
+
+</div>
+</body>
+</html>

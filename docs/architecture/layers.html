@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AI Change Court — Layer diagram</title>
+<style>
+  :root {
+    --ink:#1c2430; --muted:#5b6675; --line:#d8dee6; --bg:#fff; --page:#f4f6f9;
+    --entry:#6d4ca8; --facade:#2a6fb0; --core:#1f7a8c; --port:#46708a;
+    --adapter:#b5651d; --domain:#1f9d57; --data:#5b6675; --gate:#c9851b; --danger:#c0392b;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--page); color:var(--ink);
+    font:16px/1.6 -apple-system,"Segoe UI","Noto Sans TC",Roboto,sans-serif; }
+  .wrap { max-width:1040px; margin:0 auto; padding:32px 20px 72px; }
+  header.hero { background:linear-gradient(135deg,#2a6fb0,#1c4f80); color:#fff;
+    border-radius:14px; padding:22px 28px; margin-bottom:16px; }
+  header.hero h1 { margin:0 0 6px; font-size:25px; }
+  header.hero p { margin:0; opacity:.93; font-size:14.5px; }
+  nav.pager { display:flex; justify-content:space-between; gap:12px; font-size:13.5px;
+    color:var(--muted); margin:0 2px 18px; }
+  nav.pager a { color:#2a6fb0; text-decoration:none; }
+  nav.pager a:hover { text-decoration:underline; }
+  figure { margin:0 0 8px; background:var(--bg); border:1px solid var(--line);
+    border-radius:12px; padding:16px 16px 10px; overflow-x:auto; }
+  figcaption { color:var(--muted); font-size:13px; padding:6px 4px 2px; }
+  svg { display:block; width:100%; height:auto; min-width:720px; }
+  .legend { display:flex; flex-wrap:wrap; gap:8px 16px; margin:10px 2px 16px; font-size:13px;
+    color:var(--muted); }
+  .legend span { display:inline-flex; align-items:center; gap:6px; }
+  .legend i { width:14px; height:14px; border-radius:3px; display:inline-block;
+    border:1px solid rgba(0,0,0,.12); }
+  .legend i.dash { border-style:dashed; }
+  h2 { font-size:18px; margin:28px 0 6px; }
+  ul { margin:8px 0 16px; padding-left:20px; }
+  ul li { margin:5px 0; color:var(--muted); font-size:14px; }
+  code { font-family:"SFMono-Regular",Consolas,monospace; font-size:12.5px;
+    background:#f0f3f7; padding:1px 5px; border-radius:4px; }
+  footer { margin-top:32px; color:var(--muted); font-size:13px; text-align:center; }
+  text { font-family:-apple-system,"Segoe UI","Noto Sans TC",sans-serif; fill:var(--ink); }
+  .t-title { font-size:13.5px; font-weight:700; }
+  .t-sub { font-size:11px; fill:#5b6675; }
+  .t-white { fill:#fff; }
+  .t-lbl { font-size:10.5px; fill:#5b6675; }
+  .edge { stroke:#9aa7b4; stroke-width:1.6; fill:none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>Layer diagram</h1>
+  <p>One deployable backend under strict dependency inversion: the decision core depends only on
+     ports, never on an SDK, ORM, or LLM client.</p>
+</header>
+
+<nav class="pager">
+  <span><a href="index.html">⌂ All diagrams</a></span>
+  <span></span>
+  <span><a href="data-flow.html">Data flow →</a></span>
+</nav>
+
+<div class="legend">
+  <span><i style="background:#6d4ca8"></i>M365 entry</span>
+  <span><i style="background:#2a6fb0"></i>façade (mcp / api)</span>
+  <span><i style="background:#1f7a8c"></i>core (services / agent)</span>
+  <span><i style="background:#46708a" class="dash"></i>ports — DIP boundary</span>
+  <span><i style="background:#b5651d"></i>adapters</span>
+  <span><i style="background:#1f9d57"></i>domain (pure)</span>
+  <span><i style="background:#5b6675"></i>persistence / external</span>
+</div>
+
+<figure>
+<svg viewBox="0 0 960 590" role="img" aria-label="Layer diagram">
+  <defs>
+    <marker id="ah" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#6b7886"/>
+    </marker>
+  </defs>
+
+  <!-- entry -->
+  <rect x="300" y="14" width="360" height="44" rx="9" fill="#6d4ca8"/>
+  <text x="480" y="34" text-anchor="middle" class="t-title t-white">Microsoft 365 Copilot Chat / Teams</text>
+  <text x="480" y="50" text-anchor="middle" class="t-sub t-white">the Adaptive Card is the decision UI</text>
+
+  <rect x="300" y="78" width="360" height="40" rx="9" fill="#7d5fb8"/>
+  <text x="480" y="96" text-anchor="middle" class="t-title t-white">Declarative Agent (m365/)</text>
+  <text x="480" y="111" text-anchor="middle" class="t-sub t-white">the Microsoft 365 entry point</text>
+
+  <line x1="480" y1="58" x2="480" y2="76" class="edge" marker-end="url(#ah)"/>
+  <line x1="480" y1="118" x2="480" y2="150" class="edge" marker-end="url(#ah)"/>
+  <text x="496" y="138" class="t-lbl">MCP + OAuth 2.0</text>
+
+  <!-- FastAPI process container -->
+  <rect x="40" y="150" width="880" height="330" rx="12" fill="#fbfcfe" stroke="#c9d3de"/>
+  <text x="60" y="172" class="t-title" fill="#2a6fb0">FastAPI process — one deployable backend</text>
+
+  <!-- façade row -->
+  <rect x="60" y="186" width="400" height="56" rx="9" fill="#eaf2fb" stroke="#2a6fb0"/>
+  <text x="76" y="208" class="t-title" fill="#2a6fb0">mcp/</text>
+  <text x="76" y="225" class="t-sub">tools: submit · send_for_approval · cast_verdict</text>
+  <text x="76" y="238" class="t-sub">resources: trial · audit · capabilities</text>
+  <rect x="476" y="186" width="184" height="56" rx="9" fill="#eaf2fb" stroke="#2a6fb0"/>
+  <text x="492" y="208" class="t-title" fill="#2a6fb0">api/</text>
+  <text x="492" y="222" class="t-sub">REST — health · read-only</text>
+  <text x="492" y="236" class="t-sub">run page (signed links)</text>
+  <text x="675" y="216" class="t-lbl">thin façades —</text>
+  <text x="675" y="230" class="t-lbl">no business logic</text>
+
+  <!-- core row -->
+  <rect x="60" y="256" width="288" height="56" rx="9" fill="#e3f1f3" stroke="#1f7a8c"/>
+  <text x="76" y="278" class="t-title" fill="#1f7a8c">services/ — business layer</text>
+  <text x="76" y="296" class="t-sub">single source of behavior; REST + MCP delegate here</text>
+  <rect x="360" y="256" width="300" height="56" rx="9" fill="#e3f1f3" stroke="#1f7a8c"/>
+  <text x="376" y="278" class="t-title" fill="#1f7a8c">agent/ — LangGraph court</text>
+  <text x="376" y="296" class="t-sub">intake → … → execute → verify → audit</text>
+
+  <!-- ports (DIP) -->
+  <rect x="60" y="326" width="600" height="40" rx="9" fill="#e7edf2" stroke="#46708a" stroke-dasharray="5 4"/>
+  <text x="360" y="351" text-anchor="middle" class="t-title" fill="#46708a">ports/ — abstract interfaces (the dependency-inversion boundary)</text>
+
+  <!-- adapters -->
+  <rect x="60" y="380" width="600" height="84" rx="9" fill="#f7ede1" stroke="#b5651d"/>
+  <text x="76" y="400" class="t-title" fill="#b5651d">adapters/ — concrete implementations (real vs mock per config)</text>
+  <text x="76" y="420" class="t-sub">integrations: GitHub (real) + Outlook / Planner / SharePoint / Teams / CRM / Entra (mock)</text>
+  <text x="76" y="436" class="t-sub">persistence · LLM (Azure OpenAI or offline) · knowledge (Foundry IQ or offline)</text>
+  <text x="76" y="452" class="t-sub">each real adapter validates parameters at its own boundary</text>
+
+  <!-- domain -->
+  <rect x="676" y="256" width="228" height="208" rx="9" fill="#e6f6ed" stroke="#1f9d57"/>
+  <text x="790" y="278" text-anchor="middle" class="t-title" fill="#1f9d57">domain/</text>
+  <text x="790" y="298" text-anchor="middle" class="t-sub">pure models / enums / errors</text>
+  <text x="790" y="316" text-anchor="middle" class="t-sub">Change · Plan · Risk</text>
+  <text x="790" y="332" text-anchor="middle" class="t-sub">Quorum · Verdict</text>
+  <text x="790" y="348" text-anchor="middle" class="t-sub">AuditRecord · Principal</text>
+  <text x="790" y="372" text-anchor="middle" class="t-lbl">every layer may depend on</text>
+  <text x="790" y="386" text-anchor="middle" class="t-lbl">domain; domain depends</text>
+  <text x="790" y="400" text-anchor="middle" class="t-lbl">on nothing</text>
+
+  <!-- internal edges -->
+  <line x1="260" y1="242" x2="260" y2="254" class="edge" marker-end="url(#ah)"/>
+  <line x1="510" y1="242" x2="510" y2="254" class="edge" marker-end="url(#ah)"/>
+  <line x1="360" y1="312" x2="360" y2="324" class="edge" marker-end="url(#ah)"/>
+  <line x1="360" y1="366" x2="360" y2="378" class="edge" marker-end="url(#ah)"/>
+
+  <!-- external systems + DB -->
+  <rect x="40" y="500" width="560" height="70" rx="10" fill="#fff" stroke="#c9d3de"/>
+  <text x="60" y="521" class="t-title" fill="#b5651d">External systems (reached only through adapters)</text>
+  <text x="60" y="540" class="t-sub">GitHub API (real) · Microsoft Graph (Outlook / SharePoint / Teams) · CRM / Planner / Entra (mock)</text>
+  <text x="60" y="556" class="t-sub">Azure AI Foundry (Foundry IQ) — knowledge grounding</text>
+  <line x1="360" y1="464" x2="360" y2="498" class="edge" marker-end="url(#ah)"/>
+
+  <rect x="620" y="500" width="300" height="70" rx="10" fill="#fff" stroke="#c9d3de"/>
+  <text x="640" y="521" class="t-title" fill="#5b6675">Persistence</text>
+  <text x="640" y="540" class="t-sub">SQLite (local) → Postgres (later)</text>
+  <text x="640" y="556" class="t-sub">DB_URL-driven · schema migrations</text>
+  <line x1="620" y1="430" x2="620" y2="498" class="edge" marker-end="url(#ah)"/>
+</svg>
+</figure>
+<figcaption>Arrows show dependency and call direction. The dashed <code>ports/</code> band is the
+  dependency-inversion boundary — the core never touches an SDK directly.</figcaption>
+
+<h2>Notes</h2>
+<ul>
+  <li>The decision core (<code>services/</code>, <code>agent/</code>) imports only ports; all SDK,
+    database, and LLM specifics live in <code>adapters/</code>.</li>
+  <li>A new integration is one adapter module plus one registration — the graph, services, REST, and
+    MCP are untouched (open/closed). Real-vs-mock is chosen per system from configuration.</li>
+  <li>One business layer serves every surface, so the card, MCP, and REST behave identically. The
+    only web surface is a read-only run page behind signed links — no dashboard.</li>
+</ul>
+
+<nav class="pager">
+  <span><a href="index.html">⌂ All diagrams</a></span>
+  <span></span>
+  <span><a href="data-flow.html">Data flow →</a></span>
+</nav>
+
+<footer>Self-contained static page — inline SVG, no external dependencies, works offline.</footer>
+
+</div>
+</body>
+</html>
