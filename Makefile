@@ -11,7 +11,7 @@ help:
 	@echo "  type         mypy"
 	@echo "  test         pytest with coverage (fails under 80%)"
 	@echo "  check        lint + type + test (local pre-PR gate)"
-	@echo "  demo         run the three trials end-to-end and print each Change Court"
+	@echo "  demo         run the demo scenarios end-to-end (leads with Informed Approval) and print each Change Court"
 	@echo "  cards        export the Change Court Adaptive Card JSON (m365/adaptive-cards/generated)"
 	@echo "  migrate      apply database migrations (alembic upgrade head)"
 	@echo "  verify       run the end-to-end trial checklist (scripts/verify.sh)"
