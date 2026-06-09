@@ -31,25 +31,25 @@ plan to draft); the **safety verdict stays deterministic** (risk scoring, quorum
 are rules, not LLM output). See [the architecture views](../architecture/index.html) and
 [ADR-0009](../reference/adr/0009-agentic-roles-and-governed-autonomy.md).
 
-## What "done" looks like — the three trials
+## What "done" looks like — the Informed Approval demo
 
-Every change must serve one of three demonstrable trials (details in
-[reference/trials.md](../reference/trials.md)):
+Every change must serve the headline demo — **Reschedule Sync**, the *Informed Approval* scenario
+(details in [reference/trials.md](../reference/trials.md)):
 
-| Trial | Request | Outcome |
+| Scenario | Request | Outcome |
 | --- | --- | --- |
-| **Reschedule Sync** | move the rehearsal to June 17 | Feasible, HIGH risk with quorum; one request ripples into milestone/calendar/planner/announcement. The June 16 variant collides with an existing event → **refused**, the next free day proposed. |
-| **Meeting Actions** | create action items from standup | LOW risk, no approver; spoken follow-ups become tracked tasks with owners and due dates + a scheduled review. |
-| **Weekly Report** | post the Project X weekly report | LOW risk, no approver; closed issues, tasks, and meetings aggregated into one channel post (real repo activity with `github:real`). |
+| **Reschedule Sync** (headline) | move the rehearsal to June 16 | One request ripples into milestone/calendar/planner/announcement; HIGH risk with quorum. June 16 collides with an existing event → **refused as posed**, the next free day proposed, then an informed approval — Impact before approval, Safety before execution, Audit after action. |
 
-The earlier governance trials (customer promise → refusal + private preview; vendor access →
-least-privilege + auto-revoke) remain wired and tested as additional court capabilities.
+The same engine handles more, wired and tested as additional capabilities: **Meeting Actions**
+(spoken follow-ups → owned, dated tasks; LOW risk), **Weekly Report** (cross-system activity → one
+channel post), and the governance trials (customer promise → refusal + private preview; vendor
+access → least-privilege + auto-revoke).
 
 ## Scope discipline
 
 One real integration (GitHub); the other six systems are realistic mocks, so the whole system runs
-locally with zero credentials. Only the adapters the three trials need are built — no breadth for
-breadth's sake. New work must converge on one of the three trials.
+locally with zero credentials. Only the adapters the demo and its additional capabilities need are
+built — no breadth for breadth's sake. New work must converge on the Informed Approval demo.
 
 ## Where to go next
 

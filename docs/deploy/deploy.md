@@ -132,8 +132,8 @@ not installed it still gets the activity-feed toast and can act from the bot's `
 ## 4. Package and sideload the agent
 
 With the host URL and the values above, build the app package and upload it — see
-[`../m365/README.md`](../../m365/README.md) (`make package`). Then walk the three trials in Copilot Chat
-and tick off the *Pending tenant* checks in [`../verify.md`](../../verify.md).
+[`../m365/README.md`](../../m365/README.md) (`make package`). Then walk the Informed Approval demo in
+Copilot Chat and tick off the *Pending tenant* checks in [`../verify.md`](../../verify.md).
 
 ## Retention maintenance
 
