@@ -16,21 +16,25 @@ Under dry-run every `W` is a *predicted* effect.
 | Customer Promise | R W | R W | — | — | W | R W | — |
 | Vendor Access | — | — | R W | — | — | — | W |
 
-## The recording lineup (GitHub + Outlook + SharePoint)
+## The recording — the Informed Approval scenario
 
-The three everyday trials never touch SharePoint — only **Vendor Access** does. So the recording uses:
+The headline demo is the single **Reschedule** scenario ([recording-runbook.md](recording-runbook.md)):
+one request that rips across four systems, refused-and-proposed-safer, then approved on a full
+evidence package. Its real-write systems are **GitHub** (milestone) and **Outlook** (the moved event;
+the Board-review conflict it reads):
 
-| Route | Shows | Real systems exercised |
+| Scenario | Shows | Real systems exercised |
 | --- | --- | --- |
-| 1. **Reschedule** (`move the rehearsal to 2026-06-16`) | refuse-and-propose-safer; one request rippling four systems | **GitHub** (milestone) · **Outlook** (Board-review conflict) |
-| 2. **Vendor Access** (over-broad ProjectX access) | least-privilege + expiry + auto-revoke | **SharePoint** (CustomerData folder) |
-| 3. **Weekly Report** (`post the Project X weekly report`) | cross-system aggregation into one post | **GitHub** (closed issues) · **Outlook** (events) |
+| **Reschedule** (`move the rehearsal to 2026-06-16`) | impact across four systems; refuse-and-propose-safer; informed approval; audit | **GitHub** (milestone) · **Outlook** (event + Board-review conflict) |
 
-Collectively the three routes cover **GitHub + Outlook + SharePoint** — GitHub and Outlook twice (1 & 3),
-SharePoint once (2). To run them against real Microsoft Graph (not mock), see the per-system setup:
+If the audience wants to see the other integrations, two optional add-ons cover the rest:
+
+| Add-on | Shows | Real systems exercised |
+| --- | --- | --- |
+| **Vendor Access** (over-broad ProjectX access) | least-privilege + expiry + auto-revoke | **SharePoint** (CustomerData folder) |
+| **Weekly Report** (`post the Project X weekly report`) | cross-system aggregation into one post | **GitHub** (closed issues) · **Outlook** (events) |
+
+To run any of these against real Microsoft Graph (not mock), use the one-shot
+[setup-demo](../deploy/setup-demo.md) (`make setup-demo`) and the per-system setup:
 [GitHub](../deploy/github.md) · [Outlook](../deploy/outlook.md) · [SharePoint](../deploy/sharepoint.md),
 then set `INTEGRATION_MODE=github:real,outlook:real,sharepoint:real`.
-
-> The earlier `move the rehearsal to 2026-06-17` (feasible) and `create action items from standup`
-> remain available; the lineup above is the minimal set that demonstrates all three integrations
-> working together.

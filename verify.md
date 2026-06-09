@@ -1,8 +1,9 @@
 # Verification checklist
 
-End-to-end verification of the **three trials**. This is the pre-demo gate: every item must pass
-locally before the demo. It runs without a Microsoft 365 tenant — the chat entry point is verified
-separately once a tenant is available (see *Pending tenant* below).
+End-to-end verification of the headline **Informed Approval** scenario (Trial 1) plus the engine's
+additional capabilities (Trials 2–3). This is the pre-demo gate: every item must pass locally before
+the demo. It runs without a Microsoft 365 tenant — the chat entry point is verified separately once a
+tenant is available (see *Pending tenant* below).
 
 Run the scripted portion with:
 
@@ -21,7 +22,11 @@ listed below it.
   repo) and all other systems `mock`. Alternatively `FORCE_ALL_MOCK=true` for a fully credential-free
   run.
 
-## Trial 1 — Reschedule Sync (dry-run, then live)
+## Trial 1 — Reschedule Sync · the Informed Approval headline (dry-run, then live)
+
+> This is the demo's headline scenario: one request across four systems, refused-and-proposed-safer,
+> then an informed approval (see [recording-runbook](docs/demo/recording-runbook.md)). The conflict
+> variant below is the path the demo leads with.
 
 - ☐ Submit "move the rehearsal to 2026-06-17" with `run_mode=dry_run`.
 - ☐ A **Change Court** is produced: structured change, **impact evidence** (milestone move, calendar
@@ -80,4 +85,7 @@ listed below it.
 - ☐ Declarative agent installs and appears in Microsoft 365 Copilot Chat / Teams.
 - ☐ The agent calls the MCP server over OAuth 2.0 (Entra ID) and runs a trial.
 - ☐ The **Change Court Adaptive Card** renders in chat and its verdict actions resume the run.
-- ☐ Real Microsoft Graph writes (Outlook calendar / Planner / SharePoint) replace their mock adapters.
+- ☑ Real Microsoft Graph writes are wired and verified: a live `outlook.create_event` creates a real
+  calendar event, and the SharePoint grant uses `Sites.ReadWrite.All` (admin-consented). Bring the
+  real evidence/resources up with `make setup-demo` (audit) / `make setup-demo-apply`
+  ([setup-demo.md](docs/deploy/setup-demo.md)). Planner/CRM/Entra remain mocks.

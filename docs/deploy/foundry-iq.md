@@ -9,7 +9,7 @@ The court grounds its reasoning in cited facts via the `KnowledgePort`
 providers satisfy the same port:
 
 - **`FakeKnowledgeProvider`** (`adapters/knowledge/fake_knowledge.py`) — the default offline
-  stand-in: a small, public-safe governance corpus matched by keyword. Backs the three trials with no
+  stand-in: a small, public-safe governance corpus matched by keyword. Backs the demo trials with no
   external credentials.
 - **`FoundryIqKnowledgeProvider`** (`adapters/knowledge/foundry_iq.py`) — the real provider: agentic
   retrieval against a managed **Azure AI Foundry knowledge base (Foundry IQ over Azure AI Search)**,
@@ -79,4 +79,4 @@ adds the `context` field), so it needs no Foundry IQ reconfiguration.
 `backend/tests/test_foundry_iq.py` injects a stub retrieval client (no network) and asserts the
 reference → `GroundedFact` mapping, `top_k`, skip-empty, and the configurable reasoning effort;
 `test_seed_knowledge.py` covers the chunker and index-definition shaping. The fake provider remains
-the default in `conftest.py`, so the three trials stay credential-free.
+the default in `conftest.py`, so the demo trials stay credential-free.

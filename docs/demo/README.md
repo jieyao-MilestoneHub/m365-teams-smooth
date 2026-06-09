@@ -21,21 +21,34 @@ at all** — and when the answer is no, it offers the safe path instead of a dea
 
 ## What the demo shows
 
-The demo spine is three everyday chores, each put on trial in Microsoft 365 Copilot Chat / Teams
-(golden expectations in [reference/trials.md](../reference/trials.md)):
+The headline is one scenario — **Informed Approval** — shown end to end. *One request. Four systems.
+No blind approval.* The recording script is in [recording-runbook.md](recording-runbook.md); golden
+expectations in [reference/trials.md](../reference/trials.md).
 
-| Trial | Request | What it proves |
-| --- | --- | --- |
-| **Reschedule Sync** | "move the rehearsal to 2026-06-17" | One sentence ripples four systems (milestone, calendar, tasks, announcement); HIGH risk derives a two-role quorum; an injected "also delete the old repo" is **blocked** by the capability guard. |
-| — conflict variant | "move the rehearsal to 2026-06-16" | The target date collides with a seeded review → **refused as posed**, and the next free day is proposed as a safe alternative (no plain approve offered). |
-| **Meeting Actions** | "create action items from standup" | Spoken follow-ups become owned, dated tasks; LOW risk → no approver — the requester's own confirmation executes. Governance proportional to risk. |
-| **Weekly Report** | "post the Project X weekly report" | Cross-system activity collected once and posted as a report; with real GitHub configured, the evidence is the repository's actual week. |
+A program manager types one sentence in Teams — **"move the rehearsal to 2026-06-16"** — and to them
+it's just changing a date. The court treats it as the cross-system change it really is:
 
-Two earlier governance trials — the unsafe customer promise (refusal + private-preview
-alternative) and over-broad vendor access (least-privilege + auto-revoke) — remain wired and
-tested as additional court capabilities beyond the demo spine.
+1. **Impact before approval** — it reads the load-bearing date across four systems: the **GitHub**
+   `Launch Rehearsal` milestone, the **Outlook** calendar, dependent **Planner** tasks, and the
+   **Teams** announcement. Risk: HIGH.
+2. **Safety before execution** — 2026-06-16 collides with a real **Board review**, so the court
+   **refuses the request as posed** and proposes the next free day, 2026-06-17, as a safe
+   alternative (no plain approve is offered). The requester can propose it but cannot self-approve;
+   an *informed* approver — seeing the impact, the alternative, and the rollback hints — decides, and
+   the run resumes from its durable checkpoint to execute.
+3. **Audit after action** — an append-only record of evidence, approvers, verdict, before/after, and
+   rollback hints.
 
-Every demo runs through the same surfaces: the **Change Court Adaptive Card** (the decision UI),
+A fourth moment worth showing: appending "**and delete the old repo**" is **blocked at intake** —
+no registered capability supports it, so it is never planned or executed.
+
+The same engine handles more than the headline — show these for breadth if the audience wants it:
+**Meeting Actions** ("create action items from standup" — LOW risk, executes on the requester's
+authority), **Weekly Report** ("post the Project X weekly report" — cross-system activity aggregated
+into one post), and the governance trials (an unsafe customer promise → private-preview alternative;
+over-broad vendor access → least-privilege + auto-revoke). All are wired and tested.
+
+Every scenario runs through the same surfaces: the **Change Court Adaptive Card** (the decision UI),
 the **read-only pipeline run page** on a second screen (signed links, CI-style stage rail), and
 the append-only audit at the end.
 

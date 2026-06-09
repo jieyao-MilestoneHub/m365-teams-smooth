@@ -20,8 +20,8 @@ the deploy guide when you're ready to run it.
 ## The five areas
 
 ### ① Overview — what & why
-- [overview/goals.md](overview/goals.md) — the problem, the governed-autonomy thesis, the three
-  trials, and scope discipline. **Read this first.**
+- [overview/goals.md](overview/goals.md) — the problem, the governed-autonomy thesis, the
+  Informed Approval demo, and scope discipline. **Read this first.**
 
 ### ② Architecture — how it's built
 - [architecture/index.html](architecture/index.html) — six self-contained, offline diagram pages
@@ -64,7 +64,7 @@ the deploy guide when you're ready to run it.
   domain models and capability schema.
 - [reference/policy-and-quorum.md](reference/policy-and-quorum.md) — how risk scoring and approver
   quorum are derived from rule-pack data.
-- [reference/trials.md](reference/trials.md) — the three trials' inputs, fixtures, and expected
+- [reference/trials.md](reference/trials.md) — the demo trials' inputs, fixtures, and expected
   results.
 
 ## Repo-level pointers

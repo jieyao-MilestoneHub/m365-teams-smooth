@@ -45,12 +45,12 @@
           ],
           "commands": [
             {
-              "title": "move the rehearsal to 2026-06-17",
-              "description": "Reschedule once — milestone, calendar, tasks, and the announcement move together"
+              "title": "move the rehearsal to 2026-06-16",
+              "description": "One request across four systems — that day is taken, so it is refused as posed and the next free day proposed for an informed approval"
             },
             {
-              "title": "move the rehearsal to 2026-06-16",
-              "description": "That day is taken — refused as posed, the next free day proposed instead"
+              "title": "move the rehearsal to 2026-06-17",
+              "description": "Reschedule to a free day — milestone, calendar, tasks, and the announcement move together"
             },
             {
               "title": "create action items from standup",
