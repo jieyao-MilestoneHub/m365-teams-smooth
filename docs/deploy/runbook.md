@@ -161,8 +161,9 @@ custom app, or via Agents Toolkit). The declarative agent now appears in Copilot
 > demo accounts → connect to Copilot Chat). Propagation can take ~2 hours.
 > See [pay-as-you-go/setup](https://learn.microsoft.com/en-us/copilot/microsoft-365/pay-as-you-go/setup).
 
-Then run the trials in Copilot Chat / Teams. The step-by-step **recording script** — the three
-routes, the windows to capture, the expected effect of each, and the second-screen run page — is in
+Then run the demo in Copilot Chat / Teams. The step-by-step **recording script** — the single
+Informed Approval scenario beat by beat, the windows to capture, the expected effect of each, and
+the second-screen run page — is in
 [`docs/demo/recording-runbook.md`](../demo/recording-runbook.md); the two-user approval flow and its
 negative cases (no self-approval; outside-directory cannot decide) are in
 [`two-user-demo.md`](../demo/two-user-demo.md). Per-trial expected outcomes: [`trials.md`](../reference/trials.md).
