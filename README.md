@@ -16,9 +16,9 @@ workflow macro.
 
 Every request runs through one inspectable pipeline —
 `intake → impact → options → policy+quorum → [verdict] → execute → verify → audit` — built on
-LangGraph behind a Microsoft 365 declarative agent, with integrations behind a ports-and-adapters
-boundary (GitHub real, the rest mocked). See the [architecture diagrams](docs/architecture/index.html)
-for how it's built.
+LangGraph behind a Microsoft 365 declarative agent, with each integration behind a ports-and-adapters
+boundary so a real or mock implementation is selected per system from config. See the
+[architecture diagrams](docs/architecture/index.html) for how it's built.
 
 ## Quick start — reproduce the demo
 
