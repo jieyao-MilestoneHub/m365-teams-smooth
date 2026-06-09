@@ -20,8 +20,8 @@ the deploy guide when you're ready to run it.
 ## The five areas
 
 ### ① Overview — what & why
-- [overview/goals.md](overview/goals.md) — the problem, the governed-autonomy thesis, the three
-  trials, and scope discipline. **Read this first.**
+- [overview/goals.md](overview/goals.md) — the problem, the governed-autonomy thesis, the
+  Informed Approval demo, and scope discipline. **Read this first.**
 
 ### ② Architecture — how it's built
 - [architecture/index.html](architecture/index.html) — six self-contained, offline diagram pages
