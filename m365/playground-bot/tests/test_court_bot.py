@@ -228,7 +228,6 @@ async def test_activity_without_id_is_never_deduplicated() -> None:
 
 USER_A = Principal(oid="user-a", upn="user-a", display_name="User A")
 USER_B = Principal(oid="user-b", upn="user-b", display_name="User B")
-USER_C = Principal(oid="user-c", upn="user-c", display_name="User C")
 
 
 @pytest.fixture
@@ -271,21 +270,14 @@ def test_two_user_approval_round_trip(approval_service: CourtService) -> None:
     assert [a["data"]["tool"] for a in _actions(card)] == ["decide", "decide"]
     assert any("Requester's note: ready" in t for t in _texts(card))
 
-    # User B pulls the queue and approves their role; the quorum ("all") still wants comms.
+    # User B pulls the queue and approves; the reschedule quorum is "any" (need = 1), so a single
+    # sign-off from a distinct approver completes it and the run resumes to a result card.
     queue = bot.respond(text="queue", value=None, actor=USER_B)
     assert any(thread_id in str(a.get("data", {}).get("thread_id")) for a in _actions(queue))
-    partial = bot.respond(
-        text=None,
-        value={"tool": "decide", "thread_id": thread_id, "approve": True},
-        actor=USER_B,
-    )
-    assert [a["data"]["tool"] for a in _actions(partial)] == ["decide", "decide"]
-
-    # User C completes the quorum; the run resumes to a result card.
     result = bot.respond(
         text=None,
         value={"tool": "decide", "thread_id": thread_id, "approve": True},
-        actor=USER_C,
+        actor=USER_B,
     )
     # The result card is a TL;DR: a success headline + one-line outcome, not a status/step log.
     assert any("Verdict recorded" in t for t in _texts(result))
