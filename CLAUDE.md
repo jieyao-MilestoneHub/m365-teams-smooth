@@ -17,8 +17,9 @@ The court pipeline: **intake → impact → options → policy+quorum → [verdi
 
 The backend engine is **implemented and runs end-to-end locally, credential-free**. `backend/` holds
 the full layered app (`agent/ mcp/ api/ services/ ports/ adapters/ domain/`), the LangGraph court
-pipeline, SQLAlchemy persistence, and a green test suite; the three trials pass under
-`scripts/verify.sh`. GitHub is the one real integration; the other six systems are mocks. There is
+pipeline, SQLAlchemy persistence, and a green test suite; the headline demo and its additional
+capabilities pass under `scripts/verify.sh`. GitHub is the one real integration; the other six
+systems are mocks. There is
 **no frontend build** — the Teams Adaptive Card is the decision UI, rendered tenant-free via the
 Playground bot or the exported card JSON; the one web surface is a read-only, signed-link-gated
 pipeline **run page** (a static file the backend serves — it inspects a trial's run, never decides).
@@ -28,8 +29,10 @@ What remains is **going live in a real tenant** (the *Pending tenant* items in `
 hosting the backend over public HTTPS, Entra ID OAuth2, sideloading the declarative agent, and —
 optionally — replacing the mocks with real Microsoft Graph adapters. Phases and PR slicing live in
 GitHub issues (labeled `ready`/`blocked`, `area:*`); keep PRs single-responsibility. **Stay
-convergent:** every change must serve one of the three demo trials (Reschedule Sync, Meeting Actions,
-Weekly Report).
+convergent:** every change must serve the headline demo (**Informed Approval** — the Reschedule
+scenario, the only one recorded) or the additional capabilities the same engine already handles
+(Meeting Actions, Weekly Report, Customer Promise, Vendor Access — wired and tested, runnable but not
+recorded).
 
 ## Source of truth: `.claude/rules/`
 
@@ -109,10 +112,10 @@ uv run pytest path/to/test.py::test_name   # single test
 Common workflows from the repo root (all fully mocked / credential-free):
 
 ```bash
-make demo            # run the three trials end-to-end (leads with the conflict refusal)
+make demo            # run the headline (Informed Approval) end-to-end (make demo-all adds the rest)
 make check           # ruff + mypy + pytest
 make bot             # clickable Change Court card via the Playground bot (tenant-free)
-make cards           # export Adaptive Card JSON to m365/adaptive-cards/generated/
+make cards           # export the headline Adaptive Card JSON (make cards-all for every capability)
 scripts/verify.sh    # full gate: trials + safety + MCP + quality (tenant checks report PENDING)
 ```
 
@@ -137,8 +140,8 @@ Env-driven via `config.py` (pydantic-settings) — see `.env.example`. Architect
   development and fully-mocked runs).
 
 GitHub is the one real adapter; the rest (Outlook, Planner, SharePoint, Teams, CRM, Entra) are mocks
-returning realistic data, so the system runs fully locally. Only the adapters the three trials need
-are built — no ServiceNow / generic Graph adapter.
+returning realistic data, so the system runs fully locally. Only the adapters the headline and its
+additional capabilities need are built — no ServiceNow / generic Graph adapter.
 
 ## Git / PR workflow
 
@@ -154,8 +157,12 @@ are built — no ServiceNow / generic Graph adapter.
 - CI today: `.github/workflows/security.yml` (gitleaks secret scan) + weekly Dependabot. No secrets
   in the repo — use env vars.
 
-The demo spine is **three everyday trials** — Reschedule Sync (one request moves the milestone,
-calendar, tasks, and announcement together; a conflicting date is refused and a free one proposed),
-Meeting Actions (standup follow-ups become tracked tasks on the requester's authority), and Weekly
-Report (scattered activity aggregated into one post). The earlier governance trials (Customer
-Promise, Vendor Access) stay wired and tested as additional capabilities. See `docs/demo/`.
+The demo spine is **one headline scenario — Informed Approval** (the Reschedule scenario): one
+request moves the GitHub milestone, the Outlook calendar, the Planner tasks, and the Teams
+announcement together; a conflicting date is refused and a free one proposed. It is the only scenario
+recorded, and `make demo` runs only it. The same engine already handles four **additional
+capabilities** — Meeting Actions (standup follow-ups become tracked tasks on the requester's
+authority), Weekly Report (scattered activity aggregated into one post), and the governance trials
+Customer Promise and Vendor Access (refuse-and-propose-safer). They stay wired and tested, runnable
+via `make demo-all` or the Playground bot, but are not part of the recorded headline — present them
+as capabilities the architecture supports, not as demos to build out. See `docs/demo/`.

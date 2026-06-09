@@ -10,12 +10,14 @@ The corpus is deliberately **noisy** so retrieval can be tested against distract
 Three roles:
 
 ## Targets (a trial should retrieve these)
-- `policies/release-change-management.md` — Reschedule trial (controlling policy for a date change).
-- `policies/meeting-follow-through.md` + `meetings/2026-06-08-projectx-standup.md` — Meeting Actions.
-- `policies/status-reporting.md` — Weekly Report.
-- `policies/customer-commitment-ga-readiness.md` — Customer Promise (secondary).
-- `policies/third-party-vendor-access.md` — Vendor Access (secondary).
-- `reference/projectx-launch-plan.md` — Reschedule context (milestone/announcement).
+- `policies/release-change-management.md` — **Informed Approval** / Reschedule (headline: controlling
+  policy for a date change).
+- `reference/projectx-launch-plan.md` — Informed Approval context (milestone/announcement).
+- `policies/meeting-follow-through.md` + `meetings/2026-06-08-projectx-standup.md` — Meeting Actions
+  (additional capability).
+- `policies/status-reporting.md` — Weekly Report (additional capability).
+- `policies/customer-commitment-ga-readiness.md` — Customer Promise (additional capability).
+- `policies/third-party-vendor-access.md` — Vendor Access (additional capability).
 
 ## Adversarial near-misses (same vocabulary, wrong doc — the rerank stress test)
 - `policies/event-scheduling-guidelines.md` — booking rooms/meetings, not launch-date governance.
