@@ -22,9 +22,9 @@ capabilities of the same engine, useful for showing breadth locally:
 
 ## 1. Terminal — `make demo`
 
-Runs all four trials end to end and prints each Change Court (evidence, plan or safe alternative,
-approvers, verdict, audit id). The order leads with the refusal — the court saying "no, but
-here's the safe way" is the moment to show first.
+Runs all the demo scenarios end to end and prints each Change Court (evidence, plan or safe
+alternative, approvers, verdict, audit id). The order leads with the headline refusal — the court
+saying "no, but here's the safe way" is the moment to show first.
 
 ```bash
 make demo
@@ -32,7 +32,7 @@ make demo
 
 ## 2. Static cards — `make cards`
 
-Exports the Change Court Adaptive Card JSON for the same four trials (court + result cards) to
+Exports the Change Court Adaptive Card JSON for the same scenarios (court + result cards) to
 [`m365/adaptive-cards/generated/`](../../m365/adaptive-cards/generated):
 
 ```bash
