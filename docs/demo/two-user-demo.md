@@ -35,8 +35,9 @@ requester: submit ──► AWAITING_REQUESTER_REVIEW ── send (note required
    APPROVER_DIRECTORY="eng_lead:<user-b-id>,comms:<user-c-id>" make bot
    ```
 
-2. As **user A**: type `move the rehearsal to 2026-06-17` → the card holds at
-   requester review → fill the note → **Send for approval**.
+2. As **user A**: type `move the rehearsal to 2026-06-16` → the court refuses the date as posed and
+   proposes the safe alternative (2026-06-17); the card holds at requester review → fill the note →
+   **Send for approval**. (Approving here approves that safe-alternative plan.)
 3. Switch to **user B**: the approval card lands in the bot chat proactively (type `queue` to pull
    it if needed) → **Approve** (quorum still pending).
 4. Switch to **user C**: approve the same way → the run resumes, executes (DRY_RUN) and audits.

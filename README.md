@@ -57,24 +57,35 @@ links) where the whole flow can be watched live: each stage's timing and evidenc
 filling its quorum, per-system execution lanes with before→after effects, and the audit record.
 Decisions stay on the card; the page only inspects.
 
-## Three trials
+## The demo — Informed Approval
 
-- **Reschedule Sync** — "move the rehearsal to June 17." One request moves a real GitHub milestone
-  plus the calendar, planner tasks, and the Teams announcement together; flagged HIGH risk with an
-  `eng_lead` + `comms` quorum. When the requested day **collides with an existing event** ("move the
-  rehearsal to June 16"), the court **refuses the date as posed** and proposes the next free day —
-  the same ripple, a safer date. An unsupported request such as "delete the repo" is blocked by the
-  capability registry; a simulated step failure surfaces a partial result with a rollback hint.
-- **Meeting Actions** — "create action items from standup." The court reads the discussion's spoken
-  follow-ups and turns each dated one into a tracked task with its owner, scheduling the review that
-  was proposed without a date. LOW risk, no approver — the requester's confirmation executes it.
-- **Weekly Report** — "post the Project X weekly report." Recently closed GitHub issues, tracked
-  tasks, and the week's meetings are collected once, composed into one message, and posted to the
-  project channel. With the real GitHub adapter the evidence is the repository's actual activity.
+*One request. Four systems. No blind approval.* Approval is common; **informed** approval is rare.
+The headline scenario shows the difference end to end (recording script:
+[`docs/demo/recording-runbook.md`](docs/demo/recording-runbook.md)):
 
-The earlier governance trials — the unsafe customer promise (refusal + private-preview alternative)
-and over-broad vendor access (least-privilege + auto-revoke) — remain wired and tested as additional
-court capabilities (see [`docs/reference/trials.md`](docs/reference/trials.md)).
+A program manager types **"move the rehearsal to June 16"** in Teams — to them, just a date change.
+The court treats it as the cross-system change it is, in three beats:
+
+- **Impact before approval** — it reads the load-bearing date across four systems: a real **GitHub**
+  milestone, the **Outlook** calendar, dependent **Planner** tasks, and the **Teams** announcement.
+  Risk: HIGH, with an `eng_lead` + `comms` quorum.
+- **Safety before execution** — June 16 collides with a real **Board review**, so the court
+  **refuses the date as posed** and proposes the next free day as a safe alternative (no plain
+  approve). The requester can propose but not self-approve; an *informed* approver — seeing the
+  impact, the alternative, and the rollback hints — decides, and the run resumes from its durable
+  checkpoint to execute (the GitHub milestone moves for real).
+- **Audit after action** — an append-only record of evidence, approvers, verdict, before/after, and
+  rollback hints.
+
+A fourth moment: appending "**and delete the repo**" is **blocked at intake** by the capability
+registry — never planned, never executed.
+
+The same engine handles more, wired and tested as additional capabilities (see
+[`docs/reference/trials.md`](docs/reference/trials.md)): **Meeting Actions** ("create action items
+from standup" — spoken follow-ups become owned, dated tasks; LOW risk, executes on the requester's
+authority), **Weekly Report** ("post the Project X weekly report" — cross-system activity aggregated
+into one channel post), and the governance trials (an unsafe customer promise → private-preview
+alternative; over-broad vendor access → least-privilege + auto-revoke).
 
 ## Architecture
 

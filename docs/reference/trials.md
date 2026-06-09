@@ -1,9 +1,12 @@
 # The demo trials — inputs, fixtures, and golden expectations
 
-The demo spine: everyday cross-system chores, each put on trial. A trial is a request, the seeded
-data it reads, and the court output it must produce. These golden expectations are enforced by
-`backend/tests/test_golden_trials.py` and the per-trial tests; the seed data lives in the mock
-adapters and the offline knowledge corpus.
+The headline demo is **Trial 1 — Reschedule Sync**, the *Informed Approval* scenario: one everyday
+request fans out across four systems, the unsafe version is refused with a safe alternative, and an
+approver decides on a full evidence package (see [the recording runbook](../demo/recording-runbook.md)).
+Trials 2–3 and the governance trials below are additional capabilities of the same engine, not a
+separate demo. A trial is a request, the seeded data it reads, and the court output it must produce.
+These golden expectations are enforced by `backend/tests/test_golden_trials.py` and the per-trial
+tests; the seed data lives in the mock adapters and the offline knowledge corpus.
 
 Conventions: dates are ISO-8601; all systems run mocked (`FORCE_ALL_MOCK`) so no credentials are
 needed. The submitting `run_mode` defaults to `dry_run` (effects predicted, audit marked `DRY_RUN`).

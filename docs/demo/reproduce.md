@@ -7,12 +7,16 @@ and dry-run is the default. No Microsoft 365 tenant is required until the last s
 Prerequisites once: Python 3.11+ with [`uv`](https://docs.astral.sh/uv/), Node (for the
 Playground), and `cd backend && uv sync` (or `make sync`).
 
-## The four demo requests
+## The demo requests
+
+The headline is the **Informed Approval** scenario — request 1 (the refused reschedule and its safe
+alternative); see [recording-runbook.md](recording-runbook.md). Requests 3–4 are additional
+capabilities of the same engine, useful for showing breadth locally:
 
 | # | Request | Expected outcome |
 | --- | --- | --- |
-| 1 | `move the rehearsal to 2026-06-16` | **Refused as posed** (date conflict) → safe alternative: the next free day |
-| 2 | `move the rehearsal to 2026-06-17` | Feasible four-system plan, HIGH risk, two-role quorum |
+| 1 | `move the rehearsal to 2026-06-16` | **Headline.** Refused as posed (date conflict) → safe alternative: the next free day; HIGH risk, two-role quorum |
+| 2 | `move the rehearsal to 2026-06-17` | The feasible variant (no conflict) — same four-system ripple, HIGH risk |
 | 3 | `create action items from standup` | Three owned, dated tasks + a review event; LOW risk, requester authority |
 | 4 | `post the Project X weekly report` | One channel post composed from the week's activity; LOW risk |
 
