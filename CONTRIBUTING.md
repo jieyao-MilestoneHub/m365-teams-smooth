@@ -30,8 +30,8 @@ uv run uvicorn app.asgi:app --reload    # REST + the OAuth2-protected MCP server
 
 From the repo root: `make demo` (trials end-to-end), `scripts/verify.sh` (trials + safety + MCP +
 quality gates), `make check` (ruff + mypy + pytest). Card/playground work also uses `make cards` /
-`make bot`. Configuration is env-driven — see [`.env.example`](.env.example) and
-[`docs/integrate/config-reference.md`](docs/integrate/config-reference.md); never commit `.env`.
+`make bot`. Configuration is env-driven — see [`.env.example`](.env.example) and the Configuration
+section of the [README](README.md#configuration); never commit `.env`.
 
 ## Branches and commits
 Short-lived branch off `main`: `git checkout -b <type>/<scope>` where `<type>` is
@@ -82,7 +82,7 @@ AI Change Court controls actions that may affect real systems — contributions 
 ## Documentation
 Update docs when you change setup, env vars, architecture, MCP tools/resources, adapter/policy/quorum
 behavior, trial scenarios, verification commands, or security/safety assumptions. Use ADRs
-(`docs/reference/adr/`) for durable architecture decisions, and keep clear what runs locally vs. mocked
+(`docs/adr/`) for durable architecture decisions, and keep clear what runs locally vs. mocked
 vs. tenant-backed.
 
 ## Reporting bugs & security

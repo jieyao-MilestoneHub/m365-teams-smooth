@@ -11,7 +11,7 @@ which stakeholders must approve (**quorum**), collect a **verdict**, then execut
 **append-only audit trail**. The differentiator is that it can **refuse an unsafe decision and
 propose a safer one**. It is not a chatbot and not a workflow macro.
 
-The court pipeline: **intake → impact → options → policy+quorum → [verdict] → execute → audit**.
+The court pipeline: **intake → impact → options → policy+quorum → [verdict] → execute → verify → audit**.
 
 ## Current status — read first
 
@@ -24,12 +24,12 @@ Playground bot or the exported card JSON; the one web surface is a read-only, si
 pipeline **run page** (a static file the backend serves — it inspects a trial's run, never decides).
 The commands and module paths below are runnable today.
 
-What remains is **going live in a real tenant** (the *Pending tenant* items in `verify.md`): hosting
-the backend over public HTTPS, Entra ID OAuth2, sideloading the declarative agent, and — optionally —
-replacing the mocks with real Microsoft Graph adapters. See `docs/deploy/deploy.md`. Roadmap phases and PR
-slicing live in `roadmap.md` (Phases 1–5, plus enhancements) and in GitHub issues (labeled
-`ready`/`blocked`, `area:*`); keep PRs single-responsibility. **Stay convergent:** every change must
-serve one of the three demo trials (Reschedule Sync, Meeting Actions, Weekly Report); see `verify.md`.
+What remains is **going live in a real tenant** (the *Pending tenant* items in `scripts/verify.sh`):
+hosting the backend over public HTTPS, Entra ID OAuth2, sideloading the declarative agent, and —
+optionally — replacing the mocks with real Microsoft Graph adapters. Phases and PR slicing live in
+GitHub issues (labeled `ready`/`blocked`, `area:*`); keep PRs single-responsibility. **Stay
+convergent:** every change must serve one of the three demo trials (Reschedule Sync, Meeting Actions,
+Weekly Report).
 
 ## Source of truth: `.claude/rules/`
 
@@ -39,7 +39,7 @@ summarizes them:
 - `architecture.md` — layering, the LangGraph agent, adapter/registry design, persistence.
 - `coding-style.md` — Python/TS conventions, typing, testing expectations.
 - `git-workflow.md` — branching, PR size, commit conventions.
-- `docs.md` — **hard rule:** all shipped/public text (README, roadmap, docstrings, code comments,
+- `docs.md` — **hard rule:** all shipped/public text (README, docstrings, code comments,
   commit messages, PR descriptions, M365 manifests, and *this file*) describes **function and
   architecture only**. `.claude/rules/` also holds gitignored, internal-only guidance whose subject
   must never appear in any shipped text. Before committing docs, run the self-check grep defined in
@@ -67,8 +67,8 @@ M365 Copilot Chat / Teams
   `services/`. No business logic in routers or tools — no duplication.
 - **Pure domain.** `domain/` imports nothing from FastAPI, LangGraph, or any adapter.
 - **LangGraph single-agent "Change Court."** Nodes `intake → impact → options → policy+quorum →
-  execute → audit`, each state-in/state-out, presented as roles (Prosecutor=impact, Defender=options,
-  Clerk=audit, Executor=execute):
+  execute → verify → audit`, each state-in/state-out, presented as roles (Prosecutor=impact,
+  Defender=options, Clerk=audit, Executor=execute):
   - `intake` — parse into a structured `Change`; validate every requested action against **registered
     capabilities** (hallucination guard — unsupported actions blocked, not planned).
   - `impact` — gather second-order consequences via adapter **read** capabilities → evidence.
@@ -76,6 +76,7 @@ M365 Copilot Chat / Teams
   - `policy+quorum` — deterministic risk → `requires_approval` + required approvers + verdict options;
     rules are data, not code.
   - `execute` — registry → adapter per step; honors `run_mode`.
+  - `verify` — checks the live writes against the reviewed plan (agentic when an LLM is configured).
   - `audit` — append-only before/after + rollback hints + trial record.
 - **Verdict is a durable interrupt** (`interrupt_before=["execute"]`), checkpointed by `thread_id`.
   Submit returns immediately; `cast_verdict` rehydrates and resumes. **Never hold the graph in memory
@@ -88,7 +89,7 @@ M365 Copilot Chat / Teams
 - **Audit is append-only** — never updated. Rollback hints are advisory data, never auto-executed.
 
 When you make a significant design choice (e.g. the interrupt-vs-statelessness decision), record it
-as an ADR under `docs/reference/adr/`.
+as an ADR under `docs/adr/`.
 
 ## Commands
 
@@ -97,23 +98,31 @@ Backend (FastAPI, Python 3.11+, `uv`):
 ```bash
 cd backend
 uv sync
-uvicorn app.main:app --reload      # run
-uv run ruff check                  # lint
-uv run mypy                        # type-check
-uv run pytest                      # tests
+uv run uvicorn app.main:app --reload   # REST health only (/api/health)
+uv run uvicorn app.asgi:app --reload   # REST + the OAuth2-protected MCP server at /mcp
+uv run ruff check                      # lint
+uv run mypy                            # type-check
+uv run pytest                          # tests
 uv run pytest path/to/test.py::test_name   # single test
+```
+
+Common workflows from the repo root (all fully mocked / credential-free):
+
+```bash
+make demo            # run the three trials end-to-end (leads with the conflict refusal)
+make check           # ruff + mypy + pytest
+make bot             # clickable Change Court card via the Playground bot (tenant-free)
+make cards           # export Adaptive Card JSON to m365/adaptive-cards/generated/
+scripts/verify.sh    # full gate: trials + safety + MCP + quality (tenant checks report PENDING)
 ```
 
 There is no frontend build. The Teams Adaptive Card is the only decision UI; audit/trial data is
 exposed via an MCP resource. REST serves health plus the read-only run page (`/runs/{thread_id}` +
-its poll endpoint, HMAC-signed links, no mutating action — see ADR-0011). The intended MCP surface
-(Phase 4) is the tools `submit_change`,
-`get_trial`, `cast_verdict`, `get_status` plus the resources for trial / audit / capabilities —
-`cast_verdict` must reach idempotent parity across both MCP and REST.
-
-End-to-end checklist: `scripts/verify.sh` (verifies the three trials + safety/MCP/quality gates;
-tenant-dependent checks report PENDING). Package the M365 app with `make package` (see
-`docs/deploy/deploy.md`).
+its poll endpoint, HMAC-signed links, no mutating action — see ADR-0011). The MCP surface is
+implemented in `backend/app/mcp/`: tools `submit_change`, `get_status`, `get_trial`,
+`send_for_approval`, `decide`, `cast_verdict`, `withdraw_change`, `list_pending_approvals`,
+`acknowledge_outcome`, plus resources for trial / audit / capabilities. `cast_verdict` and `decide`
+hold idempotent parity across both MCP and REST. Package the M365 app with `make package`.
 
 ## Configuration & run modes
 
@@ -139,7 +148,7 @@ are built — no ServiceNow / generic Graph adapter.
   1 approval required; admin bypass allowed) — while solo, admin-merge a green PR. Pick work from the
   `ready` label; self-assign to claim.
 - **One responsibility per PR, ≤ ~300 substantive lines.** Keep refactors separate from behavior
-  changes. Follow `roadmap.md` slicing: one adapter / one node / one router per PR.
+  changes. Follow single-responsibility slicing: one adapter / one node / one router per PR.
 - Conventional commits (`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`), imperative mood.
   Squash-merge; delete the branch after merge.
 - CI today: `.github/workflows/security.yml` (gitleaks secret scan) + weekly Dependabot. No secrets
@@ -149,4 +158,4 @@ The demo spine is **three everyday trials** — Reschedule Sync (one request mov
 calendar, tasks, and announcement together; a conflicting date is refused and a free one proposed),
 Meeting Actions (standup follow-ups become tracked tasks on the requester's authority), and Weekly
 Report (scattered activity aggregated into one post). The earlier governance trials (Customer
-Promise, Vendor Access) stay wired and tested as additional capabilities. See `verify.md`.
+Promise, Vendor Access) stay wired and tested as additional capabilities. See `docs/demo/`.

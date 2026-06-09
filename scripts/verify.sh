@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # End-to-end verification for the three trials. Local-first: runs without a Microsoft 365 tenant.
-# Tenant-dependent checks report PENDING until a tenant is configured (see verify.md).
+# Tenant-dependent checks report PENDING until a tenant is configured.
 #
 # Usage:
 #   scripts/verify.sh
@@ -61,7 +61,7 @@ if grep -rinE "hackathon|agents league|competition|bonus|judg|rubric|submission|
      --exclude-dir=.venv --exclude-dir=node_modules --exclude-dir=__pycache__ \
      --exclude-dir=.mypy_cache --exclude-dir=.ruff_cache --exclude-dir=.pytest_cache \
      --exclude-dir=data \
-     "$ROOT/README.md" "$ROOT/roadmap.md" "$ROOT/verify.md" "$ROOT/docs" "$ROOT/m365" >/dev/null 2>&1; then
+     "$ROOT/README.md" "$ROOT/docs" "$ROOT/m365" >/dev/null 2>&1; then
   fail "competition references found in shipped docs"
 else
   pass "no competition references in shipped docs"

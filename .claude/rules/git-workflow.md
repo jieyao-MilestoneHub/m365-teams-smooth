@@ -63,5 +63,5 @@ via bypass. Keep `main` green; never force-push or rewrite published history.
 
 ## Slicing guidance
 
-The [roadmap](../../roadmap.md) milestones are already decomposed into single-responsibility PRs.
+The milestones (tracked as GitHub issues) are already decomposed into single-responsibility PRs.
 When implementing, follow that slicing — one adapter per PR, one node per PR, one router per PR.

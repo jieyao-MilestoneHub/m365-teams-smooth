@@ -117,9 +117,11 @@ terraform output -raw entra_client_secret   # sensitive; for the Teams OAuth con
 
    Add `m365/color.png` (192×192) and `m365/outline.png` (32×32) first. Upload
    `m365/build/appPackage.zip` to the tenant (custom-app upload) and walk the three trials in
-   Copilot Chat — ticking off the *Pending tenant* checks in [`../verify.md`](../verify.md).
+   Copilot Chat — ticking off the *Pending tenant* checks reported by
+   [`../scripts/verify.sh`](../scripts/verify.sh).
 
-See [`../docs/deploy/deploy.md`](../docs/deploy/deploy.md) for the conceptual walkthrough.
+See the [Microsoft 365 service references](../docs/README.md#microsoft-365--azure-service-reference)
+for the platform pieces this provisions.
 
 ## Cost
 

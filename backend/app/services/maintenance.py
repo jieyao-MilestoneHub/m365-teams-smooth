@@ -6,7 +6,7 @@ state per node transition) and its verdict-claim rows (meaningless once the chec
 thing a claim protects from re-execution — are gone). A trial counts as finished when it has an
 audit record, which every terminal outcome (done / rejected / withdrawn) writes.
 
-Run via ``uv run python -m scripts.purge`` (see docs/deploy/deploy.md for scheduling).
+Run via ``uv run python -m scripts.purge``; schedule it as a periodic job in your host.
 """
 
 from __future__ import annotations

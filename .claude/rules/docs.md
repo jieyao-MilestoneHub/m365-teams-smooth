@@ -6,7 +6,7 @@ League, the competition, judging, scoring, bonus points, prizes, deadlines, or s
 
 ### Applies to
 
-- `README.md`, `roadmap.md`, `verify.md`
+- `README.md`
 - everything under `docs/`
 - code comments and docstrings (Python and TypeScript)
 - commit messages and PR descriptions
@@ -28,7 +28,7 @@ League, the competition, judging, scoring, bonus points, prizes, deadlines, or s
 
 ```
 grep -rinE "hackathon|agents league|competition|bonus|judg|rubric|submission|prize|deadline" \
-  README.md roadmap.md verify.md docs/ 2>/dev/null
+  README.md docs/ m365/ 2>/dev/null
 ```
 
 This should return nothing.

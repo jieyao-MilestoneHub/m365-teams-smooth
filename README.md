@@ -4,88 +4,77 @@
 
 **Governed execution for risky enterprise decisions in Microsoft Teams.**
 
-Cross-system changes happen in chat faster than anyone can keep them consistent — "move the
-rehearsal a week out", "track what we agreed in standup", "post the weekly status report". Each one
-touches GitHub, calendars, the task planner, and Teams, and each is easy to half-do: one system
-updated, three left stale. AI Change Court puts the change **on trial** before it becomes action:
-it detects who and what the change affects, simulates the consequences, decides which stakeholders
-must sign off (none, for routine work — the requester's own confirmation suffices), collects a
-verdict, and only then executes across systems — leaving an auditable trail.
+Cross-system changes get made in chat faster than anyone can keep them consistent — "move the
+rehearsal a week out", "post the weekly status report". Each one touches GitHub, calendars, the task
+planner, and Teams, and each is easy to half-do: one system updated, three left stale.
 
-It is not a chatbot and not a workflow macro. It decides **whether a decision is even safe to
-execute**, and when it isn't, it says so and proposes a safer path.
+AI Change Court puts a change **on trial** before it becomes action. It gathers the cross-system
+impact, decides who must sign off (no one, for routine work — the requester's own confirmation is
+enough), collects a verdict, and only then executes — leaving an append-only audit trail. Crucially,
+it can **refuse an unsafe decision and propose a safer alternative**. It is not a chatbot and not a
+workflow macro.
 
-## The trial
+## How it works
 
-Every request runs through a single, inspectable "court" pipeline:
+Every request runs through one inspectable "court" pipeline:
 
 ```
-intake → impact → options → policy + quorum → [verdict] → execute → audit
+intake → impact → options → policy + quorum → [verdict] → execute → verify → audit
 ```
 
-1. **Intake** — parse the request into a structured change; every requested action is validated
-   against a **capability registry**, so the agent cannot invent or perform unsupported actions.
-2. **Impact** — gather the second-order consequences across systems (schedule conflicts, spoken
-   follow-ups, scattered activity, open blockers, customer commitments) as evidence.
-3. **Options** — produce a feasible execution plan; when the request is unsafe, produce a **safe
-   alternative**.
-4. **Policy + quorum** — risk-score the change (rules are data), decide which stakeholders must
-   approve, and offer verdict options (approve · approve internal only · request revision · reject).
-5. **Verdict** — the run **suspends to a durable checkpoint** and waits; a cast verdict resumes it.
-6. **Execute** — approved steps run through pluggable adapters; a **dry-run** mode predicts effects
-   without touching any external system.
-7. **Audit** — every step records an append-only before/after snapshot with rollback hints.
+`intake` validates the request against a **capability registry** (so the agent can't invent
+actions); `impact` gathers cross-system evidence; `options` produces a feasible plan *or* a safe
+alternative; `policy` risk-scores it and derives the required approvers; the run then **suspends to a
+durable checkpoint** at the verdict gate and resumes only when a verdict is cast; `execute` runs the
+approved steps (or predicts them in **dry-run**); `audit` records an immutable before/after trail.
 
-The pipeline is presented as courtroom roles — Prosecutor (impact), Defender (options), Clerk
-(audit), Executor (execution) — implemented as one controllable agent. With a real LLM configured
-the roles reason for themselves: the Prosecutor selects additional evidence reads from the
-capability catalog (validated and bounded), the Defender drafts the plan within the court's
-refusal, both cite precedents from past rulings, and a verification step checks live writes
-against the reviewed plan. Offline, every role falls back to its deterministic implementation, so
-the trials stay reproducible. Risk scoring, quorum, and refusal authority are always
-deterministic — the agent's freedom lives in perception and generation, never in the safety
-verdict (see `docs/reference/adr/0009`).
+Diagrams: [`docs/architecture/`](docs/architecture/index.html) (layers · data flow · sequence ·
+Azure/M365, offline HTML).
 
-## What it looks like
+## Quick start — reproduce the demo
 
-In Teams, a risky decision returns a **Change Court card**: the proposed change, the impact
-evidence, the stakeholders required to approve, the predicted effects with rollback hints, and the
-verdict buttons. Approving resumes the run and executes; the audit trail records the outcome.
+Runs **fully locally, credential-free** (every integration is mocked, dry-run by default). No
+Microsoft 365 tenant required. Needs Python 3.11+ with [`uv`](https://docs.astral.sh/uv/).
 
-The card also links to a **pipeline run page** — a read-only, CI-style run log (signed per-trial
-links) where the whole flow can be watched live: each stage's timing and evidence, the verdict gate
-filling its quorum, per-system execution lanes with before→after effects, and the audit record.
-Decisions stay on the card; the page only inspects.
+```bash
+cd backend
+uv sync
+cp ../.env.example ../.env
 
-## The demo — Informed Approval
+make demo          # run the Informed Approval scenario end to end
+make check         # ruff + mypy + pytest
+scripts/verify.sh  # trials + safety + MCP + quality gates (tenant checks report PENDING)
+```
 
-*One request. Four systems. No blind approval.* Approval is common; **informed** approval is rare.
-The headline scenario shows the difference end to end (recording script:
-[`docs/demo/recording-runbook.md`](docs/demo/recording-runbook.md)):
+**See the Change Court card** without a tenant: run the clickable
+[Playground bot](m365/playground-bot/) (`make bot` + the Microsoft 365 Agents Playground), or
+`make cards` and open a file from [`m365/adaptive-cards/generated/`](m365/adaptive-cards/generated)
+in the [Adaptive Cards Designer](https://adaptivecards.io/designer). Full walkthrough:
+[`docs/demo/`](docs/demo/README.md).
 
-A program manager types **"move the rehearsal to June 16"** in Teams — to them, just a date change.
-The court treats it as the cross-system change it is, in three beats:
+To run the API locally:
 
-- **Impact before approval** — it reads the load-bearing date across four systems: a real **GitHub**
-  milestone, the **Outlook** calendar, dependent **Planner** tasks, and the **Teams** announcement.
-  Risk: HIGH, with an `eng_lead` + `comms` quorum.
-- **Safety before execution** — June 16 collides with a real **Board review**, so the court
-  **refuses the date as posed** and proposes the next free day as a safe alternative (no plain
-  approve). The requester can propose but not self-approve; an *informed* approver — seeing the
-  impact, the alternative, and the rollback hints — decides, and the run resumes from its durable
-  checkpoint to execute (the GitHub milestone moves for real).
-- **Audit after action** — an append-only record of evidence, approvers, verdict, before/after, and
-  rollback hints.
+```bash
+uv run uvicorn app.main:app --reload    # REST health only  → http://localhost:8000/api/health
+uv run uvicorn app.asgi:app --reload    # REST + the OAuth2-protected MCP server at /mcp
+```
 
-A fourth moment: appending "**and delete the repo**" is **blocked at intake** by the capability
-registry — never planned, never executed.
+## Use it in your own environment
 
-The same engine handles more, wired and tested as additional capabilities (see
-[`docs/reference/trials.md`](docs/reference/trials.md)): **Meeting Actions** ("create action items
-from standup" — spoken follow-ups become owned, dated tasks; LOW risk, executes on the requester's
-authority), **Weekly Report** ("post the Project X weekly report" — cross-system activity aggregated
-into one channel post), and the governance trials (an unsafe customer promise → private-preview
-alternative; over-broad vendor access → least-privilege + auto-revoke).
+- **Real GitHub (opt-in).** Point the GitHub adapter at a throwaway repo containing a `Launch
+  Rehearsal` milestone; everything else stays mocked:
+
+  ```bash
+  INTEGRATION_MODE=github:real GITHUB_TOKEN=<token> GITHUB_REPO=<owner/name> make demo
+  ```
+
+- **A new integration** is one adapter implementing `IntegrationAdapter` + one registration — the
+  graph, services, REST, and MCP are untouched. **A new scenario** is one rule pack + gatherer +
+  planner. See `backend/app/adapters/` and `backend/app/agent/`.
+
+- **Go live in Microsoft 365.** Host the backend over public HTTPS (we use Azure Container Apps),
+  configure Entra ID OAuth2, and sideload the declarative agent in [`m365/`](m365/). The platform
+  references are in [`docs/README.md`](docs/README.md#microsoft-365--azure-service-reference).
 
 ## Architecture
 
@@ -95,117 +84,53 @@ flowchart TB
   DA -- "MCP + OAuth 2.0" --> MCP["MCP server: tools + resources"]
   subgraph Backend["FastAPI service (backend/)"]
     MCP --> SVC["Services — single business layer"]
-    REST["REST: /api/health"] --> SVC
-    SVC --> AGENT["LangGraph court: intake → impact → options → policy+quorum → verdict → execute → audit"]
+    REST["REST: /api/health + run page"] --> SVC
+    SVC --> AGENT["LangGraph court: intake → … → execute → verify → audit"]
     AGENT --> PORTS["Ports — dependency-inversion boundary"]
     PORTS --> ADAPTERS["Adapters"]
   end
   ADAPTERS --> GH["GitHub (real)"]
   ADAPTERS --> MOCKS["Outlook · Planner · SharePoint · Teams · CRM · Entra (mock)"]
-  PORTS --> KNOW["KnowledgePort → Azure AI Foundry (Foundry IQ)"]
+  PORTS --> KNOW["Knowledge → Azure AI Foundry (Foundry IQ)"]
   AGENT --> CARD["Change Court Adaptive Card"]
   SVC --> DB[("SQLite → Postgres")]
 ```
 
-Design highlights:
-
-- **Durable verdict interrupt.** The run suspends to a checkpoint at the verdict gate and resumes
-  when a verdict is cast, so nothing is held in memory across the wait.
-- **Ports & adapters (SOLID).** Integrations sit behind one `IntegrationAdapter` interface exposing
-  both **read** (evidence) and **write** (action) capabilities. GitHub is real; the rest are mocks
-  returning realistic data, chosen by configuration, so the whole system runs locally with no
-  external credentials.
-- **One business layer.** The MCP tools and the minimal REST API both delegate to the same services
-  — no duplicated logic. The Teams Adaptive Card is the primary surface.
+- **Ports & adapters (SOLID).** The decision core depends only on ports; integrations sit behind one
+  `IntegrationAdapter` interface, chosen real-vs-mock per system from config.
+- **One business layer.** MCP tools and the minimal REST API both delegate to the same services — no
+  duplicated logic. The Teams Adaptive Card is the only decision UI.
+- **Durable verdict interrupt.** Nothing is held in memory across the approval wait; a repeated
+  verdict can never double-execute.
 
 ## Tech stack
 
-- **Entry point:** Microsoft 365 Copilot declarative agent + Adaptive Cards
-- **Backend:** FastAPI (Python 3.11+)
-- **Agent orchestration:** LangGraph
-- **Integration protocol:** Model Context Protocol (MCP) with OAuth 2.0
-- **Persistence:** SQLAlchemy + Alembic over SQLite (Postgres-ready)
+Microsoft 365 Copilot declarative agent + Adaptive Cards · FastAPI (Python 3.11+) · LangGraph ·
+Model Context Protocol (MCP) over OAuth 2.0 · SQLAlchemy + Alembic (SQLite, Postgres-ready).
+
+## Configuration
+
+Set via environment variables (see [`.env.example`](.env.example)):
+
+- `INTEGRATION_MODE` — per-system `real`/`mock` (default: GitHub `real`, others `mock`).
+- `FORCE_ALL_MOCK=true` — run everything mocked, zero external credentials.
+- `DRY_RUN_DEFAULT` — whether new changes default to dry-run.
+- `DB_URL` — defaults to a local SQLite file.
+- `GITHUB_TOKEN` / `GITHUB_REPO` — only when GitHub runs in `real` mode.
+- `OAUTH_*` — MCP OAuth2 settings (a local dev issuer is used when no tenant is configured).
+
+**Never commit secrets** — use environment variables or a secret store.
 
 ## Repository layout
 
 ```
-backend/    FastAPI app: agent/, mcp/, api/, services/, ports/, adapters/, domain/
-m365/        declarative agent manifest, plugin manifest, Adaptive Card templates
-docs/        architecture, ADRs, API/contract, trials & test data
-scripts/     developer/demo scripts (verify.sh, seed data)
+backend/   FastAPI app: agent/ mcp/ api/ services/ ports/ adapters/ domain/
+m365/      declarative agent manifest, plugin manifest, Adaptive Card templates
+docs/      architecture diagrams, the demo, and ADRs
+scripts/   developer/demo scripts (verify.sh, seed data)
 ```
 
-A visual tour of every layer is in [`docs/architecture/index.html`](docs/architecture/index.html) — six
-self-contained diagram pages that open offline; the security posture and credential-rotation runbook
-are in [`docs/deploy/security.md`](docs/deploy/security.md).
+## More
 
-## Getting started (local)
-
-> The project runs fully locally. No Microsoft 365 tenant is required for development; the chat
-> entry point is wired separately once a tenant is available.
-
-```bash
-cd backend
-uv sync
-cp ../.env.example ../.env
-
-uv run uvicorn app.main:app --reload    # REST health only (http://localhost:8000/api/health)
-uv run uvicorn app.asgi:app --reload    # REST + the OAuth2-protected MCP server at /mcp
-```
-
-Run the demo and the verification gate (both credential-free, fully mocked):
-
-```bash
-make demo          # the trials end-to-end; opens on the conflicting-date refusal
-scripts/verify.sh  # trials + safety + MCP + quality gates (tenant checks report PENDING)
-make check         # ruff + mypy + pytest
-```
-
-**See the Change Court card without a tenant.** The Adaptive Card renders tenant-free two ways: run
-the clickable [Playground bot](m365/playground-bot/) (`make bot` + the Microsoft 365 Agents
-Playground), or `make cards` and open a file from
-[`m365/adaptive-cards/generated/`](m365/adaptive-cards/generated) in the
-[Adaptive Cards Designer](https://adaptivecards.io/designer). The full demo guide — every screen,
-the two-user approval flow, and the live demo-day checklist — is in [`docs/demo/`](docs/demo/).
-
-## Configuration
-
-Set via environment variables (see `.env.example`):
-
-- `DB_URL` — defaults to a local SQLite file.
-- `INTEGRATION_MODE` — per-system `real` or `mock` selection (default: GitHub `real`, others `mock`).
-- `FORCE_ALL_MOCK=true` — run every integration as a mock, with zero external credentials.
-- `DRY_RUN_DEFAULT` — whether new changes default to dry-run.
-- `GITHUB_TOKEN` / `GITHUB_REPO` — required only when the GitHub adapter runs in `real` mode
-  (point `GITHUB_REPO` at a throwaway `owner/name`).
-- `OAUTH_*` — MCP OAuth2 settings; a local dev issuer is used when no tenant is configured.
-- `PUBLIC_BASE_URL` — public HTTPS origin once the backend is deployed; the MCP resource URL is
-  `{PUBLIC_BASE_URL}/mcp`. Left empty locally (defaults to `http://localhost:8000`).
-
-**Never commit secrets.** Use environment variables or a secret store.
-
-### Grounding the trials in real GitHub (opt-in)
-
-Two trials read or write a live repository when the GitHub adapter runs in `real` mode; by default
-both use the mock adapter, so everything runs credential-free.
-
-1. **Reschedule Sync** updates a milestone titled `Launch Rehearsal` — create one in a throwaway
-   repo (any due date; the trial moves it). **Weekly Report** aggregates the repo's recently closed
-   issues — any active repository provides those naturally.
-2. Run with the GitHub adapter in `real` mode:
-
-   ```bash
-   INTEGRATION_MODE=github:real GITHUB_TOKEN=<token> GITHUB_REPO=<owner/name> make demo
-   ```
-
-`FORCE_ALL_MOCK` stays the default elsewhere, so every other system remains mocked.
-
-## Status
-
-The court engine is implemented and runs end-to-end **locally and credential-free**: the three
-trials pass (dry-run + verdict, with the reject-and-propose-a-safer-alternative behaviour), the
-MCP tools/resources are exposed over an OAuth2-protected server, and `scripts/verify.sh` is green
-apart from its *Pending tenant* section. The Change Court Adaptive Card renders and is clickable
-**without a tenant** via the [Playground bot](m365/playground-bot/); the remaining tenant work is the
-live Microsoft 365 Copilot / Teams sideload and real Microsoft Graph writes. See
-[`roadmap.md`](./roadmap.md) for the phased plan and [`verify.md`](./verify.md) for verification.
+- **Architecture & decisions** → [`docs/`](docs/README.md)
+- **Contributing** → [`CONTRIBUTING.md`](CONTRIBUTING.md)

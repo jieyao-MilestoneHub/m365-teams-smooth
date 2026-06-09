@@ -36,11 +36,12 @@ OAUTH_CONNECTION_ID=<connection-ref> \
 python m365/package.py
 ```
 
-See [`../docs/deploy/deploy.md`](../docs/deploy/deploy.md) for hosting the backend over HTTPS and registering the
-Entra ID app that supplies these values.
+See the [Microsoft 365 service references](../docs/README.md#microsoft-365--azure-service-reference)
+for hosting the backend over HTTPS and registering the Entra ID app that supplies these values.
 
 ## Verifying in a tenant
 
-Installing and exercising the agent in Copilot Chat / Teams is the *Pending tenant* section of
-[`../verify.md`](../verify.md); it needs a dedicated Microsoft 365 dev tenant with custom-app upload
-enabled (see [`../docs/reference/adr/0004-development-environment.md`](../docs/reference/adr/0004-development-environment.md)).
+Installing and exercising the agent in Copilot Chat / Teams is the *Pending tenant* section reported
+by [`../scripts/verify.sh`](../scripts/verify.sh); it needs a dedicated Microsoft 365 dev tenant with
+custom-app upload enabled (see
+[`../docs/adr/0004-development-environment.md`](../docs/adr/0004-development-environment.md)).

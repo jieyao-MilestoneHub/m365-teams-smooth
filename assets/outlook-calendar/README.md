@@ -22,5 +22,5 @@ cd backend && uv run python -m scripts.seed_calendar          # --dry-run to pre
 
 Requirements: the `GRAPH_*` app credentials (already configured) and the Graph app must hold the
 **`Calendars.ReadWrite`** *application* permission with admin consent in the sign-in tenant
-(`Calendars.Read` alone suffices for the read-only evidence path once events exist). See
-[docs/deploy/outlook.md](../../docs/deploy/outlook.md).
+(`Calendars.Read` alone suffices for the read-only evidence path once events exist). See the
+[Microsoft Graph references](../../docs/README.md#microsoft-365--azure-service-reference).
