@@ -9,6 +9,9 @@ Requirements: the ``GRAPH_*`` app credentials and the Graph app's **Calendars.Re
 *application* permission with admin consent in the sign-in tenant. (The trials only *read*; this
 write path exists solely to populate the demo calendar.)
 
+Reusable by ``scripts.setup_demo`` via :func:`audit` (read-only presence check) and :func:`apply`
+(idempotent reseed).
+
 Run:  ``cd backend && uv run python -m scripts.seed_calendar``  (``--dry-run`` prints payloads only)
 """
 
@@ -31,6 +34,17 @@ _CALENDAR = Path(
         Path(__file__).resolve().parents[2] / "assets" / "outlook-calendar" / "calendar.json",
     )
 )
+
+
+def _credentials_ready() -> bool:
+    """True when the app-only Graph credentials and the target mailbox are configured."""
+    required = ("GRAPH_TENANT_ID", "GRAPH_CLIENT_ID", "GRAPH_CLIENT_SECRET", "OUTLOOK_CALENDAR_UPN")
+    return all(os.environ.get(k) for k in required)
+
+
+def _spec() -> dict[str, Any]:
+    spec: dict[str, Any] = json.loads(_CALENDAR.read_text(encoding="utf-8"))
+    return spec
 
 
 def build_event(ev: dict[str, Any], timezone: str) -> dict[str, Any]:
@@ -59,12 +73,60 @@ def _token() -> str:
     return str(resp.json()["access_token"])
 
 
+def _seeded_events(g: httpx.Client, upn: str) -> list[dict[str, Any]]:
+    """The mailbox's events that carry the demo marker (the ones this seeder owns)."""
+    resp = g.get(f"{_GRAPH}/users/{upn}/events?$select=id,subject,body&$top=200")
+    resp.raise_for_status()
+    return [
+        e
+        for e in resp.json().get("value", [])
+        if isinstance(e.get("body"), dict) and _MARKER in str(e["body"].get("content", ""))
+    ]
+
+
+def audit() -> dict[str, object]:
+    """Read-only: is the demo calendar already seeded? Never writes.
+
+    Returns ``{ready, present, detail}`` — ``ready`` False when credentials are absent (nothing can
+    be checked), ``present`` True when every expected seeded event is on the mailbox.
+    """
+    expected = len(_spec()["events"])
+    if not _credentials_ready():
+        return {"ready": False, "present": False, "detail": "GRAPH_*/OUTLOOK_CALENDAR_UPN unset"}
+    upn = os.environ["OUTLOOK_CALENDAR_UPN"]
+    with httpx.Client(timeout=30, headers={"Authorization": f"Bearer {_token()}"}) as g:
+        found = len(_seeded_events(g, upn))
+    present = found >= expected
+    return {
+        "ready": True,
+        "present": present,
+        "detail": f"{found}/{expected} seeded event(s) on {upn}",
+    }
+
+
+def apply() -> None:
+    """Idempotent reseed: delete this seeder's prior events, then recreate from the asset."""
+    spec = _spec()
+    tz = spec.get("timezone", "UTC")
+    payloads = [build_event(ev, tz) for ev in spec["events"]]
+    upn = os.environ["OUTLOOK_CALENDAR_UPN"]
+    with httpx.Client(timeout=30, headers={"Authorization": f"Bearer {_token()}"}) as g:
+        base = f"{_GRAPH}/users/{upn}/events"
+        stale = [e["id"] for e in _seeded_events(g, upn)]
+        for eid in stale:
+            g.delete(f"{base}/{eid}").raise_for_status()
+        print(f"removed {len(stale)} previously-seeded event(s)")
+        for p in payloads:
+            g.post(base, json=p).raise_for_status()
+        print(f"created {len(payloads)} event(s) — calendar reseeded")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Seed the demo Outlook calendar.")
     parser.add_argument("--dry-run", action="store_true", help="print payloads, no writes")
     args = parser.parse_args()
 
-    spec = json.loads(_CALENDAR.read_text(encoding="utf-8"))
+    spec = _spec()
     tz = spec.get("timezone", "UTC")
     payloads = [build_event(ev, tz) for ev in spec["events"]]
     upn = os.environ.get("OUTLOOK_CALENDAR_UPN", "<OUTLOOK_CALENDAR_UPN unset>")
@@ -75,21 +137,7 @@ def main() -> None:
             print(f"  {p['start']['dateTime'][:16]}  {p['subject']}")
         return
 
-    with httpx.Client(timeout=30, headers={"Authorization": f"Bearer {_token()}"}) as g:
-        base = f"{_GRAPH}/users/{upn}/events"
-        resp = g.get(f"{base}?$select=id,subject,body&$top=200")
-        resp.raise_for_status()
-        items = resp.json().get("value", [])
-        stale = [
-            e["id"] for e in items
-            if isinstance(e.get("body"), dict) and _MARKER in str(e["body"].get("content", ""))
-        ]
-        for eid in stale:
-            g.delete(f"{base}/{eid}").raise_for_status()
-        print(f"removed {len(stale)} previously-seeded event(s)")
-        for p in payloads:
-            g.post(base, json=p).raise_for_status()
-        print(f"created {len(payloads)} event(s) — calendar reseeded")
+    apply()
 
 
 if __name__ == "__main__":

@@ -9,6 +9,9 @@ Idempotent: existing folders/files are left in place (Graph ``conflictBehavior: 
 "already there"). Requirements: the ``GRAPH_*`` app credentials and **Sites.ReadWrite.All**
 *application* permission with admin consent (the trial's read path needs only **Sites.Read.All**).
 
+Reusable by ``scripts.setup_demo`` via :func:`audit` (read-only presence check) and :func:`apply`
+(idempotent create).
+
 Run:  ``cd backend && uv run python -m scripts.seed_sharepoint``  (``--dry-run`` = plan only)
 """
 
@@ -31,6 +34,19 @@ _LIBRARY = Path(
         Path(__file__).resolve().parents[2] / "assets" / "sharepoint" / "library.json",
     )
 )
+
+
+def _credentials_ready() -> bool:
+    """True when the app-only Graph credentials and the target site are configured."""
+    return all(
+        os.environ.get(k)
+        for k in ("GRAPH_TENANT_ID", "GRAPH_CLIENT_ID", "GRAPH_CLIENT_SECRET", "SHAREPOINT_SITE_ID")
+    )
+
+
+def _spec() -> dict[str, Any]:
+    spec: dict[str, Any] = json.loads(_LIBRARY.read_text(encoding="utf-8"))
+    return spec
 
 
 def folder_payload(name: str) -> dict[str, Any]:
@@ -61,21 +77,45 @@ def _drive_id(g: httpx.Client, site: str, library: str) -> str | None:
     )
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Seed the demo SharePoint library.")
-    parser.add_argument("--dry-run", action="store_true", help="print the plan, no writes")
-    args = parser.parse_args()
+def _root_folder_names(g: httpx.Client, site: str, drive: str) -> set[str]:
+    resp = g.get(f"{_GRAPH}/sites/{site}/drives/{drive}/root/children?$select=name,folder&$top=200")
+    resp.raise_for_status()
+    return {str(c["name"]) for c in resp.json().get("value", []) if c.get("folder") is not None}
 
-    spec = json.loads(_LIBRARY.read_text(encoding="utf-8"))
+
+def audit() -> dict[str, object]:
+    """Read-only: does the demo library + its folders already exist? Never writes.
+
+    Returns ``{ready, present, detail}`` — ``present`` True when the library exists and holds every
+    expected folder (``CustomerData`` is the load-bearing one for the refusal path).
+    """
+    spec = _spec()
+    library = spec["library"]
+    wanted = {f["name"] for f in spec["folders"]}
+    if not _credentials_ready():
+        return {"ready": False, "present": False, "detail": "GRAPH_*/SHAREPOINT_SITE_ID unset"}
+    site = os.environ["SHAREPOINT_SITE_ID"]
+    with httpx.Client(timeout=30, headers={"Authorization": f"Bearer {_token()}"}) as g:
+        drive = _drive_id(g, site, library)
+        if drive is None:
+            return {"ready": True, "present": False, "detail": f"library '{library}' missing"}
+        have = _root_folder_names(g, site, drive)
+    missing = wanted - have
+    present = not missing
+    detail = (
+        f"library '{library}' + {len(wanted)} folder(s)"
+        if present
+        else f"library '{library}' present; missing folder(s): {', '.join(sorted(missing))}"
+    )
+    return {"ready": True, "present": present, "detail": detail}
+
+
+def apply() -> None:
+    """Idempotent create: the library (if missing), its folders, and placeholder files."""
+    spec = _spec()
     library = spec["library"]
     folders = spec["folders"]
-    site = os.environ.get("SHAREPOINT_SITE_ID", "<SHAREPOINT_SITE_ID unset>")
-    print(f"site: {site}\nlibrary: {library}")
-    for f in folders:
-        print(f"  folder /{f['name']}  ({len(f.get('files', []))} file(s))")
-    if args.dry_run:
-        return
-
+    site = os.environ["SHAREPOINT_SITE_ID"]
     with httpx.Client(timeout=30, headers={"Authorization": f"Bearer {_token()}"}) as g:
         drive = _drive_id(g, site, library)
         if drive is None:
@@ -109,6 +149,24 @@ def main() -> None:
                     put.raise_for_status()
             print(f"  ensured /{folder['name']} + {len(folder.get('files', []))} file(s)")
     print("done — SharePoint library seeded")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Seed the demo SharePoint library.")
+    parser.add_argument("--dry-run", action="store_true", help="print the plan, no writes")
+    args = parser.parse_args()
+
+    spec = _spec()
+    library = spec["library"]
+    folders = spec["folders"]
+    site = os.environ.get("SHAREPOINT_SITE_ID", "<SHAREPOINT_SITE_ID unset>")
+    print(f"site: {site}\nlibrary: {library}")
+    for f in folders:
+        print(f"  folder /{f['name']}  ({len(f.get('files', []))} file(s))")
+    if args.dry_run:
+        return
+
+    apply()
 
 
 if __name__ == "__main__":
