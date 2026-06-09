@@ -4,16 +4,29 @@ from __future__ import annotations
 
 from app.adapters.integrations.registry import ConfigIntegrationRegistry
 from app.adapters.knowledge.fake_knowledge import FakeKnowledgeProvider
+from app.agent.grounding_queries import GROUNDING_QUERIES
 from app.agent.nodes.impact import ImpactNode
 from app.agent.state import CourtState, initial_state, serialize
 from app.domain import (
     Change,
     EvidenceItem,
+    GroundedFact,
     ImpactEvidence,
     RunMode,
 )
 from app.ports.knowledge import KnowledgePort
 from app.ports.registry import IntegrationRegistry
+
+
+class _SpyKnowledge(KnowledgePort):
+    """Records the exact query string the impact node grounds with."""
+
+    def __init__(self) -> None:
+        self.queries: list[str] = []
+
+    def ground(self, query: str, *, top_k: int = 3) -> list[GroundedFact]:
+        self.queries.append(query)
+        return []
 
 
 def _launch_gatherer(
@@ -83,3 +96,27 @@ def test_impact_surfaces_gatherer_read_errors_in_state(
     assert result["errors"] == [
         "impact read failed on github.read_milestone: upstream unavailable"
     ]
+
+
+def test_impact_grounds_the_subject_phrase_not_the_raw_request(
+    mock_registry: ConfigIntegrationRegistry,
+) -> None:
+    spy = _SpyKnowledge()
+    node = ImpactNode(mock_registry, spy, {})
+    change = Change(
+        change_id="c1", raw_request="move the rehearsal to 2026-06-16", subject="launch"
+    )
+    node(_state_with_change(change))
+    assert spy.queries == [GROUNDING_QUERIES["launch"]]
+
+
+def test_impact_grounds_the_raw_request_when_unclassified(
+    mock_registry: ConfigIntegrationRegistry,
+) -> None:
+    spy = _SpyKnowledge()
+    node = ImpactNode(mock_registry, spy, {})
+    change = Change(
+        change_id="c1", raw_request="something the parser did not classify", subject=None
+    )
+    node(_state_with_change(change))
+    assert spy.queries == ["something the parser did not classify"]
