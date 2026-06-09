@@ -1,11 +1,14 @@
 """One-shot demo-resource setup — audit first, then create only what is missing.
 
-Brings the three real-evidence backends to the state the Informed Approval demo expects, in a single
-run, once the credentials are in the environment:
+Brings the real-evidence backends to the state the demo expects, in a single run, once the
+credentials are in the environment. GitHub and Outlook ground the **Informed Approval** headline;
+SharePoint grounds the **Vendor Access** additional capability (skip it if you only run the
+headline):
 
-- **GitHub** — the ``Launch Rehearsal`` milestone (the date the request moves).
+- **GitHub** — the ``Launch Rehearsal`` milestone (the date the request moves). *Headline.*
 - **Outlook** — the demo calendar, incl. the ``Board review`` conflict the request collides with.
-- **SharePoint** — the ``ProjectX`` document library and its folders.
+  *Headline.*
+- **SharePoint** — the ``ProjectX`` document library and its folders. *Vendor Access capability.*
 
 It is **audit-first**: with no flags it only *reviews* whether each resource already exists and
 reports a status table — it never writes. Pass ``--apply`` to create the missing pieces (idempotent;

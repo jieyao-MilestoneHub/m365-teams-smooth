@@ -3,9 +3,11 @@
 The **Change Court card** is built at runtime from a trial's data by `backend/app/mcp/cards.py`
 (`build_change_court_card` / `build_verdict_result_card`).
 
-- [`change-court.sample.json`](./change-court.sample.json) — an illustrative card rendered for the
-  Customer Promise trial (the unsafe-promise → safe-alternative case), with the live `thread_id`
-  replaced by a `{thread_id}` placeholder. It is a reference artifact, not the source of truth.
+- [`change-court.sample.json`](./change-court.sample.json) — an illustrative card showing the
+  refuse-and-propose-safer shape (rendered here for the Customer Promise capability), with the live
+  `thread_id` replaced by a `{thread_id}` placeholder. It is a reference artifact, not the source of
+  truth. Run `make cards` to generate the headline **Informed Approval** cards (and `make cards-all`
+  for every capability) into `generated/`.
 
 Verdict buttons are `Action.Execute` (universal) actions whose `verb` names the tool and whose data
 posts `{thread_id, verdict_type, selected_plan}` back to `cast_verdict`; on the bot surface the

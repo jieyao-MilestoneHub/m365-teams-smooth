@@ -30,9 +30,14 @@ cd backend
 uv sync
 cp ../.env.example ../.env
 
-make demo     # run the Informed Approval scenario end to end
+make demo     # run the Informed Approval scenario end to end (the one recorded scenario)
+make demo-all # also tour the additional capabilities the same engine handles (not recorded)
 make check    # ruff + mypy + pytest
 ```
+
+Informed Approval is the headline. The same engine also handles **Meeting Actions**, **Weekly
+Report**, **Customer Promise**, and **Vendor Access** — wired and tested, runnable via `make
+demo-all`, but not part of the recorded demo.
 
 **See the Change Court card** without a tenant: run the clickable
 [Playground bot](m365/playground-bot/) (`make bot`), or `make cards` and open a file from

@@ -52,16 +52,18 @@ Agents Playground ──HTTP──> courtbot (this) ──in-process──> Cour
 
 In the Playground chat:
 
-1. Type: **`promise Customer A that SSO is GA by 2026-06-17`**
-   → the Change Court card renders with **⛔ REJECTED as requested**, the decisive evidence, and a
-   **safe alternative**, plus verdict buttons.
+1. Type: **`move the rehearsal to 2026-06-16`**
+   → the Change Court card renders with **⛔ REJECTED as requested**, the decisive evidence (the date
+   collides with the **Board review**), and a **safe alternative** (the next free day, 2026-06-17),
+   plus verdict buttons.
 2. Click **Accept alternative**
    → the run resumes and a result card posts: **✅ Safe alternative executed**, with the per-step
-   outcomes and any rollback hints.
+   outcomes (milestone, calendar, tasks, and announcement) and any rollback hints.
 
-Other requests work too, e.g. `give the vendor access to Project X until the campaign is done`
-(ambiguous → least-privilege alternative) or `slip the launch from 2026-06-10 to 2026-06-17`
-(coordinated multi-system plan).
+This is the recorded headline — **Informed Approval**. The same engine also handles additional
+capabilities (Meeting Actions, Weekly Report, Customer Promise, Vendor Access) — type their request
+to try them — but they are not part of the recorded demo. See
+[`../../docs/demo/`](../../docs/demo/README.md).
 
 ### Two-identity approval flow (with proactive cards)
 
@@ -83,10 +85,10 @@ The Agents Playground renders the **real** Change Court Adaptive Card, so it is 
 to get a Teams-style card screenshot or recording:
 
 1. `make bot`, then `npx @microsoft/teams-app-test-tool@latest start` (as above).
-2. Type `promise Customer A that SSO is GA by 2026-06-17` and screen-record: the card shows
-   **⛔ REJECTED as requested**, the decisive evidence with its citation, and the **safe
-   alternative**; clicking **Accept alternative** posts the **✅ Safe alternative executed** result.
-3. Repeat for the Vendor Access and Launch Slip requests for the full three-trial reel.
+2. Type `move the rehearsal to 2026-06-16` and screen-record: the card shows **⛔ REJECTED as
+   requested**, the decisive evidence with its citation (the **Board review** conflict), and the
+   **safe alternative** (2026-06-17); clicking **Accept alternative** posts the **✅ Safe alternative
+   executed** result.
 
 Prefer a static preview? The exact card JSON is checked in under
 [`../adaptive-cards/generated/`](../adaptive-cards/generated) (regenerate with `make cards`) — paste

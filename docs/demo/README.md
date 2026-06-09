@@ -74,6 +74,19 @@ Every other system stays mocked. To run inside Copilot Chat / Teams, deploy the 
 HTTPS with Entra ID OAuth2 and sideload the declarative agent in `m365/` (the codebase and the
 [Microsoft 365 service docs](../README.md#microsoft-365--azure-service-reference) cover the steps).
 
-> The same engine also handles additional capabilities that stay wired and tested — *Meeting Actions*
-> (standup follow-ups become owned, dated tasks) and *Weekly Report* (cross-system activity
-> aggregated into one channel post). They are not part of the headline demo.
+## What else the same engine handles (not recorded — play with it yourself)
+
+Informed Approval is the one scenario this demo records. The same pipeline already handles four more
+capabilities, wired and tested but deliberately left as *capabilities the architecture supports* — no
+demo is built out for them. Run them with `make demo-all` (or `make cards-all` for their cards), or
+type the request into the Playground bot:
+
+- **Meeting Actions** — standup follow-ups become owned, dated Planner tasks ("create action items
+  from standup").
+- **Weekly Report** — cross-system activity aggregated into one channel post ("post the Project X
+  weekly report").
+- **Customer Promise** — an unsafe "it's GA by <date>" promise is refused; a private preview with
+  gated GA is proposed instead ("promise Customer A that SSO is GA by 2026-06-17").
+- **Vendor Access** — an over-broad, undated access request is narrowed to least-privilege,
+  time-boxed access with auto-revoke ("give the vendor access to Project X until the campaign is
+  done").

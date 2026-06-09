@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
-# End-to-end verification for the three trials. Local-first: runs without a Microsoft 365 tenant.
+# End-to-end verification for the headline demo and the additional capabilities the engine handles.
+# Local-first: runs without a Microsoft 365 tenant.
 # Tenant-dependent checks report PENDING until a tenant is configured.
 #
 # Usage:
@@ -35,11 +36,11 @@ fi
 section "Preconditions"
 check "backend app imports and boots" backend python -c "from app.main import create_app; create_app()"
 
-section "The three trials (fully mocked, dry-run + verdict)"
-check "Reschedule trial (feasible + conflict alternative)" backend pytest -q tests/test_trial_launch_slip.py
-check "Meeting Actions trial (requester authority)" backend pytest -q tests/test_trial_meeting_actions.py
-check "Weekly Report trial (aggregate + post)" backend pytest -q tests/test_trial_weekly_report.py
-check "golden fixtures match" backend pytest -q tests/test_golden_trials.py
+section "Headline + additional capabilities (fully mocked, dry-run + verdict)"
+check "Informed Approval — headline (feasible + conflict alternative)" backend pytest -q tests/test_trial_launch_slip.py
+check "Meeting Actions capability (requester authority)" backend pytest -q tests/test_trial_meeting_actions.py
+check "Weekly Report capability (aggregate + post)" backend pytest -q tests/test_trial_weekly_report.py
+check "golden fixtures match (headline + every capability)" backend pytest -q tests/test_golden_trials.py
 
 section "Safety & audit"
 check "hallucination guard + partial-failure containment" backend pytest -q tests/test_failure_and_guard.py

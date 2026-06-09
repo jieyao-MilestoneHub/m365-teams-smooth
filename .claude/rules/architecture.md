@@ -73,9 +73,9 @@ rewrite (see below).
   `FORCE_ALL_MOCK` flag to run with zero external credentials).
 - **Open/Closed:** a new integration = one adapter module + one registration. No edits to graph,
   services, REST, or MCP.
-- **Scope discipline:** only the adapters the three trials require are built — GitHub (real) and mock
-  Outlook, Planner, SharePoint, Teams, CRM, Entra. Others (ServiceNow, a generic Graph adapter) are
-  backlog.
+- **Scope discipline:** only the adapters the headline demo (Informed Approval) and the additional
+  capabilities the engine already handles require are built — GitHub (real) and mock Outlook,
+  Planner, SharePoint, Teams, CRM, Entra. Others (ServiceNow, a generic Graph adapter) are backlog.
 
 ## Persistence
 
