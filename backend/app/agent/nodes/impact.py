@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
+from app.agent.grounding_queries import grounding_query
 from app.agent.state import CourtState, bound_errors, serialize
 from app.domain import Change, ChangeStatus, EvidenceItem, ImpactEvidence
 from app.ports.knowledge import KnowledgePort
@@ -60,10 +61,12 @@ class ImpactNode:
         if gatherer is not None:
             _merge(evidence, gatherer(change, self._registry, self._knowledge, errors))
 
-        # Grounding degrades gracefully (like a failed gatherer read): a slow or down knowledge
-        # service costs the trial its citations, never the trial itself.
+        # Ground on the subject's targeted phrase (a bare request ranks poorly against the noisy
+        # corpus); fall back to the raw request only when the change is unclassified. Grounding
+        # degrades gracefully (like a failed gatherer read): a slow or down knowledge service costs
+        # the trial its citations, never the trial itself.
         try:
-            facts = self._knowledge.ground(change.raw_request)
+            facts = self._knowledge.ground(grounding_query(change.subject, change.raw_request))
         except Exception as exc:  # noqa: BLE001 — any provider failure becomes evidence-level
             facts = []
             errors.append(f"knowledge grounding unavailable: {exc}")

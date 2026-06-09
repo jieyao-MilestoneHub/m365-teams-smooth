@@ -16,6 +16,7 @@ import os
 import sys
 
 from app.adapters.knowledge.foundry_iq import FoundryIqKnowledgeProvider
+from app.agent.grounding_queries import GROUNDING_QUERIES
 
 ENDPOINT = os.environ.get(
     "KNOWLEDGE_SEARCH_ENDPOINT", "https://iqs-search-mm65ytt5g64nw.search.windows.net"
@@ -25,18 +26,19 @@ SOURCE = os.environ.get("KNOWLEDGE_SOURCE_NAME", "governance-knowledge-source")
 EFFORT = os.environ.get("KNOWLEDGE_REASONING_EFFORT", "medium")
 
 # (label, query, target substring, exclude-from-target, near-miss substrings that must not outrank).
-# Queries mirror the gatherer/impact grounding calls (backend/app/agent/gatherers.py).
+# Queries are the SAME phrases the impact node and gatherers ground with, sourced from
+# app.agent.grounding_queries.GROUNDING_QUERIES — so this eval guards what actually runs.
 CASES = [
-    ("Reschedule", "schedule change controlled coordinated milestone date",
+    ("Reschedule", GROUNDING_QUERIES["launch"],
      "Release & Change Management Policy", ("DEPRECATED", "v1"),
      ("Scheduling Guidelines", "DEPRECATED")),
-    ("Meeting Actions", "meeting follow-through action item owner due date accountability",
+    ("Meeting Actions", GROUNDING_QUERIES["meeting-actions"],
      "Meeting Follow-through Policy", (), ("All-Hands", "Project Y")),
-    ("Weekly Report", "status reporting weekly cadence single source of record",
+    ("Weekly Report", GROUNDING_QUERIES["weekly-report"],
      "Status Reporting Policy", (), ("Dashboard", "Power BI")),
-    ("Customer Promise", "SSO GA promise security review sign-off",
+    ("Customer Promise", GROUNDING_QUERIES["sso-ga"],
      "Customer Commitment & GA Readiness Policy", (), ()),
-    ("Vendor Access", "vendor access least privilege scope expiry",
+    ("Vendor Access", GROUNDING_QUERIES["project-access"],
      "Third-Party Vendor & Contractor Access Policy", (), ()),
 ]
 

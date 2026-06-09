@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 
+from app.agent.grounding_queries import GROUNDING_QUERIES
 from app.agent.nodes.impact import Gatherer
 from app.domain import Change, EvidenceItem, ImpactEvidence
 from app.domain.errors import IntegrationError
@@ -96,7 +97,7 @@ def gather_launch(
                     ),
                     data={"event": clash, "title": clash.get("title")},
                     severity="high",
-                    grounded=knowledge.ground("schedule change controlled coordinated"),
+                    grounded=knowledge.ground(GROUNDING_QUERIES["launch"]),
                 )
             )
             tags.append("schedule.target_date_conflict")
@@ -173,7 +174,7 @@ def gather_sso_ga(
                 summary=f"Security review on {review_date} is after the promised {change.due_by}",
                 data=review,
                 severity="high",
-                grounded=knowledge.ground("SSO GA promise security review"),
+                grounded=knowledge.ground(GROUNDING_QUERIES["sso-ga"]),
             )
         )
         tags.append("security.review_after_due_date")
@@ -223,7 +224,7 @@ def gather_project_access(
                 summary=f"'{path}' holds customer data",
                 data=folder,
                 severity="high",
-                grounded=knowledge.ground("vendor access least privilege scope"),
+                grounded=knowledge.ground(GROUNDING_QUERIES["project-access"]),
             )
         )
         tags.append("data.customer_data_present")
@@ -251,7 +252,7 @@ def gather_meeting_actions(
                 kind="meeting_notes",
                 summary=f"{len(notes)} spoken follow-up(s) in the standup discussion",
                 data={"notes": notes},
-                grounded=knowledge.ground("meeting follow-through accountability"),
+                grounded=knowledge.ground(GROUNDING_QUERIES["meeting-actions"]),
             )
         )
         tags.append("meeting.action_items_found")
@@ -288,7 +289,7 @@ def gather_weekly_report(
                 kind="closed_issues",
                 summary=f"{len(closed)} issue(s) closed recently",
                 data={"issues": closed},
-                grounded=knowledge.ground("status reporting cadence single source"),
+                grounded=knowledge.ground(GROUNDING_QUERIES["weekly-report"]),
             )
         )
         tags.append("report.activity_collected")
