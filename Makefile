@@ -1,7 +1,7 @@
 # Developer entry points. Backend lives in backend/ and uses uv.
 # `make check` is the local pre-PR gate (lint + type-check + tests).
 
-.PHONY: help sync run lint type test check demo cards verify compose-up compose-down bot package
+.PHONY: help sync run lint type test check demo cards verify setup-demo setup-demo-apply compose-up compose-down bot package
 
 help:
 	@echo "Targets:"
@@ -15,6 +15,8 @@ help:
 	@echo "  cards        export the Change Court Adaptive Card JSON (m365/adaptive-cards/generated)"
 	@echo "  migrate      apply database migrations (alembic upgrade head)"
 	@echo "  verify       run the end-to-end trial checklist (scripts/verify.sh)"
+	@echo "  setup-demo   audit whether the demo's real resources exist (read-only; needs creds)"
+	@echo "  setup-demo-apply  create the missing demo resources (idempotent)"
 	@echo "  compose-up   run the backend in Docker (fully mocked)"
 	@echo "  bot          run the Change Court Playground bot (tenant-free; see m365/playground-bot)"
 	@echo "  package      build the M365 app package (m365/build/appPackage.zip; see docs/deploy.md)"
@@ -47,6 +49,12 @@ migrate:
 
 verify:
 	scripts/verify.sh
+
+setup-demo:
+	cd backend && uv run python -m scripts.setup_demo
+
+setup-demo-apply:
+	cd backend && uv run python -m scripts.setup_demo --apply
 
 compose-up:
 	docker compose up --build
