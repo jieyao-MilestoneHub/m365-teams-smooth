@@ -63,6 +63,13 @@ class Settings(BaseSettings):
     # chunks and cites these markdown files, so credential-free runs ground real policy text.
     knowledge_corpus_dir: str = ""
 
+    # --- Input shield / guardrail (empty endpoint -> offline heuristic) ---
+    # Azure AI Content Safety endpoint for Prompt Shields; keyless via DefaultAzureCredential.
+    content_safety_endpoint: str = ""
+    # When a screened input is flagged as a prompt-injection attempt, skip the agentic LLM step and
+    # fall back to the deterministic path. Set false to screen-and-log without blocking.
+    guardrail_blocking: bool = True
+
     # --- MCP OAuth2 resource server (empty -> local dev issuer) ---
     oauth_issuer: str = ""
     oauth_audience: str = ""

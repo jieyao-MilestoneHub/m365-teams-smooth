@@ -16,10 +16,12 @@ from pydantic import BaseModel, Field
 
 from app.agent.agentic.precedents import render_precedents
 from app.agent.agentic.structured import extract_json
+from app.agent.agentic.untrusted import HARDENING, fence
 from app.agent.nodes.impact import Gatherer
 from app.domain import Capability, CapabilityKind, Change, EvidenceItem, ImpactEvidence
 from app.domain.errors import IntegrationError
 from app.observability import metrics
+from app.ports.guardrail import GuardrailPort
 from app.ports.integration import ReadQuery
 from app.ports.knowledge import KnowledgePort
 from app.ports.llm import LLMProvider
@@ -52,11 +54,15 @@ class LlmEvidenceGatherer:
         *,
         max_reads: int = 5,
         memory: MemoryPort | None = None,
+        guardrail: GuardrailPort | None = None,
+        guardrail_blocking: bool = True,
     ) -> None:
         self._llm = llm
         self._fallback = fallback
         self._max_reads = max_reads
         self._memory = memory
+        self._guardrail = guardrail
+        self._block = guardrail_blocking
 
     def __call__(
         self,
@@ -91,6 +97,16 @@ class LlmEvidenceGatherer:
         }
         if not catalog:
             return []
+
+        # The request and gathered evidence come from third parties; screen for prompt injection
+        # before the Prosecutor reasons over them. A flag falls back to the deterministic evidence.
+        if self._guardrail is not None and self._block:
+            docs = [i.summary for i in gathered.items]
+            verdict = self._guardrail.screen_input(user_text=change.raw_request, documents=docs)
+            if verdict.flagged:
+                logger.warning("agentic.guardrail_blocked", extra={"cats": verdict.categories})
+                metrics.increment("guardrail.input_blocked")
+                return []
 
         text = self._llm.complete(
             self._user_prompt(change, gathered), system=self._system_prompt(catalog)
@@ -153,9 +169,10 @@ class LlmEvidenceGatherer:
     def _user_prompt(self, change: Change, gathered: ImpactEvidence) -> str:
         already = "; ".join(f"{i.system}/{i.kind}: {i.summary}" for i in gathered.items) or "none"
         prompt = (
-            f"Change request ({change.subject}): {change.raw_request}\n"
+            f"Change subject: {change.subject}\n"
+            f"Change request: {fence('request', change.raw_request)}\n"
             f"Due by: {change.due_by or 'unspecified'}\n"
-            f"Evidence already gathered: {already}"
+            f"Evidence already gathered: {fence('evidence', already)}"
         )
         precedents = render_precedents(self._memory, change.subject or "", gathered.tags)
         return f"{prompt}\n{precedents}" if precedents else prompt
@@ -173,6 +190,7 @@ class LlmEvidenceGatherer:
         return (
             "You are the Prosecutor in a change-governance court: your job is to surface "
             "second-order consequences of a risky change before it executes.\n"
+            f"{HARDENING}\n"
             f"Select up to {self._max_reads} ADDITIONAL read capabilities (beyond the evidence "
             "already gathered) that would reveal blockers, conflicts, commitments, or exposure. "
             "Only use capabilities from this catalog:\n" + "\n".join(lines) + "\n"

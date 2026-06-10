@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 
 from app.agent.agentic.precedents import render_precedents
 from app.agent.agentic.structured import extract_json
+from app.agent.agentic.untrusted import HARDENING, fence
 from app.agent.nodes.options import Planner
 from app.domain import (
     Capability,
@@ -28,6 +29,7 @@ from app.domain import (
     param_violations,
 )
 from app.observability import metrics
+from app.ports.guardrail import GuardrailPort
 from app.ports.llm import LLMProvider
 from app.ports.memory import MemoryPort
 from app.ports.registry import IntegrationRegistry
@@ -58,11 +60,15 @@ class LlmPlanner:
         fallback: Planner,
         *,
         memory: MemoryPort | None = None,
+        guardrail: GuardrailPort | None = None,
+        guardrail_blocking: bool = True,
     ) -> None:
         self._llm = llm
         self._registry = registry
         self._fallback = fallback
         self._memory = memory
+        self._guardrail = guardrail
+        self._block = guardrail_blocking
 
     def __call__(self, change: Change, impact: ImpactEvidence) -> ExecutionPlan:
         baseline = self._fallback(change, impact)
@@ -84,6 +90,16 @@ class LlmPlanner:
         }
         if not catalog:
             return None
+
+        # The request and impact evidence are third-party content; screen before the Defender
+        # drafts a plan over them. A flag keeps the deterministic baseline plan.
+        if self._guardrail is not None and self._block:
+            docs = [i.summary for i in impact.items]
+            verdict = self._guardrail.screen_input(user_text=change.raw_request, documents=docs)
+            if verdict.flagged:
+                logger.warning("agentic.guardrail_blocked", extra={"cats": verdict.categories})
+                metrics.increment("guardrail.input_blocked")
+                return None
 
         text = self._llm.complete(
             self._user_prompt(change, impact, baseline),
@@ -146,9 +162,10 @@ class LlmPlanner:
         evidence = "; ".join(f"{i.system}/{i.kind}: {i.summary}" for i in impact.items) or "none"
         base = "; ".join(f"{s.capability.system}.{s.capability.name}" for s in baseline.steps)
         prompt = (
-            f"Change request ({change.subject}): {change.raw_request}\n"
+            f"Change subject: {change.subject}\n"
+            f"Change request: {fence('request', change.raw_request)}\n"
             f"Due by: {change.due_by or 'unspecified'}\n"
-            f"Impact evidence: {evidence}\n"
+            f"Impact evidence: {fence('evidence', evidence)}\n"
             f"Baseline plan ({baseline.kind.value}): {base or 'none'}\n"
             f"Baseline rationale: {baseline.rationale}"
         )
@@ -179,6 +196,7 @@ class LlmPlanner:
         return (
             "You are the Defender in a change-governance court: you produce the execution plan "
             "the approvers will review.\n"
+            f"{HARDENING}\n"
             f"{stance}\n"
             f"Use at most {_MAX_STEPS} steps, ONLY with capabilities from this catalog:\n"
             + "\n".join(lines)
