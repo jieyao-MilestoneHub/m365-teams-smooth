@@ -17,7 +17,7 @@ from typing import Protocol
 
 from app.agent.state import CourtState, bound_deliberations
 from app.domain import SOURCE_LLM, SOURCE_OFFLINE_STUB, DeliberationEntry
-from app.ports.llm import LLMProvider
+from app.ports.llm import LLMProvider, LlmRequest
 
 logger = logging.getLogger(__name__)
 
@@ -65,31 +65,55 @@ class OfflineDeliberator:
         )
 
 
-class LlmDeliberator:
-    """Surfaces genuine model reasoning: a role's prose, or an LLM explanation of the context."""
+# The deliberator emits 2-3 sentences; cap it well below the uniform 1024 to bound spend.
+_DELIBERATION_MAX_TOKENS = 256
 
-    def __init__(self, llm: LLMProvider) -> None:
+
+class LlmDeliberator:
+    """Surfaces genuine model reasoning: a role's prose, or an LLM explanation of the context.
+
+    The deliberation trace is purely explanatory — it never affects risk, quorum, or the verdict —
+    yet it is the highest-volume LLM spend (up to one call per node). With ``dedicated_calls`` off
+    (the default "reuse" cadence), it makes a model call only when an upstream role already produced
+    prose; absent prose it records the factual context as an honestly-labeled stub, so a trial pays
+    ~0 dedicated deliberation calls. ``dedicated_calls`` on restores a model call for every node.
+    """
+
+    def __init__(self, llm: LLMProvider, *, dedicated_calls: bool = False) -> None:
         self._llm = llm
+        self._dedicated_calls = dedicated_calls
 
     def deliberate(
         self, *, node: str, role: str, context: str, reasoning: str = ""
     ) -> DeliberationEntry:
         text = reasoning.strip()
-        if not text:
-            try:
-                text = self._llm.complete(
-                    context, system=_SYSTEM_PROMPTS.get(node, _DEFAULT_SYSTEM)
-                ).strip()
-            except Exception as exc:  # noqa: BLE001 — reasoning is advisory; never fail a node
-                logger.warning("deliberate.llm_fallback", extra={"node": node, "error": str(exc)})
-                return DeliberationEntry(
-                    node=node,
-                    role=role,
-                    rationale=context[:_MAX_RATIONALE_CHARS],
-                    source=SOURCE_OFFLINE_STUB,
+        if text:
+            return DeliberationEntry(
+                node=node, role=role, rationale=text[:_MAX_RATIONALE_CHARS], source=SOURCE_LLM
+            )
+        if not self._dedicated_calls:
+            # Reuse cadence: no upstream prose → record the factual context, no dedicated call.
+            return DeliberationEntry(
+                node=node, role=role, rationale=context[:_MAX_RATIONALE_CHARS],
+                source=SOURCE_OFFLINE_STUB,
+            )
+        try:
+            result = self._llm.generate(
+                LlmRequest(
+                    prompt=context,
+                    cacheable_prefix=_SYSTEM_PROMPTS.get(node, _DEFAULT_SYSTEM),
+                    max_tokens=_DELIBERATION_MAX_TOKENS,
                 )
+            )
+        except Exception as exc:  # noqa: BLE001 — reasoning is advisory; never fail a node
+            logger.warning("deliberate.llm_fallback", extra={"node": node, "error": str(exc)})
+            return DeliberationEntry(
+                node=node, role=role, rationale=context[:_MAX_RATIONALE_CHARS],
+                source=SOURCE_OFFLINE_STUB,
+            )
         return DeliberationEntry(
-            node=node, role=role, rationale=text[:_MAX_RATIONALE_CHARS], source=SOURCE_LLM
+            node=node, role=role, rationale=result.text.strip()[:_MAX_RATIONALE_CHARS],
+            source=SOURCE_LLM,
         )
 
 

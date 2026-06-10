@@ -87,6 +87,9 @@ class Settings(BaseSettings):
     llm_timeout_seconds: float = 30.0
     # Output ceiling per LLM call (the parser needs a small JSON object, never long text).
     llm_max_tokens: int = 1024
+    # Cadence for the explanatory deliberation trace: "reuse" (call the model only when an upstream
+    # role already produced prose — ~0 dedicated calls), "always" (a call per node), or "off".
+    deliberation_llm: str = "reuse"
     # Boundary cap on a submitted change request. A change request is a sentence or two in chat;
     # anything past this is rejected (422 / invalid_params), never silently truncated.
     max_request_chars: int = 1000

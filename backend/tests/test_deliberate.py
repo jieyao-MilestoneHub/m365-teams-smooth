@@ -39,17 +39,30 @@ def test_llm_deliberator_reuses_role_reasoning_without_calling() -> None:
     assert llm.calls == []  # reused role prose, no extra call
 
 
-def test_llm_deliberator_explains_context_when_no_prior_reasoning() -> None:
+def test_reuse_mode_records_a_stub_and_makes_no_call_without_prose() -> None:
+    # Default cadence: absent upstream prose, no dedicated LLM call — record the factual context.
     llm = _StubLLM()
     entry = LlmDeliberator(llm).deliberate(node="policy", role="", context="Risk 80 (high).")
+    assert entry.source == SOURCE_OFFLINE_STUB
+    assert entry.rationale == "Risk 80 (high)."
+    assert llm.calls == []
+
+
+def test_always_mode_explains_context_when_no_prior_reasoning() -> None:
+    llm = _StubLLM()
+    entry = LlmDeliberator(llm, dedicated_calls=True).deliberate(
+        node="policy", role="", context="Risk 80 (high)."
+    )
     assert entry.source == SOURCE_LLM
     assert entry.rationale == "Because the factors warrant approval."
     assert len(llm.calls) == 1
     assert llm.calls[0][1] is not None  # a node-specific system prompt was used
 
 
-def test_llm_deliberator_falls_back_to_stub_on_failure() -> None:
-    entry = LlmDeliberator(_BrokenLLM()).deliberate(node="intake", role="", context="Parsed 1.")
+def test_always_mode_falls_back_to_stub_on_failure() -> None:
+    entry = LlmDeliberator(_BrokenLLM(), dedicated_calls=True).deliberate(
+        node="intake", role="", context="Parsed 1."
+    )
     assert entry.source == SOURCE_OFFLINE_STUB  # honest: the LLM did not produce this
     assert entry.rationale == "Parsed 1."
 
