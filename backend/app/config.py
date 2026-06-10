@@ -85,6 +85,9 @@ class Settings(BaseSettings):
     http_timeout_seconds: float = 10.0
     # Closes the OpenAI no-timeout gap on the LLM-backed parser.
     llm_timeout_seconds: float = 30.0
+    # Transient-failure retry budget for the LLM client. The SDK owns backoff (exponential,
+    # honors retry-after); there is deliberately no outer retry wrapper, so attempts never multiply.
+    llm_max_retries: int = 2
     # Output ceiling per LLM call (the parser needs a small JSON object, never long text).
     llm_max_tokens: int = 1024
     # Cadence for the explanatory deliberation trace: "reuse" (call the model only when an upstream
