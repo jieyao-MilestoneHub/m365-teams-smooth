@@ -1,7 +1,9 @@
-"""Mock SharePoint adapter: read a folder (incl. whether it holds customer data) and grant access.
+"""Mock SharePoint adapter: read a folder, read the change-freeze calendar, and grant access.
 
 Grants carry a role and an expiry, so the Vendor Access trial can propose least-privilege,
 time-boxed access (read-only to one folder until a fixed date) instead of broad standing access.
+The published change-freeze calendar lets a launch-date change be checked against a release freeze
+window — a governance constraint that lives in SharePoint, not on anyone's Outlook calendar.
 """
 
 from __future__ import annotations
@@ -35,6 +37,17 @@ _FOLDERS: dict[str, dict[str, object]] = {
     },
 }
 
+# Published release-freeze windows (quarter-end change freeze): no production-affecting changes may
+# land inside them. Read by sharepoint.read_change_calendar.
+_CHANGE_FREEZES: list[dict[str, object]] = [
+    {
+        "name": "Q2 financial close freeze",
+        "start": "2026-06-19",
+        "end": "2026-06-24",
+        "policy": "No production-affecting changes during the quarter-end close window.",
+    },
+]
+
 
 class MockSharePointAdapter(BaseIntegrationAdapter):
     """In-memory SharePoint stand-in."""
@@ -50,6 +63,9 @@ class MockSharePointAdapter(BaseIntegrationAdapter):
         return [
             Capability(system=_SYSTEM, name="sharepoint.read_folder", kind=CapabilityKind.READ),
             Capability(
+                system=_SYSTEM, name="sharepoint.read_change_calendar", kind=CapabilityKind.READ
+            ),
+            Capability(
                 system=_SYSTEM,
                 name="sharepoint.grant_folder_permission",
                 kind=CapabilityKind.WRITE,
@@ -62,6 +78,10 @@ class MockSharePointAdapter(BaseIntegrationAdapter):
             path = str(query.params.get("path", ""))
             folder = _FOLDERS.get(path, {"items": [], "contains_customer_data": False})
             return ReadResult(capability=query.capability, data={"path": path, **folder})
+        if query.capability == "sharepoint.read_change_calendar":
+            return ReadResult(
+                capability=query.capability, data={"freezes": [dict(f) for f in _CHANGE_FREEZES]}
+            )
         raise IntegrationError(f"{_SYSTEM}: unknown read capability '{query.capability}'")
 
     def _predict(self, step: ExecutionStep, before: dict[str, object]) -> PredictedEffect:

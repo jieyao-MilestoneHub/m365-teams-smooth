@@ -77,6 +77,27 @@ def _next_free_day(after: date, busy: set[str]) -> str:
     return (after + timedelta(days=1)).isoformat()
 
 
+def _latest_safe_day(after: date, sla: str, freeze_start: str | None, busy: set[str]) -> str:
+    """The latest day that honors every constraint: on/before the SLA, before the freeze, free.
+
+    Walking forward from ``after``, a day qualifies when it is not past the SLA, not in or after
+    the freeze window, and not already booked. The latest such day gives the team maximum runway
+    while still landing inside the only window that breaches nothing.
+    """
+    best: str | None = None
+    day = after
+    for _ in range(60):
+        day = day + timedelta(days=1)
+        iso = day.isoformat()
+        if iso > sla:
+            break  # increasing, so no later day can qualify
+        if freeze_start is not None and iso >= freeze_start:
+            continue
+        if iso not in busy:
+            best = iso
+    return best or (after + timedelta(days=1)).isoformat()
+
+
 def _reschedule_steps(new_due: str, delta: int) -> list[ExecutionStep]:
     return [
         _step(
@@ -107,6 +128,27 @@ def plan_launch(change: Change, impact: ImpactEvidence) -> ExecutionPlan:
     and the next free day is proposed instead — the same ripple, a safer date."""
     new_due = change.due_by or "2026-06-17"
     old_due = _evidence_field(impact, "milestone", "due_on") or "2026-06-10"
+    if "schedule.contractual_breach_risk" in impact.tags:
+        # A latent cross-system breach the calendar never shows: counter-propose the latest date
+        # that honors the SLA, the freeze window, and the go-live buffer — same ripple, safe date.
+        cf = next((i for i in impact.items if i.kind == "counterfactual"), None)
+        data = cf.data if cf is not None else {}
+        sla = str(data.get("sla") or "2026-06-21")
+        freeze = data.get("freeze")
+        freeze_start = str(freeze.get("start")) if isinstance(freeze, dict) else None
+        proposed = _latest_safe_day(_as_day(old_due), sla, freeze_start, _busy_days(impact))
+        delta = (_as_day(proposed) - _as_day(old_due)).days
+        return ExecutionPlan(
+            kind=PlanKind.SAFE_ALTERNATIVE,
+            steps=_reschedule_steps(proposed, delta),
+            supersedes_request=True,
+            rationale=(
+                f"The requested {new_due} would breach a contractual SLA / release freeze / "
+                f"go-live buffer; propose {proposed} instead — on or before the SLA {sla}, outside "
+                "the freeze, preserving the go-live buffer — with the same calendar, schedule, and "
+                "announcement ripple."
+            ),
+        )
     if "schedule.target_date_conflict" in impact.tags:
         clash = _evidence_field(impact, "date_conflict", "title")
         proposed = _next_free_day(_as_day(new_due), _busy_days(impact))

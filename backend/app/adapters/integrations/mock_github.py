@@ -29,6 +29,19 @@ class MockGitHubAdapter(BaseIntegrationAdapter):
         self._milestones: dict[str, dict[str, object]] = {
             "Launch Rehearsal": {"title": "Launch Rehearsal", "due_on": "2026-06-10"},
         }
+        # Downstream milestones that depend on the rehearsal, with the buffer each needs before it.
+        # A rehearsal date that eats into the buffer puts the dependent milestone at risk — a link a
+        # human moving only the rehearsal would not traverse. Read by read_milestone_dependencies.
+        self._dependencies: dict[str, list[dict[str, object]]] = {
+            "Launch Rehearsal": [
+                {
+                    "milestone": "Customer Go-Live",
+                    "due_on": "2026-06-26",
+                    "depends_on": "Launch Rehearsal",
+                    "required_buffer_days": 5,
+                }
+            ],
+        }
         # Open issues that block SSO going generally available (Customer Promise).
         self._blocking_issues: list[dict[str, object]] = [
             {"number": 42, "title": "SSO: finish SAML edge cases", "state": "open"},
@@ -56,6 +69,9 @@ class MockGitHubAdapter(BaseIntegrationAdapter):
             ),
             Capability(
                 system=_SYSTEM, name="github.read_closed_issues", kind=CapabilityKind.READ
+            ),
+            Capability(
+                system=_SYSTEM, name="github.read_milestone_dependencies", kind=CapabilityKind.READ
             ),
             Capability(
                 system=_SYSTEM,
@@ -99,6 +115,10 @@ class MockGitHubAdapter(BaseIntegrationAdapter):
                 dict(i) for i in self._closed_issues if not since or str(i["closed_at"]) >= since
             ]
             return ReadResult(capability=query.capability, data={"issues": issues})
+        if query.capability == "github.read_milestone_dependencies":
+            name = str(query.params.get("milestone", "Launch Rehearsal"))
+            dependents = [dict(d) for d in self._dependencies.get(name, [])]
+            return ReadResult(capability=query.capability, data={"dependents": dependents})
         raise IntegrationError(f"{_SYSTEM}: unknown read capability '{query.capability}'")
 
     def _predict(self, step: ExecutionStep, before: dict[str, object]) -> PredictedEffect:

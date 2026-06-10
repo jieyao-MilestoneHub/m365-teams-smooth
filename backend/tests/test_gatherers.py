@@ -29,6 +29,26 @@ def test_launch_gatherer_tags_all_ripple_effects() -> None:
         "schedule.planner_shift",
         "comms.pending_announcement",
     }
+    # A free-on-the-calendar date that breaches nothing: no derived contractual-breach tag.
+    assert "schedule.contractual_breach_risk" not in evidence.tags
+
+
+def test_launch_gatherer_derives_contractual_breach_across_systems() -> None:
+    registry = build_mock_registry()
+    evidence = gather_launch(
+        # 2026-06-22 is free on the calendar but past the SLA (06-21), inside the freeze
+        # (06-19..06-24), and inside the go-live buffer (06-26 - 5 days) — a conjunction breach.
+        Change(change_id="c1", raw_request="move launch", subject="launch", due_by="2026-06-22"),
+        registry,
+        LocalCorpusKnowledgeProvider(),
+        [],
+    )
+    assert "schedule.contractual_breach_risk" in evidence.tags
+    cf = next(i for i in evidence.items if i.kind == "counterfactual")
+    assert cf.severity == "high"
+    reasons = cf.data["reasons"]
+    assert isinstance(reasons, list) and len(reasons) >= 2  # the conjunction, not one system
+    assert cf.grounded  # cited against the change-management policy
 
 
 def test_sso_ga_gatherer_flags_review_after_due_date() -> None:

@@ -35,6 +35,24 @@ GOLDEN: dict[str, dict[str, object]] = {
         },
         "approvers": {"eng_lead", "comms"},
     },
+    "launch_sla_breach": {
+        # The requested day is free on the calendar, but cross-referencing CRM (SLA), SharePoint
+        # (release freeze), and GitHub (go-live buffer) reveals a latent breach no single system
+        # shows. Refused as posed; the latest date honoring every constraint (2026-06-18) proposed.
+        "request": "move the launch rehearsal to 2026-06-22",
+        "status": "awaiting_verdict",
+        "risk_level": "high",
+        "unsafe": True,
+        "plan_kind": "safe_alternative",
+        "verdict_options": {"accept_alternative", "request_revision", "reject"},
+        "plan_capabilities": {
+            "github.update_milestone_due",
+            "outlook.create_event",
+            "planner.shift_task_dates",
+            "teams.update_announcement",
+        },
+        "approvers": {"eng_lead", "comms", "account_owner"},
+    },
     "customer_promise": {
         "request": "promise Customer A that SSO is GA by 2026-06-17",
         "status": "awaiting_verdict",

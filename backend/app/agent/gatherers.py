@@ -7,6 +7,7 @@ tags for one trial subject. They are registered in ``GATHERERS`` and injected in
 from __future__ import annotations
 
 import logging
+from datetime import date
 
 from app.agent.grounding_queries import GROUNDING_QUERIES
 from app.agent.nodes.impact import Gatherer
@@ -17,6 +18,11 @@ from app.ports.knowledge import KnowledgePort
 from app.ports.registry import IntegrationRegistry
 
 logger = logging.getLogger(__name__)
+
+
+def _as_day(value: str) -> date:
+    """The calendar day of an ISO date or timestamp (live evidence may carry a full timestamp)."""
+    return date.fromisoformat(value[:10])
 
 
 def _read(
@@ -126,7 +132,103 @@ def gather_launch(
         )
         tags.append("comms.pending_announcement")
 
+    _derive_contractual_breach(change, registry, knowledge, errors, items, tags)
     return ImpactEvidence(items=items, tags=tags)
+
+
+def _derive_contractual_breach(
+    change: Change,
+    registry: IntegrationRegistry,
+    knowledge: KnowledgePort,
+    errors: list[str],
+    items: list[EvidenceItem],
+    tags: list[str],
+) -> None:
+    """Cross-reference three systems to catch a breach no single one reveals.
+
+    A target date can be free on the calendar yet still: fall past a contractual launch-readiness
+    SLA (CRM), land inside a published release-freeze window (SharePoint), or compress a dependent
+    milestone's buffer (GitHub). Each fact lives in a different system; only the *conjunction*
+    (>=2 independent constraints) is a hard breach, so the derived unsafe tag fires only then — a
+    human eyeballing one system would have approved it.
+    """
+    target = change.due_by
+    if not target:
+        return
+    reasons: list[str] = []
+
+    contract = _read(registry, "crm", "crm.read_contract", errors, account="Customer A")
+    sla = contract.get("launch_readiness_sla")
+    if isinstance(sla, str) and target > sla:
+        clause = contract.get("clause_id")
+        reasons.append(f"past the launch-readiness SLA {sla} (contract clause {clause})")
+
+    sp_data = _read(registry, "sharepoint", "sharepoint.read_change_calendar", errors)
+    freezes = sp_data.get("freezes")
+    freeze = None
+    if isinstance(freezes, list):
+        freeze = next(
+            (
+                f
+                for f in freezes
+                if isinstance(f, dict)
+                and str(f.get("start", "")) <= target <= str(f.get("end", ""))
+            ),
+            None,
+        )
+    if freeze is not None:
+        reasons.append(f"inside the release freeze {freeze.get('start')}..{freeze.get('end')}")
+
+    gh_data = _read(
+        registry,
+        "github",
+        "github.read_milestone_dependencies",
+        errors,
+        milestone="Launch Rehearsal",
+    )
+    deps = gh_data.get("dependents")
+    go_live = None
+    if isinstance(deps, list):
+        for dep in deps:
+            if not isinstance(dep, dict):
+                continue
+            buffer_days = dep.get("required_buffer_days")
+            due = dep.get("due_on")
+            if (
+                isinstance(buffer_days, int)
+                and isinstance(due, str)
+                and (_as_day(due) - _as_day(target)).days < buffer_days
+            ):
+                go_live = dep
+                reasons.append(
+                    f"compresses the '{dep.get('milestone')}' buffer below "
+                    f"{buffer_days} days before go-live {due}"
+                )
+
+    if len(reasons) >= 2:
+        items.append(
+            EvidenceItem(
+                system="derived",
+                kind="counterfactual",
+                summary=(
+                    f"Had {target} been approved as requested it would have: "
+                    + "; ".join(reasons)
+                    + f". First breach date: {target}."
+                ),
+                data={
+                    "reasons": reasons,
+                    "target_date": target,
+                    "sla": sla,
+                    "freeze": freeze,
+                    "go_live": go_live,
+                },
+                severity="high",
+                # Ground on the launch phrase tuned to rank the change-management policy first
+                # (its "impact assessment" section covers contractual and downstream implications).
+                grounded=knowledge.ground(GROUNDING_QUERIES["launch"]),
+            )
+        )
+        tags.append("schedule.contractual_breach_risk")
 
 
 def gather_sso_ga(
