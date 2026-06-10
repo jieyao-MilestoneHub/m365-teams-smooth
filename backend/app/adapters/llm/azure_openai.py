@@ -61,10 +61,13 @@ class AzureOpenAILLMProvider(LLMProvider):
         return self.generate(LlmRequest(prompt=prompt, cacheable_prefix=system)).text
 
     def generate(self, request: LlmRequest) -> LlmResult:
+        # The service caches on an exact, stable prompt prefix (engaged from ~1024 tokens), so the
+        # cacheable text leads as its own system message and every volatile part comes after it.
         messages: list[dict[str, str]] = []
-        system = "\n".join(p for p in (request.cacheable_prefix, request.system_suffix) if p)
-        if system:
-            messages.append({"role": "system", "content": system})
+        if request.cacheable_prefix:
+            messages.append({"role": "system", "content": request.cacheable_prefix})
+        if request.system_suffix:
+            messages.append({"role": "system", "content": request.system_suffix})
         messages.append({"role": "user", "content": request.prompt})
         extra: dict[str, Any] = {}
         if request.json_schema is not None:
@@ -94,4 +97,6 @@ class AzureOpenAILLMProvider(LLMProvider):
             refusal = getattr(choice.message, "refusal", None)
             if refusal:
                 raise LlmOutputError(f"model refused structured request: {refusal}")
-        return LlmResult(text=str(choice.message.content or ""))
+        details = getattr(getattr(response, "usage", None), "prompt_tokens_details", None)
+        cached = getattr(details, "cached_tokens", 0) or 0
+        return LlmResult(text=str(choice.message.content or ""), cached_prefix_tokens=cached)
