@@ -1,23 +1,23 @@
 """LLM-backed request parser: an LLM turns free text into a structured Change.
 
-Prompts the LLM with the three trial subjects, the registry's capability catalog, and the output
-JSON shape, parses the JSON into a Change, and **falls back to the deterministic parser on any
-failure** (so it never raises and the trials stay reproducible). The LLMProvider port stays a pure
-text generator — the structured contract lives here, not in the port.
+Prompts the LLM with the trial subjects, the registry's capability catalog, and a strict JSON
+schema (engaged natively by providers that support structured output, ignored by the offline fake),
+parses the JSON into a Change, and **falls back to the deterministic parser on any failure** (so it
+never raises and the trials stay reproducible).
 """
 
 from __future__ import annotations
 
-import json
 import logging
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
+from app.agent.agentic.structured import decode_json_object, parse_json, schema_of
 from app.agent.agentic.untrusted import HARDENING, fence
 from app.domain import Change, RequestedAction
 from app.observability import metrics
 from app.ports.guardrail import GuardrailPort
-from app.ports.llm import LLMProvider
+from app.ports.llm import LLMProvider, LlmRequest
 from app.ports.registry import IntegrationRegistry
 from app.ports.request_parser import RequestParser
 
@@ -37,6 +37,12 @@ class _LlmAction(BaseModel):
     capability_name: str
     params: dict[str, object] = Field(default_factory=dict)
 
+    # In strict structured-output mode the free-form params object travels JSON-encoded.
+    @field_validator("params", mode="before")
+    @classmethod
+    def _decode_params(cls, value: object) -> object:
+        return decode_json_object(value)
+
 
 class _LlmParse(BaseModel):
     subject: str | None = None
@@ -44,17 +50,7 @@ class _LlmParse(BaseModel):
     actions: list[_LlmAction] = Field(default_factory=list)
 
 
-def _extract_json(text: str) -> object:
-    """Pull the JSON object out of a model response (tolerating code fences and prose)."""
-    s = text.strip()
-    if s.startswith("```"):
-        s = s.strip("`")
-        if s[:4].lower() == "json":
-            s = s[4:]
-    start, end = s.find("{"), s.rfind("}")
-    if start == -1 or end == -1:
-        raise ValueError("no JSON object in response")
-    return json.loads(s[start : end + 1])
+_PARSE_SCHEMA = schema_of(_LlmParse)
 
 
 class LlmRequestParser(RequestParser):
@@ -86,8 +82,15 @@ class LlmRequestParser(RequestParser):
                 metrics.increment("guardrail.input_blocked")
                 return self._fallback.parse(raw, change_id=change_id)
         try:
-            text = self._llm.complete(fence("request", raw), system=self._prompt())
-            result = _LlmParse.model_validate(_extract_json(text))
+            text = self._llm.generate(
+                LlmRequest(
+                    prompt=fence("request", raw),
+                    cacheable_prefix=self._prompt(),
+                    json_schema=_PARSE_SCHEMA,
+                    schema_name="change_parse",
+                )
+            ).text
+            result = _LlmParse.model_validate(parse_json(text))
         except Exception as exc:  # noqa: BLE001 — never raise; an unsure LLM falls back
             logger.warning(
                 "parser.llm_fallback", extra={"reason": "parse_error", "error": str(exc)}
@@ -119,7 +122,8 @@ class LlmRequestParser(RequestParser):
         today = self._today or "the current date"
         shape = (
             '{"subject": <one subject or null>, "due_by": <ISO date YYYY-MM-DD or null>, '
-            '"actions": [{"system": str, "capability_name": str, "params": object}]}'
+            '"actions": [{"system": str, "capability_name": str, '
+            'params: JSON-encoded object string}]}'
         )
         return (
             f"You classify an enterprise change request. Today is {today}.\n"

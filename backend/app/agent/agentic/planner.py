@@ -11,10 +11,10 @@ from __future__ import annotations
 
 import logging
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.agent.agentic.precedents import render_precedents
-from app.agent.agentic.structured import extract_json
+from app.agent.agentic.structured import decode_json_object, parse_json, schema_of
 from app.agent.agentic.untrusted import HARDENING, fence
 from app.agent.nodes.options import Planner
 from app.domain import (
@@ -30,7 +30,7 @@ from app.domain import (
 )
 from app.observability import metrics
 from app.ports.guardrail import GuardrailPort
-from app.ports.llm import LLMProvider
+from app.ports.llm import LLMProvider, LlmRequest
 from app.ports.memory import MemoryPort
 from app.ports.registry import IntegrationRegistry
 
@@ -44,10 +44,19 @@ class _LlmStep(BaseModel):
     name: str
     params: dict[str, object] = Field(default_factory=dict)
 
+    # In strict structured-output mode the free-form params object travels JSON-encoded.
+    @field_validator("params", mode="before")
+    @classmethod
+    def _decode_params(cls, value: object) -> object:
+        return decode_json_object(value)
+
 
 class _LlmPlan(BaseModel):
     steps: list[_LlmStep] = Field(default_factory=list)
     rationale: str = ""
+
+
+_PLAN_SCHEMA = schema_of(_LlmPlan)
 
 
 class LlmPlanner:
@@ -101,11 +110,15 @@ class LlmPlanner:
                 metrics.increment("guardrail.input_blocked")
                 return None
 
-        text = self._llm.complete(
-            self._user_prompt(change, impact, baseline),
-            system=self._system_prompt(catalog, baseline.kind),
-        )
-        result = _LlmPlan.model_validate(extract_json(text))
+        text = self._llm.generate(
+            LlmRequest(
+                prompt=self._user_prompt(change, impact, baseline),
+                cacheable_prefix=self._system_prompt(catalog, baseline.kind),
+                json_schema=_PLAN_SCHEMA,
+                schema_name="defender_plan",
+            )
+        ).text
+        result = _LlmPlan.model_validate(parse_json(text))
         if not result.steps or len(result.steps) > _MAX_STEPS:
             metrics.increment("agentic.plan.fallbacks")
             return None
@@ -191,7 +204,8 @@ class LlmPlanner:
         else:
             stance = "Draft the most complete feasible plan for the request."
         shape = (
-            '{"steps": [{"system": str, "name": str, "params": object}], "rationale": str}'
+            '{"steps": [{"system": str, "name": str, "params": JSON-encoded object string}], '
+            '"rationale": str}'
         )
         return (
             "You are the Defender in a change-governance court: you produce the execution plan "
