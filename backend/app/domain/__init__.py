@@ -12,6 +12,12 @@ from app.domain.approval import (
 from app.domain.audit import AuditRecord, BeforeAfter, TrialRecord
 from app.domain.capability import Capability, CapabilityRef, param_violations
 from app.domain.change import Change, RequestedAction
+from app.domain.deliberation import (
+    SOURCE_LLM,
+    SOURCE_OFFLINE_STUB,
+    Deliberation,
+    DeliberationEntry,
+)
 from app.domain.enums import (
     ApproverRole,
     CapabilityKind,
@@ -50,6 +56,8 @@ __all__ = [
     "CapabilityRef",
     "Change",
     "ChangeStatus",
+    "Deliberation",
+    "DeliberationEntry",
     "EffectVerification",
     "EvidenceItem",
     "ExecutionPlan",
@@ -70,6 +78,8 @@ __all__ = [
     "RunEvent",
     "RunEventKind",
     "RunMode",
+    "SOURCE_LLM",
+    "SOURCE_OFFLINE_STUB",
     "StepResult",
     "StepStatus",
     "TrialRecord",

@@ -92,7 +92,8 @@ def register_tools(mcp: FastMCP, service: CourtService) -> None:
     @correlate
     @_translate_errors
     def get_trial(thread_id: str) -> dict[str, object]:
-        """Return the full trial record (change, impact, options, risk, quorum, verdict)."""
+        """Return the full trial record (change, impact, options, risk, quorum, verdict, and the
+        per-node reasoning trace under ``deliberation``)."""
         trial = service.get_trial(thread_id)
         if trial is None:
             raise NotFoundError(f"unknown trial: {thread_id}")

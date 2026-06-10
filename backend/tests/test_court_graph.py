@@ -107,6 +107,22 @@ def test_run_suspends_at_verdict_then_resumes_to_done() -> None:
     assert repo.records[0].run_mode is RunMode.DRY_RUN
 
 
+def test_run_records_a_deliberation_trace_per_node() -> None:
+    repo = InMemoryAuditRepository()
+    store = SqliteCheckpointStore(":memory:")
+    store.setup()
+    runner = CourtRunner(_build(repo, store))
+    runner.start("t1", _start_state("t1"))
+    runner.resume("t1", Verdict(verdict_id="v1", type=VerdictType.APPROVE, idempotency_key="k1"))
+
+    trial = repo.records[0].trial
+    assert trial.deliberation is not None
+    nodes = {e.node for e in trial.deliberation.entries}
+    assert {"intake", "impact", "options", "policy"} <= nodes
+    # No LLM is wired in this graph, so every entry is the honestly-labeled offline stub.
+    assert all(e.source == "offline-stub" for e in trial.deliberation.entries)
+
+
 def test_resume_is_idempotent_at_runner_level() -> None:
     repo = InMemoryAuditRepository()
     store = SqliteCheckpointStore(":memory:")

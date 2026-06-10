@@ -9,6 +9,8 @@ from app.domain import (
     CapabilityRef,
     Change,
     ChangeStatus,
+    Deliberation,
+    DeliberationEntry,
     ExecutionPlan,
     ExecutionStep,
     PlanKind,
@@ -67,3 +69,12 @@ def test_audit_record_round_trips_through_dict() -> None:
     assert restored == record
     assert restored.trial.options is not None
     assert restored.trial.options.steps[0].capability.name == "github.update_milestone_due"
+
+
+def test_deliberation_round_trips_and_defaults() -> None:
+    entry = DeliberationEntry(node="policy", role="", rationale="Scored 80 (high).", source="llm")
+    delib = Deliberation(entries=[entry])
+    assert Deliberation().entries == []  # empty by default
+    assert DeliberationEntry(node="intake", rationale="x").source == "llm"  # default provenance
+    restored = Deliberation.model_validate(delib.model_dump(mode="json"))
+    assert restored == delib

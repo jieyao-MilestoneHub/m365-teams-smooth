@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
+from app.agent.deliberate import Deliberator, OfflineDeliberator, record
 from app.agent.grounding_queries import grounding_query
 from app.agent.state import CourtState, bound_errors, serialize
 from app.domain import Change, ChangeStatus, EvidenceItem, ImpactEvidence
@@ -47,10 +48,12 @@ class ImpactNode:
         registry: IntegrationRegistry,
         knowledge: KnowledgePort,
         gatherers: dict[str, Gatherer],
+        deliberator: Deliberator | None = None,
     ) -> None:
         self._registry = registry
         self._knowledge = knowledge
         self._gatherers = gatherers
+        self._deliberator = deliberator or OfflineDeliberator()
 
     def __call__(self, state: CourtState) -> CourtState:
         change = Change.model_validate(state["change"])
@@ -80,8 +83,29 @@ class ImpactNode:
                 )
             )
 
+        # The Prosecutor (when LLM-backed) already reasoned in its assessment item; reuse it as the
+        # impact reasoning. Offline, the deliberator records the factual evidence summary instead.
+        assessment = next(
+            (
+                i.summary
+                for i in evidence.items
+                if i.system == "prosecutor" and i.kind == "assessment"
+            ),
+            "",
+        )
+        high = [i.summary for i in evidence.items if i.severity == "high"]
+        context = (
+            f"Gathered {len(evidence.items)} evidence item(s); tags: "
+            f"{', '.join(evidence.tags) or 'none'}. "
+            f"{'Decisive: ' + '; '.join(high) if high else 'No high-severity findings.'}"
+        )
+        entry = self._deliberator.deliberate(
+            node="impact", role="prosecutor", context=context, reasoning=assessment
+        )
+
         return {
             "impact": serialize(evidence),
             "status": ChangeStatus.EVALUATING.value,
             "errors": bound_errors(errors),
+            "deliberations": record(state, entry),
         }

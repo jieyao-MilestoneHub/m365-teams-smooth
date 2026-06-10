@@ -18,6 +18,8 @@ from app.domain import (
     AuditRecord,
     Change,
     ChangeStatus,
+    Deliberation,
+    DeliberationEntry,
     EffectVerification,
     ExecutionPlan,
     ImpactEvidence,
@@ -72,6 +74,7 @@ class AuditNode:
         risk_data = _opt(state, "risk")
         quorum_data = _opt(state, "quorum")
         verdict_data = _opt(state, "verdict")
+        entries = [DeliberationEntry.model_validate(d) for d in state.get("deliberations", [])]
         trial = TrialRecord(
             change=change,
             impact=ImpactEvidence.model_validate(impact_data) if impact_data else None,
@@ -81,6 +84,7 @@ class AuditNode:
             verdict=Verdict.model_validate(verdict_data) if verdict_data else None,
             results=results,
             verifications=verifications,
+            deliberation=Deliberation(entries=entries) if entries else None,
         )
 
         status = ChangeStatus(state.get("status", ChangeStatus.DONE.value))

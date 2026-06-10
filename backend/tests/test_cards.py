@@ -46,6 +46,15 @@ def test_unsafe_card_leads_with_refusal_and_decisive_evidence() -> None:
     assert all(a["data"]["selected_plan"] == "safe_alternative" for a in actions)
 
 
+def test_card_shows_a_reasoning_teaser() -> None:
+    service = _service()
+    summary = service.submit_change("promise Customer A that SSO is GA by 2026-06-17")
+    trial = service.get_trial(summary.thread_id)
+    assert trial is not None
+    blob = _texts(build_change_court_card(summary.thread_id, trial))
+    assert "🧠" in blob  # the one-line reasoning teaser is present
+
+
 def test_feasible_card_has_no_decisive_block_but_shows_impact() -> None:
     service = _service()
     summary = service.submit_change("slip the launch from 2026-06-10 to 2026-06-17")

@@ -35,6 +35,7 @@ class CourtState(TypedDict, total=False):
 
     results: list[dict[str, object]]  # StepResult dumps
     verifications: list[dict[str, object]]  # EffectVerification dumps (live runs only)
+    deliberations: list[dict[str, object]]  # DeliberationEntry dumps (append-only reasoning trace)
     audit_id: str
     status: str  # ChangeStatus value
     errors: list[str]
@@ -47,6 +48,8 @@ def serialize(model: BaseModel) -> dict[str, object]:
 
 # State is fully serialized on every checkpoint, so accumulating fields must stay bounded.
 MAX_ERRORS = 50
+# One entry per node (a handful); the cap is a runaway guard, not an expected limit.
+MAX_DELIBERATIONS = 50
 
 
 def bound_errors(errors: list[str]) -> list[str]:
@@ -55,6 +58,11 @@ def bound_errors(errors: list[str]) -> list[str]:
         return errors
     dropped = len(errors) - MAX_ERRORS
     return errors[:MAX_ERRORS] + [f"... {dropped} further errors truncated"]
+
+
+def bound_deliberations(entries: list[dict[str, object]]) -> list[dict[str, object]]:
+    """Cap the reasoning trace a node writes back, keeping the most recent entries."""
+    return entries[-MAX_DELIBERATIONS:] if len(entries) > MAX_DELIBERATIONS else entries
 
 
 def initial_state(
@@ -76,6 +84,7 @@ def initial_state(
         status=ChangeStatus.INTAKE.value,
         results=[],
         errors=[],
+        deliberations=[],
     )
     if requester is not None:
         state["requester"] = requester.model_dump(mode="json")

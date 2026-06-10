@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 from typing import Protocol
 
+from app.agent.deliberate import Deliberator, OfflineDeliberator, record
 from app.agent.state import CourtState, serialize
 from app.domain import (
     CapabilityRef,
@@ -52,8 +53,11 @@ def feasible_from_actions(change: Change) -> ExecutionPlan:
 class OptionsNode:
     """Selects the plan for the change, marking it unsafe when a safe alternative is produced."""
 
-    def __init__(self, planners: dict[str, Planner]) -> None:
+    def __init__(
+        self, planners: dict[str, Planner], deliberator: Deliberator | None = None
+    ) -> None:
         self._planners = planners
+        self._deliberator = deliberator or OfflineDeliberator()
 
     def __call__(self, state: CourtState) -> CourtState:
         change = Change.model_validate(state["change"])
@@ -73,10 +77,26 @@ class OptionsNode:
             change.unsafe = True
             change.unsafe_reason = plan.rationale
 
+        # The Defender (when LLM-backed) reasons in the plan rationale; reuse it as the options
+        # reasoning. Offline, the deliberator records the factual plan summary instead.
+        stance = (
+            "refused as posed, proposing a safe alternative"
+            if plan.kind is PlanKind.SAFE_ALTERNATIVE
+            else "feasible as requested"
+        )
+        context = (
+            f"Plan is {stance}: {len(plan.steps)} step(s) across "
+            f"{', '.join(sorted({s.capability.system for s in plan.steps})) or 'no systems'}."
+        )
+        entry = self._deliberator.deliberate(
+            node="options", role="defender", context=context, reasoning=plan.rationale
+        )
+
         update: CourtState = {
             "options": serialize(plan),
             "change": serialize(change),
             "selected_plan": plan.kind.value,
             "status": ChangeStatus.EVALUATING.value,
+            "deliberations": record(state, entry),
         }
         return update

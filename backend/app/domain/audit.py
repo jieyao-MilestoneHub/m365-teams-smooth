@@ -5,6 +5,7 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 from app.domain.change import Change
+from app.domain.deliberation import Deliberation
 from app.domain.enums import ChangeStatus, RunMode
 from app.domain.impact import ImpactEvidence
 from app.domain.plan import ExecutionPlan, RollbackHint, StepResult
@@ -34,6 +35,7 @@ class TrialRecord(BaseModel):
     verdict: Verdict | None = None
     results: list[StepResult] = Field(default_factory=list)
     verifications: list[EffectVerification] = Field(default_factory=list)
+    deliberation: Deliberation | None = None
 
 
 class AuditRecord(BaseModel):
