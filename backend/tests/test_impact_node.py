@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from app.adapters.integrations.registry import ConfigIntegrationRegistry
-from app.adapters.knowledge.fake_knowledge import FakeKnowledgeProvider
+from app.adapters.knowledge.local_corpus import LocalCorpusKnowledgeProvider
 from app.agent.grounding_queries import GROUNDING_QUERIES
 from app.agent.nodes.impact import ImpactNode
 from app.agent.state import CourtState, initial_state, serialize
@@ -64,7 +64,7 @@ def _state_with_change(change: Change) -> CourtState:
 
 
 def test_impact_runs_subject_gatherer_and_grounds(
-    mock_registry: ConfigIntegrationRegistry, knowledge: FakeKnowledgeProvider
+    mock_registry: ConfigIntegrationRegistry, knowledge: LocalCorpusKnowledgeProvider
 ) -> None:
     node = ImpactNode(mock_registry, knowledge, {"launch": _launch_gatherer})
     change = Change(change_id="c1", raw_request="slip the launch milestone", subject="launch")
@@ -78,7 +78,7 @@ def test_impact_runs_subject_gatherer_and_grounds(
 
 
 def test_impact_without_gatherer_still_grounds(
-    mock_registry: ConfigIntegrationRegistry, knowledge: FakeKnowledgeProvider
+    mock_registry: ConfigIntegrationRegistry, knowledge: LocalCorpusKnowledgeProvider
 ) -> None:
     node = ImpactNode(mock_registry, knowledge, {})
     change = Change(change_id="c1", raw_request="promise SSO is GA", subject="sso-ga")
@@ -88,7 +88,7 @@ def test_impact_without_gatherer_still_grounds(
 
 
 def test_impact_surfaces_gatherer_read_errors_in_state(
-    mock_registry: ConfigIntegrationRegistry, knowledge: FakeKnowledgeProvider
+    mock_registry: ConfigIntegrationRegistry, knowledge: LocalCorpusKnowledgeProvider
 ) -> None:
     node = ImpactNode(mock_registry, knowledge, {"launch": _failing_gatherer})
     change = Change(change_id="c1", raw_request="slip the launch", subject="launch")

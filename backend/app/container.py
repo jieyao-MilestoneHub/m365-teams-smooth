@@ -7,6 +7,7 @@ are injected here; they are empty until Phase 3 fills them, at which point only 
 from __future__ import annotations
 
 from datetime import date
+from pathlib import Path
 
 from app.adapters.integrations.graph import GraphClient
 from app.adapters.integrations.mock_crm import MockCRMAdapter
@@ -22,8 +23,8 @@ from app.adapters.integrations.real_sharepoint import RealSharePointAdapter
 from app.adapters.integrations.real_teams import RealTeamsAdapter
 from app.adapters.integrations.registry import build_registry
 from app.adapters.integrations.retry import RetryPolicy
-from app.adapters.knowledge.fake_knowledge import FakeKnowledgeProvider
 from app.adapters.knowledge.foundry_iq import FoundryIqKnowledgeProvider
+from app.adapters.knowledge.local_corpus import LocalCorpusKnowledgeProvider
 from app.adapters.llm.azure_openai import AzureOpenAILLMProvider
 from app.adapters.llm.fake_llm import FakeLLMProvider
 from app.adapters.notifiers.teams_activity import TeamsActivityNotifier
@@ -185,9 +186,11 @@ def build_court_service(
         }
         registry = build_registry(settings, candidates)
 
-    # Knowledge grounding: real Foundry IQ when an endpoint is configured, else the offline fake
-    # (also forced under FORCE_ALL_MOCK), mirroring the real-vs-mock selection above.
-    knowledge: KnowledgePort = FakeKnowledgeProvider()
+    # Knowledge grounding: real Foundry IQ when an endpoint is configured, else the offline corpus
+    # provider (also forced under FORCE_ALL_MOCK), mirroring the real-vs-mock selection above.
+    knowledge: KnowledgePort = LocalCorpusKnowledgeProvider(
+        corpus_dir=Path(settings.knowledge_corpus_dir) if settings.knowledge_corpus_dir else None
+    )
     if (
         not settings.force_all_mock
         and settings.knowledge_search_endpoint

@@ -12,7 +12,7 @@ from app.adapters.integrations.mock_planner import MockPlannerAdapter
 from app.adapters.integrations.mock_sharepoint import MockSharePointAdapter
 from app.adapters.integrations.mock_teams import MockTeamsAdapter
 from app.adapters.integrations.registry import ConfigIntegrationRegistry
-from app.adapters.knowledge.fake_knowledge import FakeKnowledgeProvider
+from app.adapters.knowledge.local_corpus import LocalCorpusKnowledgeProvider
 from app.adapters.llm.fake_llm import FakeLLMProvider
 from app.domain import ApprovalDecision, ApprovalEvent, AuditRecord, RunEvent, RunEventKind
 from app.ports.conversation_store import ConversationStore
@@ -171,8 +171,8 @@ def mock_registry() -> ConfigIntegrationRegistry:
 
 
 @pytest.fixture
-def knowledge() -> FakeKnowledgeProvider:
-    return FakeKnowledgeProvider()
+def knowledge() -> LocalCorpusKnowledgeProvider:
+    return LocalCorpusKnowledgeProvider()
 
 
 @pytest.fixture

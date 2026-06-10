@@ -6,7 +6,8 @@ deterministic transforms the seeding depends on.
 
 from __future__ import annotations
 
-from scripts.seed_knowledge import build_index_definition, chunk_markdown, doc_id, slugify
+from app.adapters.knowledge.markdown import chunk_markdown, doc_id, slugify
+from scripts.seed_knowledge import build_index_definition
 
 _DOC = """# Release & Change Management Policy
 
