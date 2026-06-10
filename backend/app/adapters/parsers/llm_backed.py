@@ -86,6 +86,7 @@ class LlmRequestParser(RequestParser):
                 LlmRequest(
                     prompt=fence("request", raw),
                     cacheable_prefix=self._prompt(),
+                    system_suffix=self._today_suffix(),
                     json_schema=_PARSE_SCHEMA,
                     schema_name="change_parse",
                 )
@@ -117,20 +118,24 @@ class LlmRequestParser(RequestParser):
         )
 
     def _prompt(self) -> str:
+        """The stable instruction block (catalog, subjects, shape) — a cacheable prefix."""
         caps = ", ".join(sorted({c.name for c in self._registry.capabilities()}))
         subjects = "; ".join(f"{key} = {meaning}" for key, meaning in _SUBJECTS.items())
-        today = self._today or "the current date"
         shape = (
             '{"subject": <one subject or null>, "due_by": <ISO date YYYY-MM-DD or null>, '
             '"actions": [{"system": str, "capability_name": str, '
             'params: JSON-encoded object string}]}'
         )
         return (
-            f"You classify an enterprise change request. Today is {today}.\n"
+            "You classify an enterprise change request.\n"
             f"{HARDENING}\n"
             f"Choose exactly one subject from: {subjects}.\n"
-            "Set due_by to an ISO date (YYYY-MM-DD), resolving relative dates against today; "
-            "use null when there is no date.\n"
+            "Set due_by to an ISO date (YYYY-MM-DD), resolving relative dates against today's "
+            "date (stated separately); use null when there is no date.\n"
             f"Use ONLY these capability names for actions: {caps}.\n"
             f"Respond with ONLY a JSON object of this shape: {shape}"
         )
+
+    def _today_suffix(self) -> str:
+        """The volatile date line — kept out of the cacheable prefix."""
+        return f"Today is {self._today or 'the current date'}."

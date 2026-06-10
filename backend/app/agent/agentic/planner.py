@@ -113,7 +113,8 @@ class LlmPlanner:
         text = self._llm.generate(
             LlmRequest(
                 prompt=self._user_prompt(change, impact, baseline),
-                cacheable_prefix=self._system_prompt(catalog, baseline.kind),
+                cacheable_prefix=self._system_prompt(catalog),
+                system_suffix=self._stance(baseline.kind),
                 json_schema=_PLAN_SCHEMA,
                 schema_name="defender_plan",
             )
@@ -185,9 +186,8 @@ class LlmPlanner:
         precedents = render_precedents(self._memory, change.subject or "", impact.tags)
         return f"{prompt}\n{precedents}" if precedents else prompt
 
-    def _system_prompt(
-        self, catalog: dict[tuple[str, str], Capability], kind: PlanKind
-    ) -> str:
+    def _system_prompt(self, catalog: dict[tuple[str, str], Capability]) -> str:
+        """The stable role + catalog block — a cacheable prefix shared across trials."""
         lines = []
         for (system, name), cap in sorted(catalog.items()):
             required = cap.params_schema.get("required", []) if cap.params_schema else []
@@ -196,13 +196,6 @@ class LlmPlanner:
             hints = self._constraint_hints(cap)
             req += f" [{'; '.join(hints)}]" if hints else ""
             lines.append(f"- {system} :: {name}: {cap.description or 'no description'}{req}")
-        if kind is PlanKind.SAFE_ALTERNATIVE:
-            stance = (
-                "The court has REFUSED the request as posed. Draft the strongest SAFE ALTERNATIVE "
-                "plan: it must not implement the original request, only the safer path."
-            )
-        else:
-            stance = "Draft the most complete feasible plan for the request."
         shape = (
             '{"steps": [{"system": str, "name": str, "params": JSON-encoded object string}], '
             '"rationale": str}'
@@ -211,9 +204,18 @@ class LlmPlanner:
             "You are the Defender in a change-governance court: you produce the execution plan "
             "the approvers will review.\n"
             f"{HARDENING}\n"
-            f"{stance}\n"
             f"Use at most {_MAX_STEPS} steps, ONLY with capabilities from this catalog:\n"
             + "\n".join(lines)
             + "\nInclude every required param. Explain the plan in one-paragraph rationale.\n"
             f"Respond with ONLY a JSON object of this shape: {shape}"
         )
+
+    @staticmethod
+    def _stance(kind: PlanKind) -> str:
+        """The per-trial stance — volatile, so it rides after the cacheable prefix."""
+        if kind is PlanKind.SAFE_ALTERNATIVE:
+            return (
+                "The court has REFUSED the request as posed. Draft the strongest SAFE ALTERNATIVE "
+                "plan: it must not implement the original request, only the safer path."
+            )
+        return "Draft the most complete feasible plan for the request."
