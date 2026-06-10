@@ -1,7 +1,7 @@
 """Natural rephrasings drive the whole court (not just the parser) into the right trial.
 
 The strongest rebuttal to "it only handles fixed demo phrasing": feed non-canonical sentences
-through the fully-wired ``CourtService`` and assert each lands in the correct trial with the right
+through the fully-wired ``CourtService`` and assert each routes to the correct trial with the right
 safety outcome. The parser is pinned to a fixed ``today`` so the run is deterministic.
 """
 

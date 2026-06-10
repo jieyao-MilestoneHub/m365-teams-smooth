@@ -1,7 +1,7 @@
 """FastAPI application factory.
 
-Routers (REST health) and the MCP server mount onto this app as later phases land.
-The skeleton boots cleanly with no business routes; ``uvicorn app.main:app`` serves it.
+Routers (REST health and the read-only run page) and the MCP server mount onto this app.
+``uvicorn app.main:app`` serves it.
 """
 
 from __future__ import annotations

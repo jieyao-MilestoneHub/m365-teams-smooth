@@ -1,9 +1,8 @@
 """Options node (Defender): a feasible plan, or a safe alternative for an unsafe request.
 
-The node dispatches to the planner registered for the change's subject (the trial planners, with
-the safe-alternative builders, land in #85) and falls back to a generic plan mapping the requested
-actions one-to-one. When the chosen plan is a safe alternative, the change is marked unsafe so
-policy and the verdict surface it.
+The node dispatches to the planner registered for the change's subject and falls back to a generic
+plan mapping the requested actions one-to-one. When the chosen plan is a safe alternative, the
+change is marked unsafe so policy and the verdict surface it.
 """
 
 from __future__ import annotations

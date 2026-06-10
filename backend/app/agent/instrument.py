@@ -26,7 +26,7 @@ RunEventEmitter = Callable[[str, str, str, dict[str, object]], None]
 
 
 def _noop_duration_hook(name: str, seconds: float) -> None:
-    """Default no-op sink; replaced by the in-process metrics registry in #193."""
+    """Default no-op sink; replaced by the in-process metrics registry when one is wired in."""
     return None
 
 
@@ -40,7 +40,7 @@ _run_emitter: RunEventEmitter = _noop_run_emitter
 
 
 def set_node_duration_hook(hook: NodeDurationHook) -> None:
-    """Route node-duration timing to a metrics sink (wired in #193); replaces the no-op default."""
+    """Route node-duration timing to a metrics sink; replaces the no-op default."""
     global _node_duration_hook
     _node_duration_hook = hook
 

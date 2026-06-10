@@ -35,7 +35,7 @@ def test_missing_required_param_is_reported() -> None:
 
 
 def test_pattern_violation_is_reported() -> None:
-    # The live failure mode: a present-but-unusable value (issue #268).
+    # The live failure mode: a present-but-unusable value.
     violations = param_violations(_cap(_SCHEMA), {"issue": "Milestone 'Launch'", "body": "x"})
     assert len(violations) == 1
     assert "must match" in violations[0]

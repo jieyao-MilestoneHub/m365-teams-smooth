@@ -135,7 +135,7 @@ def test_missing_required_params_rejects_the_plan() -> None:
 
 def test_malformed_param_value_rejects_the_plan() -> None:
     # Present-but-unusable values (a non-numeric issue ref) fall back instead of reaching
-    # execution and failing there (issue #268).
+    # execution and failing there.
     caps = [
         _write_cap(
             "github",

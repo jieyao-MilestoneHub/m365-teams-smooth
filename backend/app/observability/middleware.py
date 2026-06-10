@@ -3,7 +3,7 @@
 Reads an inbound ``X-Request-ID`` (or generates a uuid4 hex), binds it into the correlation context
 so every log line emitted while handling the request carries it, and echoes it on the response. The
 MCP server is a separate ASGI sub-app not covered by this middleware — it binds inside its
-tool/resource closures (#185).
+tool/resource closures.
 """
 
 from __future__ import annotations
