@@ -73,6 +73,9 @@ async def test_submit_then_cast_via_tools(mcp: Any) -> None:
 
     trial = await _call(mcp, "get_trial", {"thread_id": thread_id})
     assert trial["options"]["kind"] == "safe_alternative"
+    # The per-node reasoning trace rides along on the trial record.
+    nodes = {e["node"] for e in trial["deliberation"]["entries"]}
+    assert {"intake", "impact", "options", "policy"} <= nodes
 
     result = await _call(
         mcp,

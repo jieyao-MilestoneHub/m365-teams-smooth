@@ -64,6 +64,11 @@ def _print_court(summary: TrialSummary, trial: TrialRecord) -> None:
     if trial.quorum is not None:
         approvers = ", ".join(a.role.value for a in trial.quorum.required_approvers)
         print(f"  approvers: {approvers}")
+    if trial.deliberation is not None:
+        print("  🧠 reasoning:")
+        for e in trial.deliberation.entries:
+            who = f"{e.node}/{e.role}" if e.role else e.node
+            print(f"      [{who}] {e.rationale} ({e.source})")
     print(f"  verdict options: {summary.verdict_options}")
 
 

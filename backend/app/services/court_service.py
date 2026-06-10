@@ -26,6 +26,8 @@ from app.domain import (
     Capability,
     Change,
     ChangeStatus,
+    Deliberation,
+    DeliberationEntry,
     EffectVerification,
     ExecutionPlan,
     ImpactEvidence,
@@ -727,6 +729,7 @@ class CourtService:
         change_data = state.get("change")
         if not isinstance(change_data, dict):
             return None
+        entries = [DeliberationEntry.model_validate(d) for d in state.get("deliberations", [])]
         return TrialRecord(
             change=Change.model_validate(change_data),
             impact=_model(state, "impact", ImpactEvidence),
@@ -738,6 +741,7 @@ class CourtService:
             verifications=[
                 EffectVerification.model_validate(v) for v in state.get("verifications", [])
             ],
+            deliberation=Deliberation(entries=entries) if entries else None,
         )
 
     def _summary(self, thread_id: str, state: CourtState) -> TrialSummary:

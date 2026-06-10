@@ -156,6 +156,15 @@
   .cite::before { content: "↳ "; color: var(--faint); }
   .sev-high { color: var(--amber); }
 
+  /* nested collapsibles inside a stage body: policy basis (citations) and the reasoning trace */
+  details.cites, details.delib { margin: 4px 0 2px 18px; }
+  details.cites > summary, details.delib > summary {
+    cursor: pointer; color: var(--faint); font-size: 11.5px; list-style: none; user-select: none;
+  }
+  details.cites > summary::-webkit-details-marker, details.delib > summary::-webkit-details-marker { display: none; }
+  details.delib > summary { color: var(--blue); }
+  details.delib .row { color: var(--muted); border-bottom: none; padding: 4px 0 2px 0; }
+
   /* requested-vs-alternative comparison (options stage, safe_alternative only) */
   .cmp-side { border-left: 2px solid var(--border-strong); padding-left: 10px; margin: 8px 0; }
   .cmp-side.asked { border-left-color: rgba(240,109,106,.55); }
@@ -437,10 +446,15 @@ function stageBody(id) {
     return `<div class="row">“${esc(t.change.raw_request)}”${t.change.requester && t.change.requester.display_name ? ` — <span class="sys">${esc(t.change.requester.display_name)}</span>` : ""}</div>${acts}`;
   }
   if (id === "impact" && t.impact && t.impact.items) {
-    return t.impact.items.map(i =>
-      `<div class="row"><span class="${i.severity === "high" ? "sev-high" : ""}">${i.severity === "high" ? "⚠ " : ""}</span><span class="sys">[${esc(i.system)}]</span> ${esc(i.summary)}` +
-      (i.grounded || []).map(g => `<span class="cite">${esc(g.claim)} <i>(${esc(g.citation)})</i></span>`).join("") +
-      `</div>`).join("") || "";
+    return t.impact.items.map(i => {
+      const g = i.grounded || [];
+      const basis = g.length
+        ? `<details class="cites"><summary>policy basis (${g.length})</summary>` +
+          g.map(f => `<span class="cite">${esc(f.claim)} <i>(${esc(f.citation)})</i></span>`).join("") +
+          `</details>`
+        : "";
+      return `<div class="row"><span class="${i.severity === "high" ? "sev-high" : ""}">${i.severity === "high" ? "⚠ " : ""}</span><span class="sys">[${esc(i.system)}]</span> ${esc(i.summary)}${basis}</div>`;
+    }).join("") || "";
   }
   if (id === "options" && t.options) {
     const alt = t.options.kind === "safe_alternative";
@@ -498,12 +512,22 @@ function stageBody(id) {
   return "";
 }
 
+// The node's reasoning, as a collapsible under its stage. Honest about provenance: a real model
+// reasoned when source is "llm"; offline runs label the factual stub.
+function delibFor(id) {
+  const t = view && view.trial;
+  const d = t && t.deliberation && (t.deliberation.entries || []).find(e => e.node === id);
+  if (!d || !d.rationale) return "";
+  const label = d.source === "llm" ? "🧠 reasoning" : "🧠 reasoning (offline stub)";
+  return `<details class="delib"><summary>${label}</summary><div class="row">${esc(d.rationale)}</div></details>`;
+}
+
 function renderStages() {
   const open = new Set([...document.querySelectorAll("details.stage[open]")].map(d => d.dataset.id));
   const first = !document.querySelector("details.stage");
   document.getElementById("stages").innerHTML = STAGES.filter(s => !s.gate).map(s => {
     const state = nodeState(s.id === "verdict" ? s : s), fin = finished(s.id);
-    const body = stageBody(s.id);
+    const body = stageBody(s.id) + delibFor(s.id);
     const cls = { done: "ok", run: "warn", fail: "bad" }[state] || "";
     const isOpen = open.has(s.id) || (first && body && ["impact", "policy", "execute"].includes(s.id));
     return `<details class="stage" data-id="${s.id}" ${isOpen ? "open" : ""}>

@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 _MAX_RATIONALE_CHARS = 600
 
 _DEFAULT_SYSTEM = (
-    "You are a judge in a change-governance court. In 2-3 sentences, explain the reasoning behind "
+    "You preside over a change-governance court. In 2-3 sentences, explain the reasoning behind "
     "this step's conclusion. Be specific and concrete; do not restate the facts verbatim."
 )
 _SYSTEM_PROMPTS = {
@@ -34,7 +34,7 @@ _SYSTEM_PROMPTS = {
         "any requested action was kept or rejected against the registered capabilities."
     ),
     "policy": (
-        "You are the presiding judge. In 2-3 sentences, explain why this risk level and approval "
+        "You preside over the court. In 2-3 sentences, explain why this risk level and approval "
         "requirement are warranted given the factors that fired, and who must sign off."
     ),
     "verify": (

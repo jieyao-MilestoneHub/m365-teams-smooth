@@ -38,6 +38,23 @@ _MAX_CARD_EVIDENCE = 4
 _MAX_RATIONALE_CHARS = 180
 
 
+def _deliberation_row(trial: TrialRecord) -> list[dict[str, object]]:
+    """A one-line reasoning teaser — the Prosecutor's read, else the Defender's; full trace on the
+    run page. Kept subtle so the card stays a decision TL;DR."""
+    delib = trial.deliberation
+    if delib is None or not delib.entries:
+        return []
+    by_node = {e.node: e for e in delib.entries}
+    entry = by_node.get("impact") or by_node.get("options")
+    if entry is None or not entry.rationale:
+        return []
+    who = entry.role.capitalize() if entry.role else "Court"
+    row = _text(f"🧠 {who}: {_clip(entry.rationale, _MAX_RATIONALE_CHARS)}")
+    row["isSubtle"] = True
+    row["spacing"] = "Small"
+    return [row]
+
+
 def _run_link_row(run_link: RunLink | None, thread_id: str) -> list[dict[str, object]]:
     """The run-page deep link as a single subtle body row — empty when no link is available.
 
@@ -268,6 +285,7 @@ def build_change_court_card(
                     )
                 )
 
+    body.extend(_deliberation_row(trial))
     body.extend(_run_link_row(run_link, thread_id))
 
     return {
