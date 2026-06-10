@@ -15,6 +15,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from app.observability.context import current_context
+from app.observability.redact import redact
 
 if TYPE_CHECKING:
     from app.config import Settings
@@ -27,20 +28,33 @@ _HANDLER_MARKER = "_change_court_handler"
 
 
 class JsonFormatter(logging.Formatter):
-    """Render each record as a single JSON line: timestamp, level, logger, message, plus extras."""
+    """Render each record as a single JSON line: timestamp, level, logger, message, plus extras.
+
+    When ``redact_pii`` is set, the message, string-valued extras, and any exception text are masked
+    for emails and phone numbers before emission — third-party content reaches log lines and must
+    not carry PII.
+    """
+
+    def __init__(self, *, redact_pii: bool = True) -> None:
+        super().__init__()
+        self._redact = redact_pii
 
     def format(self, record: logging.LogRecord) -> str:
         payload: dict[str, object] = {
             "timestamp": self.format_timestamp(record),
             "level": record.levelname,
             "logger": record.name,
-            "message": record.getMessage(),
+            "message": self._clean(record.getMessage()),
         }
         payload.update(self.context_fields())
-        payload.update(_extra_fields(record))
+        payload.update({k: self._clean(v) for k, v in _extra_fields(record).items()})
         if record.exc_info:
-            payload["exc_info"] = self.formatException(record.exc_info)
+            payload["exc_info"] = self._clean(self.formatException(record.exc_info))
         return json.dumps(payload, default=str)
+
+    def _clean(self, value: object) -> object:
+        """Redact PII from string values; leave non-strings untouched."""
+        return redact(value) if self._redact and isinstance(value, str) else value
 
     def format_timestamp(self, record: logging.LogRecord) -> str:
         """ISO-8601 UTC timestamp with millisecond precision."""
@@ -63,10 +77,10 @@ def _resolve_level(level: str) -> int:
     return resolved if isinstance(resolved, int) else logging.INFO
 
 
-def _build_formatter(log_format: str) -> logging.Formatter:
+def _build_formatter(log_format: str, *, redact_pii: bool) -> logging.Formatter:
     if log_format == "text":
         return logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s")
-    return JsonFormatter()
+    return JsonFormatter(redact_pii=redact_pii)
 
 
 def configure_logging(settings: Settings) -> None:
@@ -85,7 +99,9 @@ def configure_logging(settings: Settings) -> None:
 
     handler = logging.StreamHandler(stream=sys.stdout)
     setattr(handler, _HANDLER_MARKER, True)
-    handler.setFormatter(_build_formatter(settings.log_format))
+    handler.setFormatter(
+        _build_formatter(settings.log_format, redact_pii=settings.log_redaction_enabled)
+    )
     root.addHandler(handler)
     root.setLevel(level)
 

@@ -105,7 +105,8 @@ def test_llm_prompt_stays_bounded_for_a_maximal_request() -> None:
     parser.parse(max_request, change_id="c1")
 
     prompt, system = llm.prompts[0]
-    # User prompt is exactly the (bounded) request; the system prompt is a fixed template plus
-    # the capability catalog — small and registry-sized, not input-sized.
-    assert len(prompt) == Settings().max_request_chars
+    # User prompt is the (bounded) request wrapped in a fixed-size untrusted-data fence; the system
+    # prompt is a fixed template (incl. the injection-hardening line) plus the capability catalog —
+    # small and registry-sized, not input-sized.
+    assert len(prompt) < Settings().max_request_chars + 100  # request + constant fence overhead
     assert len(system) < 4000

@@ -40,6 +40,12 @@ from app.domain.principal import Principal
 from app.domain.quorum import Approver, Quorum, VerdictOption
 from app.domain.risk import RiskFactor, RiskResult
 from app.domain.run_events import RunEvent, RunEventKind
+from app.domain.safety import (
+    SOURCE_AZURE_PROMPT_SHIELDS,
+    SOURCE_HEURISTIC,
+    SOURCE_UNAVAILABLE,
+    ShieldVerdict,
+)
 from app.domain.verdict import Verdict
 from app.domain.verification import EffectVerification
 
@@ -78,8 +84,12 @@ __all__ = [
     "RunEvent",
     "RunEventKind",
     "RunMode",
+    "SOURCE_AZURE_PROMPT_SHIELDS",
+    "SOURCE_HEURISTIC",
     "SOURCE_LLM",
     "SOURCE_OFFLINE_STUB",
+    "SOURCE_UNAVAILABLE",
+    "ShieldVerdict",
     "StepResult",
     "StepStatus",
     "TrialRecord",

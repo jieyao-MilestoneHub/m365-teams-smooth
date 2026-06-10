@@ -9,6 +9,8 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 
+from app.adapters.guardrail.azure_content_safety import AzurePromptShieldsGuardrail
+from app.adapters.guardrail.heuristic import HeuristicGuardrail
 from app.adapters.integrations.graph import GraphClient
 from app.adapters.integrations.mock_crm import MockCRMAdapter
 from app.adapters.integrations.mock_entra import MockEntraAdapter
@@ -60,6 +62,7 @@ from app.agent.runner import CourtRunner
 from app.config import Settings
 from app.domain.run_events import RunEventKind
 from app.ports.conversation_store import ConversationStore
+from app.ports.guardrail import GuardrailPort
 from app.ports.integration import IntegrationAdapter
 from app.ports.knowledge import KnowledgePort
 from app.ports.llm import LLMProvider
@@ -245,13 +248,28 @@ def build_court_service(
             max_tokens=settings.llm_max_tokens,
         )
 
+    # Input shield: managed Azure Prompt Shields when configured, else the offline heuristic. It
+    # screens third-party content (the request, gathered evidence) for prompt injection before the
+    # LLM reasons over it; a flag falls back to the deterministic path.
+    guardrail: GuardrailPort = HeuristicGuardrail()
+    if not settings.force_all_mock and settings.content_safety_endpoint:
+        guardrail = AzurePromptShieldsGuardrail(
+            endpoint=settings.content_safety_endpoint, timeout=settings.http_timeout_seconds
+        )
+    block = settings.guardrail_blocking
+
     # Anchor year-less natural dates ("June 17") to the current year at the composition root.
     today = date.today().isoformat()
     if request_parser is not None:
         parser: RequestParser = request_parser
     elif llm_is_real:
         parser = LlmRequestParser(
-            llm, registry, fallback=DeterministicRequestParser(today=today), today=today
+            llm,
+            registry,
+            fallback=DeterministicRequestParser(today=today),
+            today=today,
+            guardrail=guardrail,
+            guardrail_blocking=block,
         )
     else:
         parser = DeterministicRequestParser(today=today)
@@ -263,12 +281,24 @@ def build_court_service(
     if llm_is_real:
         gatherers = {
             subject: LlmEvidenceGatherer(
-                llm, fallback=gatherer, max_reads=settings.max_agentic_reads, memory=memory
+                llm,
+                fallback=gatherer,
+                max_reads=settings.max_agentic_reads,
+                memory=memory,
+                guardrail=guardrail,
+                guardrail_blocking=block,
             )
             for subject, gatherer in gatherers.items()
         }
         planners = {
-            subject: LlmPlanner(llm, registry, fallback=planner, memory=memory)
+            subject: LlmPlanner(
+                llm,
+                registry,
+                fallback=planner,
+                memory=memory,
+                guardrail=guardrail,
+                guardrail_blocking=block,
+            )
             for subject, planner in planners.items()
         }
 

@@ -13,8 +13,10 @@ import logging
 
 from pydantic import BaseModel, Field
 
+from app.agent.agentic.untrusted import HARDENING, fence
 from app.domain import Change, RequestedAction
 from app.observability import metrics
+from app.ports.guardrail import GuardrailPort
 from app.ports.llm import LLMProvider
 from app.ports.registry import IntegrationRegistry
 from app.ports.request_parser import RequestParser
@@ -65,15 +67,26 @@ class LlmRequestParser(RequestParser):
         fallback: RequestParser,
         *,
         today: str | None = None,
+        guardrail: GuardrailPort | None = None,
+        guardrail_blocking: bool = True,
     ) -> None:
         self._llm = llm
         self._registry = registry
         self._fallback = fallback
         self._today = today
+        self._guardrail = guardrail
+        self._block = guardrail_blocking
 
     def parse(self, raw: str, *, change_id: str) -> Change:
+        # The raw request is untrusted; screen it and isolate it from the instructions.
+        if self._guardrail is not None and self._block:
+            verdict = self._guardrail.screen_input(user_text=raw)
+            if verdict.flagged:
+                logger.warning("parser.guardrail_blocked", extra={"cats": verdict.categories})
+                metrics.increment("guardrail.input_blocked")
+                return self._fallback.parse(raw, change_id=change_id)
         try:
-            text = self._llm.complete(raw, system=self._prompt())
+            text = self._llm.complete(fence("request", raw), system=self._prompt())
             result = _LlmParse.model_validate(_extract_json(text))
         except Exception as exc:  # noqa: BLE001 — never raise; an unsure LLM falls back
             logger.warning(
@@ -110,6 +123,7 @@ class LlmRequestParser(RequestParser):
         )
         return (
             f"You classify an enterprise change request. Today is {today}.\n"
+            f"{HARDENING}\n"
             f"Choose exactly one subject from: {subjects}.\n"
             "Set due_by to an ISO date (YYYY-MM-DD), resolving relative dates against today; "
             "use null when there is no date.\n"
