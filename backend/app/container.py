@@ -302,10 +302,13 @@ def build_court_service(
             for subject, planner in planners.items()
         }
 
-    # Deliberation reasoning is captured by the LLM-backed deliberator exactly when the Prosecutor
-    # and Defender are LLM-backed, so reused role prose is genuinely model-sourced; offline runs
-    # record an honestly-labeled factual stub per node.
-    deliberator: Deliberator = LlmDeliberator(llm) if llm_is_real else OfflineDeliberator()
+    # Deliberation cadence: the explanatory trace reuses upstream role prose for free; under the
+    # default "reuse" mode it makes no dedicated LLM calls (absent prose it records a factual stub).
+    # "always" restores a call per node; "off" (and offline runs) record stubs only.
+    if not llm_is_real or settings.deliberation_llm == "off":
+        deliberator: Deliberator = OfflineDeliberator()
+    else:
+        deliberator = LlmDeliberator(llm, dedicated_calls=settings.deliberation_llm == "always")
 
     graph = build_court_graph(
         intake=IntakeNode(parser, registry, deliberator),
