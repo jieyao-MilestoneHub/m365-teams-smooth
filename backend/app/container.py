@@ -246,6 +246,7 @@ def build_court_service(
             api_key=settings.llm_api_key,
             timeout=settings.llm_timeout_seconds,
             max_tokens=settings.llm_max_tokens,
+            max_retries=settings.llm_max_retries,
         )
 
     # Input shield: managed Azure Prompt Shields when configured, else the offline heuristic. It

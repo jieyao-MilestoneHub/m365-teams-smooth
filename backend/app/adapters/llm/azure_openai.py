@@ -12,15 +12,33 @@ trials remain credential-free.
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
+import openai
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from openai import AzureOpenAI
 
 from app.domain.errors import LlmOutputError
+from app.observability import metrics
 from app.ports.llm import LLMProvider, LlmRequest, LlmResult
 
+logger = logging.getLogger(__name__)
+
 _SCOPE = "https://cognitiveservices.azure.com/.default"
+
+
+def _error_class(exc: Exception) -> str:
+    """Map an SDK failure to a stable taxonomy (most specific first — these types nest)."""
+    if isinstance(exc, openai.RateLimitError):
+        return "rate_limited"
+    if isinstance(exc, openai.APITimeoutError):
+        return "timeout"
+    if isinstance(exc, openai.APIConnectionError):
+        return "connection"
+    if isinstance(exc, openai.APIStatusError):
+        return "server" if exc.status_code >= 500 else "invalid_request"
+    return "unknown"
 
 
 class AzureOpenAILLMProvider(LLMProvider):
@@ -35,6 +53,7 @@ class AzureOpenAILLMProvider(LLMProvider):
         api_key: str = "",
         timeout: float | None = None,
         max_tokens: int | None = None,
+        max_retries: int = 2,
         client: Any | None = None,
     ) -> None:
         self._deployment = deployment
@@ -47,6 +66,7 @@ class AzureOpenAILLMProvider(LLMProvider):
                 api_version=api_version,
                 api_key=api_key,
                 timeout=timeout,
+                max_retries=max_retries,
             )
         else:
             token_provider = get_bearer_token_provider(DefaultAzureCredential(), _SCOPE)
@@ -55,6 +75,7 @@ class AzureOpenAILLMProvider(LLMProvider):
                 api_version=api_version,
                 azure_ad_token_provider=token_provider,
                 timeout=timeout,
+                max_retries=max_retries,
             )
 
     def complete(self, prompt: str, *, system: str | None = None) -> str:
@@ -79,13 +100,24 @@ class AzureOpenAILLMProvider(LLMProvider):
                     "schema": request.json_schema,
                 },
             }
-        response = self._client.chat.completions.create(
-            model=self._deployment,
-            messages=messages,
-            temperature=0,
-            max_tokens=request.max_tokens or self._max_tokens,
-            **extra,
-        )
+        try:
+            response = self._client.chat.completions.create(
+                model=self._deployment,
+                messages=messages,
+                temperature=0,
+                max_tokens=request.max_tokens or self._max_tokens,
+                **extra,
+            )
+        except Exception as exc:
+            # The SDK has already spent its retry budget by the time this raises. Classify the
+            # failure so throttling, timeouts, and bad requests are distinguishable in operations;
+            # callers keep their deterministic fallbacks, so the error itself still propagates.
+            error_class = _error_class(exc)
+            logger.warning(
+                "llm.call_failed", extra={"error_class": error_class, "error": str(exc)}
+            )
+            metrics.increment(f"llm.errors.{error_class}")
+            raise
         choice = response.choices[0]
         if request.json_schema is not None:
             # Schema adherence does not survive truncation or a safety refusal; surface both so
