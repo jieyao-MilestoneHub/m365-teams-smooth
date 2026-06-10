@@ -143,9 +143,39 @@ def test_reads_are_capped_and_deduplicated() -> None:
     errors: list[str] = []
     gatherer(_CHANGE, registry, _NoKnowledge(), errors)  # type: ignore[arg-type]
 
-    executed = [q.capability for q in adapter.queries]
-    assert executed == ["planner.read_0", "planner.read_1", "planner.read_2"]
+    # read_0 is deduped, read_3 is capped; the three survivors run concurrently, so assert the set
+    # (their execution order across threads is not guaranteed — resulting-item order is, see below).
+    executed = {q.capability for q in adapter.queries}
+    assert executed == {"planner.read_0", "planner.read_1", "planner.read_2"}
     assert any("capped at 3" in e for e in errors)
+
+
+def test_concurrent_reads_preserve_requested_order_and_degrade_gracefully() -> None:
+    ok_a = _FakeAdapter("a", {"k": "a"})
+    bad_b = _FakeAdapter("b", {}, fail=True)  # middle read fails
+    ok_c = _FakeAdapter("c", {"k": "c"})
+    registry = _FakeRegistry(
+        {"a": ok_a, "b": bad_b, "c": ok_c},
+        [_read_cap("a", "a.read"), _read_cap("b", "b.read"), _read_cap("c", "c.read")],
+    )
+    llm = _ScriptedLLM(
+        _response(
+            [
+                {"system": "a", "name": "a.read"},
+                {"system": "b", "name": "b.read"},
+                {"system": "c", "name": "c.read"},
+            ],
+            assessment="",
+        )
+    )
+    gatherer = LlmEvidenceGatherer(llm, fallback=_deterministic)
+
+    errors: list[str] = []
+    evidence = gatherer(_CHANGE, registry, _NoKnowledge(), errors)  # type: ignore[arg-type]
+
+    agentic = [i.system for i in evidence.items if i.kind == "agentic"]
+    assert agentic == ["a", "c"]  # requested order preserved; failing 'b' skipped, not reordered
+    assert any("agentic read failed on b.b.read" in e for e in errors)
 
 
 def test_llm_failure_returns_deterministic_evidence_untouched() -> None:

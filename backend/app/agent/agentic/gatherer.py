@@ -11,6 +11,7 @@ deterministic evidence untouched.
 from __future__ import annotations
 
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 from pydantic import BaseModel, Field
 
@@ -113,7 +114,9 @@ class LlmEvidenceGatherer:
         )
         result = _LlmGather.model_validate(extract_json(text))
 
-        items: list[EvidenceItem] = []
+        # Validate sequentially (deterministic — this mutates errors/cap/dedup), then execute the
+        # surviving reads. Validation never touches the network, so it stays cheap and ordered.
+        planned: list[_LlmRead] = []
         executed: set[tuple[str, str]] = set()
         for read in result.reads:
             key = (read.system, read.name)
@@ -129,25 +132,31 @@ class LlmEvidenceGatherer:
             if missing := self._missing_params(capability, read.params):
                 errors.append(f"agentic read {read.name} missing required params {missing}")
                 continue
-            adapter = registry.get(read.system)
-            if adapter is None:
+            if registry.get(read.system) is None:
                 continue
             executed.add(key)
-            metrics.increment("agentic.reads")
-            try:
-                data = adapter.read(ReadQuery(capability=read.name, params=read.params)).data
-            except IntegrationError as exc:
-                errors.append(f"agentic read failed on {read.system}.{read.name}: {exc}")
-                continue
-            if data:
-                items.append(
-                    EvidenceItem(
-                        system=read.system,
-                        kind="agentic",
-                        summary=f"[prosecutor] {read.name}",
-                        data=data,
+            planned.append(read)
+
+        # The validated reads are independent network calls — run them with bounded concurrency.
+        # pool.map preserves submission order, so the resulting evidence (and the errors appended
+        # below) stay deterministic; a failed read degrades gracefully exactly as before.
+        items: list[EvidenceItem] = []
+        if planned:
+            metrics.increment("agentic.reads", len(planned))
+            with ThreadPoolExecutor(max_workers=min(len(planned), self._max_reads)) as pool:
+                outcomes = list(pool.map(lambda r: self._run_read(registry, r), planned))
+            for read, (ok, payload) in zip(planned, outcomes, strict=True):
+                if not ok:
+                    errors.append(f"agentic read failed on {read.system}.{read.name}: {payload}")
+                elif isinstance(payload, dict) and payload:
+                    items.append(
+                        EvidenceItem(
+                            system=read.system,
+                            kind="agentic",
+                            summary=f"[prosecutor] {read.name}",
+                            data=payload,
+                        )
                     )
-                )
 
         if result.assessment.strip():
             items.append(
@@ -165,6 +174,19 @@ class LlmEvidenceGatherer:
         if not isinstance(required, list):
             return []
         return [str(k) for k in required if k not in params]
+
+    @staticmethod
+    def _run_read(
+        registry: IntegrationRegistry, read: _LlmRead
+    ) -> tuple[bool, dict[str, object] | str]:
+        """Execute one validated read (called from the thread pool). Returns (ok, data | error)."""
+        adapter = registry.get(read.system)
+        if adapter is None:  # validated as present, but stay defensive on the worker thread
+            return False, "adapter unavailable"
+        try:
+            return True, adapter.read(ReadQuery(capability=read.name, params=read.params)).data
+        except IntegrationError as exc:
+            return False, str(exc)
 
     def _user_prompt(self, change: Change, gathered: ImpactEvidence) -> str:
         already = "; ".join(f"{i.system}/{i.kind}: {i.summary}" for i in gathered.items) or "none"
