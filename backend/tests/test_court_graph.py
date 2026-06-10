@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.adapters.knowledge.fake_knowledge import FakeKnowledgeProvider
+from app.adapters.knowledge.local_corpus import LocalCorpusKnowledgeProvider
 from app.adapters.parsers.deterministic import DeterministicRequestParser
 from app.adapters.persistence.checkpointer import SqliteCheckpointStore
 from app.agent.graph import build_court_graph
@@ -65,7 +65,7 @@ def _launch_gatherer(
 
 def _build(audit_repo: InMemoryAuditRepository, store: SqliteCheckpointStore) -> Any:
     registry = build_mock_registry()
-    knowledge = FakeKnowledgeProvider()
+    knowledge = LocalCorpusKnowledgeProvider()
     return build_court_graph(
         intake=IntakeNode(DeterministicRequestParser(), registry),
         impact=ImpactNode(registry, knowledge, {"launch": _launch_gatherer}),

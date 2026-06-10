@@ -7,7 +7,7 @@ from app.adapters.integrations.mock_outlook import MockOutlookAdapter
 from app.adapters.integrations.mock_planner import MockPlannerAdapter
 from app.adapters.integrations.mock_teams import MockTeamsAdapter
 from app.adapters.integrations.registry import ConfigIntegrationRegistry
-from app.adapters.knowledge.fake_knowledge import FakeKnowledgeProvider
+from app.adapters.knowledge.local_corpus import LocalCorpusKnowledgeProvider
 from app.agent.gatherers import gather_launch, gather_project_access, gather_sso_ga
 from app.domain import Change, RequestedAction
 from app.domain.errors import IntegrationError
@@ -20,7 +20,7 @@ def test_launch_gatherer_tags_all_ripple_effects() -> None:
     evidence = gather_launch(
         Change(change_id="c1", raw_request="slip", subject="launch", due_by="2026-06-17"),
         registry,
-        FakeKnowledgeProvider(),
+        LocalCorpusKnowledgeProvider(),
         [],
     )
     assert set(evidence.tags) == {
@@ -36,7 +36,7 @@ def test_sso_ga_gatherer_flags_review_after_due_date() -> None:
     evidence = gather_sso_ga(
         Change(change_id="c1", raw_request="promise GA", subject="sso-ga", due_by="2026-06-17"),
         registry,
-        FakeKnowledgeProvider(),
+        LocalCorpusKnowledgeProvider(),
         [],
     )
     assert "github.blocking_issues_open" in evidence.tags
@@ -61,7 +61,7 @@ def test_project_access_gatherer_flags_ambiguity_scope_and_data() -> None:
             )
         ],
     )
-    evidence = gather_project_access(change, registry, FakeKnowledgeProvider(), [])
+    evidence = gather_project_access(change, registry, LocalCorpusKnowledgeProvider(), [])
     assert "access.ambiguous_duration" in evidence.tags  # no expiry in the request
     assert "access.overbroad_scope" in evidence.tags  # whole /ProjectX
     assert "data.customer_data_present" in evidence.tags  # /ProjectX holds customer data
@@ -88,7 +88,7 @@ def test_launch_gatherer_degrades_when_one_read_fails() -> None:
     evidence = gather_launch(
         Change(change_id="c1", raw_request="slip", subject="launch", due_by="2026-06-17"),
         registry,
-        FakeKnowledgeProvider(),
+        LocalCorpusKnowledgeProvider(),
         errors,
     )
 

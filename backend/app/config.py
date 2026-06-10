@@ -59,6 +59,9 @@ class Settings(BaseSettings):
     knowledge_source_name: str = ""
     # Query planning depth before hybrid + semantic rerank: "minimal" | "low" | "medium".
     knowledge_reasoning_effort: str = "medium"
+    # Offline grounding corpus (empty -> the bundled assets/knowledge-corpus). The offline provider
+    # chunks and cites these markdown files, so credential-free runs ground real policy text.
+    knowledge_corpus_dir: str = ""
 
     # --- MCP OAuth2 resource server (empty -> local dev issuer) ---
     oauth_issuer: str = ""

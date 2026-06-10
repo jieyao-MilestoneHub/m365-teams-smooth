@@ -32,7 +32,10 @@ class LocalCorpusKnowledgeProvider(KnowledgePort):
         self._corpus = Corpus(loaded)
 
     def ground(self, query: str, *, top_k: int = 3) -> list[GroundedFact]:
-        return [
+        # Never cite a superseded policy as authority, even when it ranks: filter, then take top_k.
+        facts = [
             GroundedFact(claim=claim_for(chunk), source_id=chunk.doc_id, citation=chunk.title)
-            for chunk, _score in self._corpus.search(query, top_k)
+            for chunk, _score in self._corpus.search(query)
+            if not chunk.superseded
         ]
+        return facts[:top_k]

@@ -36,6 +36,12 @@ def _tokenize(text: str) -> list[str]:
     return [t for t in re.findall(r"[a-z0-9]+", text.lower()) if len(t) > 1 and t not in _STOPWORDS]
 
 
+# Documents whose title marks them as no longer in force. They stay in the corpus so the ranker is
+# tested against them (good retrieval must rank the current policy higher), but they are never cited
+# as authority — a superseded policy must not ground a live decision.
+_SUPERSEDED_MARKERS = ("deprecated", "superseded")
+
+
 @dataclass(frozen=True)
 class CorpusChunk:
     """One ``##`` section of a corpus document, ready to score and cite."""
@@ -45,6 +51,7 @@ class CorpusChunk:
     heading: str
     text: str  # the ``page_chunk`` ("## heading\n body"), as the live index stores it
     tags: tuple[str, ...]  # path-segment + heading keywords, for the tag-match boost
+    superseded: bool = False  # title marks the document as deprecated/superseded
     tokens: tuple[str, ...] = field(default=(), compare=False)
 
 
@@ -67,6 +74,7 @@ def load_corpus(root: Path) -> list[CorpusChunk]:
             continue
         doc_title, sections = chunk_markdown(path.read_text(encoding="utf-8"))
         stem_tags = _tokenize(path.stem.replace("-", " "))
+        superseded = any(m in doc_title.lower() for m in _SUPERSEDED_MARKERS)
         for i, (heading, page_chunk) in enumerate(sections):
             title = f"{doc_title} — {heading}" if doc_title else heading
             tags = tuple(dict.fromkeys(stem_tags + _tokenize(heading)))
@@ -77,6 +85,7 @@ def load_corpus(root: Path) -> list[CorpusChunk]:
                     heading=heading,
                     text=page_chunk,
                     tags=tags,
+                    superseded=superseded,
                     tokens=tuple(_tokenize(f"{title} {page_chunk}")),
                 )
             )
@@ -115,12 +124,14 @@ class Corpus:
         tag_hits = sum(1 for term in set(query_terms) if term in chunk.tags)
         return total + _TAG_BOOST * tag_hits
 
-    def search(self, query: str, top_k: int) -> list[tuple[CorpusChunk, float]]:
-        """Rank chunks for ``query``; drop zero-score chunks so unrelated queries return nothing."""
+    def search(self, query: str, top_k: int | None = None) -> list[tuple[CorpusChunk, float]]:
+        """Rank chunks for ``query`` (best first); drop zero-score chunks so unrelated queries are
+        empty. ``top_k=None`` returns the full ranking — superseded documents are ranked too, so the
+        ranker can be tested against them; the provider is responsible for not citing them."""
         terms = _tokenize(query)
         scored = [(c, self.score(terms, c)) for c in self._chunks]
         ranked = sorted((cs for cs in scored if cs[1] > 0), key=lambda cs: cs[1], reverse=True)
-        return ranked[:top_k]
+        return ranked if top_k is None else ranked[:top_k]
 
 
 def claim_for(chunk: CorpusChunk) -> str:

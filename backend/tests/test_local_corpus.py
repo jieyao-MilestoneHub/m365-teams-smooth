@@ -7,19 +7,13 @@ deprecated change-management distractor). This is the credential-free analog of 
 
 from __future__ import annotations
 
-from app.adapters.knowledge.corpus import load_corpus
+from app.adapters.knowledge.corpus import Corpus, load_corpus
 from app.adapters.knowledge.local_corpus import _DEFAULT_CORPUS_DIR, LocalCorpusKnowledgeProvider
 
 # (label, query, target substring, exclude-from-target, near-miss substring that must not outrank).
-# Queries mirror the impact gatherer's grounding calls.
+# Queries mirror the impact gatherer's grounding calls. The Reschedule near-miss (the deprecated
+# change policy) is handled separately below — the provider filters superseded docs entirely.
 CASES = [
-    (
-        "Reschedule",
-        "schedule change controlled coordinated milestone date",
-        "Release & Change Management Policy",
-        ("DEPRECATED", "v1"),
-        "DEPRECATED",
-    ),
     (
         "Meeting Actions",
         "meeting follow-through action item owner due date accountability",
@@ -49,6 +43,8 @@ CASES = [
         "",
     ),
 ]
+
+_RESCHEDULE_QUERY = "schedule change controlled coordinated milestone date"
 
 
 def _rank(citations: list[str], includes: str, excludes: tuple[str, ...] = ()) -> int | None:
@@ -83,9 +79,31 @@ def test_each_case_surfaces_target_above_near_miss() -> None:
             ), f"{label}: near-miss {near_miss!r} outranked the target {target!r} ({citations})"
 
 
+def test_ranker_ranks_current_policy_above_deprecated() -> None:
+    # The ranking proof (offline analog of the live eval): even though the deprecated change policy
+    # shares vocabulary, the current Release & Change Management Policy must rank above it.
+    corpus = Corpus(load_corpus(_DEFAULT_CORPUS_DIR))
+    ranked = corpus.search(_RESCHEDULE_QUERY)
+    titles = [c.title for c, _ in ranked]
+    current = next(
+        i
+        for i, t in enumerate(titles)
+        if t.startswith("Release & Change Management Policy") and "DEPRECATED" not in t
+    )
+    deprecated = next((i for i, t in enumerate(titles) if "DEPRECATED" in t), None)
+    assert deprecated is None or current < deprecated
+
+
+def test_provider_never_cites_a_superseded_policy() -> None:
+    kb = LocalCorpusKnowledgeProvider()
+    facts = kb.ground(_RESCHEDULE_QUERY, top_k=5)
+    assert facts, "expected the current change policy to ground a reschedule"
+    assert all("DEPRECATED" not in f.citation and "superseded" not in f.citation for f in facts)
+
+
 def test_grounded_facts_are_cited_and_real() -> None:
     kb = LocalCorpusKnowledgeProvider()
-    facts = kb.ground("schedule change controlled coordinated milestone date")
+    facts = kb.ground(_RESCHEDULE_QUERY)
     assert facts
     assert facts[0].citation.startswith("Release & Change Management Policy")
     assert facts[0].source_id  # carries a stable document id
