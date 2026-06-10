@@ -1,14 +1,14 @@
-"""The LLM provider port: free-text generation for the court (rationale, drafts).
+"""The LLM provider port: generation for the court's LLM-backed roles and deliberation.
 
-Structured parsing (intake → actions) is deterministic and constrained to registered capabilities,
-so it does not depend on this port. Keeping the LLM a text generator leaves the trials reproducible
-while still offering a seam for a real provider.
+Every LLM call site keeps a deterministic counterpart (parser, gatherer, planner, deliberator), so
+trials stay reproducible whether this port is the offline fake or a real provider.
 
 ``generate`` carries provider-agnostic caching / structured-output / per-call intent without leaking
 SDK types: a stable ``cacheable_prefix`` (so providers can cache the static catalog), a volatile
 ``system_suffix``, an optional JSON schema (a plain dict — no SDK types), and a per-call token cap.
-It is a concrete method whose default delegates to ``complete``, so the offline fake, test stubs,
-and the deliberator keep working unchanged; adapters override it to exploit the extra intent.
+The result carries per-call usage telemetry alongside the text. ``generate`` is a concrete method
+whose default delegates to ``complete``, so the offline fake, test stubs, and the deliberator keep
+working unchanged; adapters override it to exploit the extra intent.
 """
 
 from __future__ import annotations

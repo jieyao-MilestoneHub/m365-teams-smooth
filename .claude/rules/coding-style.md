@@ -14,12 +14,12 @@
 - Tests: `pytest` + `pytest-asyncio`. Unit-test nodes, policy, and adapters in isolation with fakes;
   record real GitHub calls with `respx`/`vcrpy`.
 
-## TypeScript / Next.js (frontend)
+## Other surfaces
 
-- Strict TypeScript. ESLint clean.
-- Typed API client generated from / matching the REST contract in `docs/api-contract.md`.
-- Components small and presentational; data fetching isolated.
-- No secrets in the client; the dashboard talks only to the backend REST API.
+- There is no frontend build. The Teams Adaptive Card is the decision UI — card templates are data
+  in `m365/adaptive-cards/` — and the read-only run page is a static file the backend serves.
+- The Playground bot (`m365/playground-bot/`) is a small Python (`uv`) project; the Python
+  conventions above apply. It talks only to the backend REST API, and no surface embeds secrets.
 
 ## Documentation in code
 

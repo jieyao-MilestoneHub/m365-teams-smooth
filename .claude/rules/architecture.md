@@ -18,7 +18,7 @@ Microsoft 365 Copilot Chat / Teams
      ├─ services/   single business layer (REST + MCP both delegate here — no duplication)
      ├─ agent/      LangGraph court: intake → impact → options → policy+quorum → [verdict] → execute → audit
      ├─ ports/      abstract interfaces (DIP boundary)
-     ├─ adapters/   integrations (real GitHub + mock others), persistence, llm, notifiers
+     ├─ adapters/   integrations (real GitHub + mock others), persistence, llm, knowledge, guardrail, notifiers
      └─ domain/     pure models/enums/errors (no framework or SDK imports)
   Teams Adaptive Card = the decision UI (Change Court card). The one web surface is the
   read-only pipeline run page (/runs/{thread_id}, HMAC-signed deep links — ADR-0011):
@@ -76,6 +76,37 @@ rewrite (see below).
 - **Scope discipline:** only the adapters the headline demo (Informed Approval) and the additional
   capabilities the engine already handles require are built — GitHub (real) and mock Outlook,
   Planner, SharePoint, Teams, CRM, Entra. Others (ServiceNow, a generic Graph adapter) are backlog.
+
+## LLM provider & guardrail
+
+- Port `LLMProvider`: `complete()` for free text plus `generate(LlmRequest) → LlmResult`. The
+  request carries provider-agnostic intent — `cacheable_prefix` (stable system text),
+  `system_suffix` (volatile system text), a plain-JSON `json_schema`, a per-call `max_tokens` — and
+  the result returns the text plus per-call telemetry (`input_tokens`, `output_tokens`,
+  `cached_prefix_tokens`, provider `request_id`). No SDK types cross the port; offline fakes and
+  stubs implement only `complete()` and the default `generate()` keeps working.
+- **Structured output is native and strict.** Wire models render through
+  `agent/agentic/structured.py: schema_of()` into the cross-provider strict schema subset (every
+  property required, `additionalProperties: false`, no defaults; free-form dicts travel as
+  JSON-encoded strings, decoded by a model validator). The Azure adapter sends it as a strict
+  `response_format`; a truncated (`finish_reason=length`) or refused structured reply raises a
+  typed `LlmOutputError`. Every LLM call site keeps a deterministic fallback, and client-side
+  Pydantic validation stays regardless of the provider guarantee.
+- **Prompt caching is layout, not API.** The cacheable prefix leads as its own system message and
+  every volatile part (the Defender's stance, the parser's date line) comes after it, matching the
+  service's automatic exact-prefix caching; cache hits surface via `cached_prefix_tokens`.
+- **The SDK is the single retry owner** (`LLM_MAX_RETRIES`; exponential backoff, honors
+  retry-after) — never add an outer retry wrapper around LLM calls. Failures classify into
+  `llm.errors.{rate_limited, timeout, connection, server, invalid_request}`; each call emits one
+  `llm.call` log line plus `llm.calls` / `llm.tokens.{input,output,cached}` counters.
+- Port `GuardrailPort` screens untrusted input (the raw request, gathered evidence) **before** any
+  LLM reasons over it — Azure Prompt Shields when `CONTENT_SAFETY_ENDPOINT` is set, an offline
+  heuristic otherwise; flagged input falls back to the deterministic path. Third-party content is
+  fenced in `<untrusted_data>` blocks (`agent/agentic/untrusted.py`). Screening never raises.
+- Portability seams for a second platform adapter (credential providers rather than static keys,
+  logical-model → platform-ID mapping, normalized throttling, capability flags) and the
+  deliberately deferred hardening (circuit breaker, streaming, batch APIs) are recorded in
+  **ADR-0013**.
 
 ## Persistence
 

@@ -89,6 +89,11 @@ M365 Copilot Chat / Teams
 - **Open/Closed adapters.** A new integration = one adapter module implementing `IntegrationAdapter`
   (read + write capabilities) + one `IntegrationRegistry` registration. No edits to the graph,
   services, REST, or MCP. Real-vs-mock is chosen per system from config.
+- **LLM calls are governed.** The `LLMProvider` port carries caching + structured-output intent
+  (`LlmRequest`) and returns per-call usage telemetry (`LlmResult`); structured output is native
+  strict JSON Schema with a typed failure (`LlmOutputError`) and a deterministic fallback at every
+  call site; untrusted content is screened (`GuardrailPort`) and fenced before any LLM reasons over
+  it. Portability seams and deliberately deferred hardening: ADR-0013.
 - **Audit is append-only** — never updated. Rollback hints are advisory data, never auto-executed.
 
 When you make a significant design choice (e.g. the interrupt-vs-statelessness decision), record it
@@ -136,8 +141,11 @@ Env-driven via `config.py` (pydantic-settings) — see `.env.example`. Architect
 - `DRY_RUN_DEFAULT` — whether new decisions default to dry-run.
 - `DB_URL` — SQLite locally, Postgres later.
 - `GITHUB_TOKEN` — only when the GitHub adapter runs in `real` mode. `OAUTH_*` — MCP OAuth2 settings.
-- `LLM_API_KEY` / `LLM_MODEL` — leave empty to use the offline fake LLM provider (the default for local
-  development and fully-mocked runs).
+- `AZURE_OPENAI_ENDPOINT` / `AZURE_OPENAI_DEPLOYMENT` — set both to enable the real LLM provider
+  (keyless `DefaultAzureCredential` unless `LLM_API_KEY` is set); leave empty for the offline fake
+  LLM provider (the default for local development and fully-mocked runs). `LLM_TIMEOUT_SECONDS` /
+  `LLM_MAX_RETRIES` / `LLM_MAX_TOKENS` bound every call; `CONTENT_SAFETY_ENDPOINT` switches the
+  guardrail from the offline heuristic to Azure Prompt Shields.
 
 GitHub is the one real adapter; the rest (Outlook, Planner, SharePoint, Teams, CRM, Entra) are mocks
 returning realistic data, so the system runs fully locally. Only the adapters the headline and its
