@@ -13,10 +13,10 @@ from __future__ import annotations
 import logging
 from concurrent.futures import ThreadPoolExecutor
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.agent.agentic.precedents import render_precedents
-from app.agent.agentic.structured import extract_json
+from app.agent.agentic.structured import decode_json_object, parse_json, schema_of
 from app.agent.agentic.untrusted import HARDENING, fence
 from app.agent.nodes.impact import Gatherer
 from app.domain import Capability, CapabilityKind, Change, EvidenceItem, ImpactEvidence
@@ -25,7 +25,7 @@ from app.observability import metrics
 from app.ports.guardrail import GuardrailPort
 from app.ports.integration import ReadQuery
 from app.ports.knowledge import KnowledgePort
-from app.ports.llm import LLMProvider
+from app.ports.llm import LLMProvider, LlmRequest
 from app.ports.memory import MemoryPort
 from app.ports.registry import IntegrationRegistry
 
@@ -39,10 +39,19 @@ class _LlmRead(BaseModel):
     name: str
     params: dict[str, object] = Field(default_factory=dict)
 
+    # In strict structured-output mode the free-form params object travels JSON-encoded.
+    @field_validator("params", mode="before")
+    @classmethod
+    def _decode_params(cls, value: object) -> object:
+        return decode_json_object(value)
+
 
 class _LlmGather(BaseModel):
     reads: list[_LlmRead] = Field(default_factory=list)
     assessment: str = ""
+
+
+_GATHER_SCHEMA = schema_of(_LlmGather)
 
 
 class LlmEvidenceGatherer:
@@ -109,10 +118,15 @@ class LlmEvidenceGatherer:
                 metrics.increment("guardrail.input_blocked")
                 return []
 
-        text = self._llm.complete(
-            self._user_prompt(change, gathered), system=self._system_prompt(catalog)
-        )
-        result = _LlmGather.model_validate(extract_json(text))
+        text = self._llm.generate(
+            LlmRequest(
+                prompt=self._user_prompt(change, gathered),
+                cacheable_prefix=self._system_prompt(catalog),
+                json_schema=_GATHER_SCHEMA,
+                schema_name="prosecutor_reads",
+            )
+        ).text
+        result = _LlmGather.model_validate(parse_json(text))
 
         # Validate sequentially (deterministic — this mutates errors/cap/dedup), then execute the
         # surviving reads. Validation never touches the network, so it stays cheap and ordered.
@@ -207,7 +221,8 @@ class LlmEvidenceGatherer:
             req = f" (required params: {', '.join(names)})" if names else ""
             lines.append(f"- {system} :: {name}: {cap.description or 'no description'}{req}")
         shape = (
-            '{"reads": [{"system": str, "name": str, "params": object}], "assessment": str}'
+            '{"reads": [{"system": str, "name": str, "params": JSON-encoded object string}], '
+            '"assessment": str}'
         )
         return (
             "You are the Prosecutor in a change-governance court: your job is to surface "

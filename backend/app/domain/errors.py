@@ -45,3 +45,7 @@ class UnauthorizedApproverError(ChangeCourtError):
 
 class GraphTimeoutError(ChangeCourtError):
     """A graph run exceeded its wall-clock budget; the checkpoint is left intact and resumable."""
+
+
+class LlmOutputError(ChangeCourtError):
+    """A schema-constrained LLM response is unusable (truncated or refused by the model)."""
