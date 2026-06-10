@@ -42,6 +42,7 @@ from app.adapters.persistence.repositories import (
 )
 from app.agent.agentic.gatherer import LlmEvidenceGatherer
 from app.agent.agentic.planner import LlmPlanner
+from app.agent.deliberate import Deliberator, LlmDeliberator, OfflineDeliberator
 from app.agent.gatherers import GATHERERS
 from app.agent.graph import build_court_graph
 from app.agent.instrument import RunEventEmitter, set_run_event_emitter
@@ -271,13 +272,18 @@ def build_court_service(
             for subject, planner in planners.items()
         }
 
+    # Deliberation reasoning is captured by the LLM-backed deliberator exactly when the Prosecutor
+    # and Defender are LLM-backed, so reused role prose is genuinely model-sourced; offline runs
+    # record an honestly-labeled factual stub per node.
+    deliberator: Deliberator = LlmDeliberator(llm) if llm_is_real else OfflineDeliberator()
+
     graph = build_court_graph(
-        intake=IntakeNode(parser, registry),
-        impact=ImpactNode(registry, knowledge, gatherers),
-        options=OptionsNode(planners),
-        policy=PolicyNode(packs, RulePackQuorumResolver()),
+        intake=IntakeNode(parser, registry, deliberator),
+        impact=ImpactNode(registry, knowledge, gatherers, deliberator),
+        options=OptionsNode(planners, deliberator),
+        policy=PolicyNode(packs, RulePackQuorumResolver(), deliberator),
         execute=ExecuteNode(registry, sink=run_events),
-        verify=VerifyNode(),
+        verify=VerifyNode(deliberator),
         audit=AuditNode(audit_repo, memory=memory),
         checkpointer=store.saver(),
     )

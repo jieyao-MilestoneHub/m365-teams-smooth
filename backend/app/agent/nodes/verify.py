@@ -10,8 +10,9 @@ from __future__ import annotations
 
 import logging
 
+from app.agent.deliberate import Deliberator, OfflineDeliberator, record
 from app.agent.state import CourtState, serialize
-from app.domain import ExecutionPlan, RunMode, StepResult, StepStatus
+from app.domain import EffectVerification, ExecutionPlan, RunMode, StepResult, StepStatus
 from app.domain.verification import verify_effect
 from app.observability import metrics
 
@@ -20,6 +21,9 @@ logger = logging.getLogger(__name__)
 
 class VerifyNode:
     """Compares each live step's requested params to its reported after-state."""
+
+    def __init__(self, deliberator: Deliberator | None = None) -> None:
+        self._deliberator = deliberator or OfflineDeliberator()
 
     def __call__(self, state: CourtState) -> CourtState:
         # Default to dry-run when the field is somehow absent: skipping verification is safe,
@@ -51,4 +55,17 @@ class VerifyNode:
                 )
                 metrics.increment("verify.mismatches")
             verifications.append(serialize(verification))
-        return {"verifications": verifications}
+
+        checked = [EffectVerification.model_validate(v) for v in verifications]
+        mismatched = [v for v in checked if not v.matched]
+        context = (
+            f"Verified {len(checked)} applied step(s) against the reviewed plan: "
+            f"{len(checked) - len(mismatched)} matched"
+            + (
+                f"; mismatches on {', '.join(v.step_id for v in mismatched)}."
+                if mismatched
+                else "; no mismatches."
+            )
+        )
+        entry = self._deliberator.deliberate(node="verify", role="clerk", context=context)
+        return {"verifications": verifications, "deliberations": record(state, entry)}

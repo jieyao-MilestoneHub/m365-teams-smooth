@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
+from app.agent.deliberate import Deliberator, OfflineDeliberator, record
 from app.agent.policy_rules.models import RulePack
 from app.agent.state import CourtState, serialize
 from app.domain import (
@@ -127,9 +128,15 @@ def _governs(pack: RulePack, change: Change, tags: list[str]) -> bool:
 class PolicyNode:
     """Selects the governing rule pack, scores risk, and derives the quorum."""
 
-    def __init__(self, packs: list[RulePack], resolver: QuorumResolver | None = None) -> None:
+    def __init__(
+        self,
+        packs: list[RulePack],
+        resolver: QuorumResolver | None = None,
+        deliberator: Deliberator | None = None,
+    ) -> None:
         self._packs = packs
         self._resolver = resolver or DefaultQuorumResolver()
+        self._deliberator = deliberator or OfflineDeliberator()
 
     def __call__(self, state: CourtState) -> CourtState:
         change = Change.model_validate(state["change"])
@@ -149,10 +156,22 @@ class PolicyNode:
         status = (
             ChangeStatus.AWAITING_VERDICT if risk.requires_approval else ChangeStatus.EXECUTING
         )
+
+        approvers = ", ".join(a.role.value for a in quorum.required_approvers) or "none"
+        factors = ", ".join(f"{f.label} (+{f.weight})" for f in risk.factors) or "none"
+        context = (
+            f"Risk scored {risk.score} → {risk.level.value} from factors: {factors}. "
+            f"Approval {'required' if risk.requires_approval else 'not required'}; "
+            f"approvers ({quorum.policy}): {approvers}. "
+            f"{'Flagged unsafe.' if change.unsafe else ''}"
+        ).strip()
+        entry = self._deliberator.deliberate(node="policy", role="", context=context)
+
         update: CourtState = {
             "risk": serialize(risk),
             "quorum": serialize(quorum),
             "change": serialize(change),
             "status": status.value,
+            "deliberations": record(state, entry),
         }
         return update
