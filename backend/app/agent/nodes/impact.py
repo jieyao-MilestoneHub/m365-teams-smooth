@@ -11,7 +11,7 @@ from typing import Protocol
 
 from app.agent.deliberate import Deliberator, OfflineDeliberator, record
 from app.agent.grounding_queries import grounding_query
-from app.agent.state import CourtState, bound_errors, serialize
+from app.agent.state import CourtState, bound_errors, bound_evidence, serialize
 from app.domain import Change, ChangeStatus, EvidenceItem, ImpactEvidence
 from app.ports.knowledge import KnowledgePort
 from app.ports.registry import IntegrationRegistry
@@ -82,6 +82,10 @@ class ImpactNode:
                     grounded=facts,
                 )
             )
+
+        # Keep the checkpointed state (and the Defender's prompt) small: bound the evidence, keeping
+        # every high-severity finding plus the most-recent remainder.
+        evidence.items = bound_evidence(evidence.items)
 
         # The Prosecutor (when LLM-backed) already reasoned in its assessment item; reuse it as the
         # impact reasoning. Offline, the deliberator records the factual evidence summary instead.

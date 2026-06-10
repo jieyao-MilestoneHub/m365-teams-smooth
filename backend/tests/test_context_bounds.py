@@ -50,6 +50,26 @@ def test_bound_errors_caps_with_a_truncation_marker() -> None:
     assert bound_errors(["one"]) == ["one"]
 
 
+def test_bound_evidence_caps_and_keeps_high_severity() -> None:
+    from app.agent.state import MAX_EVIDENCE_ITEMS, bound_evidence
+    from app.domain import EvidenceItem
+
+    high = [EvidenceItem(system="s", kind="decisive", summary=f"h{i}", severity="high")
+            for i in range(3)]
+    noise = [
+        EvidenceItem(system="s", kind="agentic", summary=f"n{i}")
+        for i in range(MAX_EVIDENCE_ITEMS + 20)
+    ]
+    bounded = bound_evidence([*high, *noise])
+
+    assert len(bounded) == MAX_EVIDENCE_ITEMS  # total capped (kept items + one truncation marker)
+    assert all(h in bounded for h in high)  # every high-severity finding is kept
+    assert bounded[-1].kind == "truncation"
+    assert "truncated" in bounded[-1].summary
+    # A small list is returned untouched.
+    assert bound_evidence(high) == high
+
+
 class _ExplodingKnowledge(KnowledgePort):
     def ground(self, query: str, *, top_k: int = 3) -> list[GroundedFact]:
         raise RuntimeError("search service unavailable")
