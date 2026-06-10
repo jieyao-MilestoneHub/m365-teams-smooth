@@ -7,7 +7,7 @@ Foundry IQ retrieval ranks poorly) never drives grounding for a classified chang
 stays consistent across the two call sites.
 
 Grounding is *citations only* — it never produces tags and never affects risk, quorum, or the
-verdict. Adding a subject is one dict entry here (open/closed); no other module changes.
+verdict. Adding a subject is one dict entry here; no other module changes.
 """
 
 from __future__ import annotations

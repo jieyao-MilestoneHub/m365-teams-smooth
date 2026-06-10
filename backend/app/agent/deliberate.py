@@ -1,14 +1,13 @@
-"""Deliberation capture: each node's reasoning for its conclusion, honestly sourced.
+"""Deliberation capture: each node's reasoning for the conclusion it reached.
 
-A node hands the ``Deliberator`` a concise factual ``context`` (always available, built from the
-node's structured outputs) and, when an agentic role has already reasoned, that ``reasoning`` prose.
-The LLM-backed deliberator passes the role's reasoning through, or turns the context into reasoned
-prose when there is none; the offline deliberator records the factual context, labeled as a stub.
+A node hands the ``Deliberator`` a concise factual ``context`` (built from the node's structured
+outputs) and, when an agentic role has already reasoned, that ``reasoning`` prose. The LLM-backed
+deliberator passes the role's reasoning through, or turns the context into reasoned prose when there
+is none; the offline deliberator records the factual context, labeled as a stub. Each entry carries
+its source, so the surfaces can show whether a model reasoned or the run was offline.
 
-Provenance is honest by construction: ``LlmDeliberator`` is wired exactly when the Prosecutor and
-Defender are LLM-backed (the same ``llm_is_real`` switch), so reused role prose is genuinely
-LLM-sourced. Nodes depend only on the ``Deliberator`` protocol (DIP); the concrete choice is made at
-the composition root. The trace is append-only and never affects risk, quorum, or the verdict.
+The trace is append-only and never affects risk, quorum, or the verdict — it explains the decision,
+it does not make it.
 """
 
 from __future__ import annotations

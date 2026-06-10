@@ -69,7 +69,7 @@ def test_json_formatter_includes_exception() -> None:
 
 
 def test_context_fields_are_empty_until_correlation_lands() -> None:
-    # The merge point exists now; contextvars populate it in #184.
+    # The merge point exists now; the correlation contextvars populate it once bound per request.
     assert JsonFormatter().context_fields() == {}
 
 

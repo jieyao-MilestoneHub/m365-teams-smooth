@@ -1,7 +1,7 @@
-"""End-to-end Phase 2: the court runs to the verdict gate, resumes, and is idempotent.
+"""End-to-end: the court runs to the verdict gate, resumes, and is idempotent.
 
 Wired with the real nodes and a minimal rule pack so the whole pipeline executes under a mocked,
-credential-free environment — the Phase 2 definition of done.
+credential-free environment.
 """
 
 from __future__ import annotations

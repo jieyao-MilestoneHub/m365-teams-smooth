@@ -37,7 +37,7 @@ def test_partial_failure_is_contained_with_rollback() -> None:
     cast = service.cast_verdict(summary.thread_id, VerdictType.APPROVE)  # must not crash
 
     # The verdict itself is persisted; only the execution failed — the two outcomes stay separate
-    # so a partial failure is never read as a failed approval (issue #269).
+    # so a partial failure is never read as a failed approval.
     assert cast.verdict_recorded is True
     assert cast.execution_status == ChangeStatus.FAILED.value
     trial = service.get_trial(summary.thread_id)

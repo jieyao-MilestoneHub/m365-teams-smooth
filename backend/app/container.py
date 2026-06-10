@@ -1,7 +1,7 @@
 """Composition root: build the court service and its dependencies from settings.
 
 This is the one place concrete adapters are chosen and wired. Gatherers, planners, and rule packs
-are injected here; they are empty until Phase 3 fills them, at which point only this file changes.
+are injected here, so adding one touches only this file.
 """
 
 from __future__ import annotations

@@ -1,9 +1,9 @@
 """CourtBot — the thin surface that maps Bot Framework turns to the court engine.
 
-Single responsibility: translate an incoming activity into a ``CourtService`` call and render the
-result with the existing card builders. No risk, quorum, planning, or persistence logic lives here —
-that is the engine's job. Dependencies (the service and the two card builders) are injected so the
-mapping is unit-tested against fakes.
+It translates an incoming activity into a ``CourtService`` call and renders the result with the
+existing card builders. No risk, quorum, planning, or persistence logic lives here — that is the
+engine's job. Dependencies (the service and the two card builders) are injected so the mapping is
+unit-tested against fakes.
 
 Turn routing:
   * an ``Action.Execute`` button arrives as an ``adaptiveCard/action`` invoke whose

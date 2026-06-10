@@ -1,8 +1,8 @@
 """Impact node (Prosecutor): gather second-order consequences as tagged, grounded evidence.
 
-The node runs the gatherer registered for the change's subject (the per-trial read-capability logic
-lands in #84) and grounds the request through the knowledge port, so evidence carries citations from
-the Microsoft IQ layer. It emits an ``ImpactEvidence`` whose tags are the hooks policy/quorum match.
+The node runs the gatherer registered for the change's subject and grounds the request through the
+knowledge port, so evidence carries citations from the Microsoft IQ layer. It emits an
+``ImpactEvidence`` whose tags are the hooks policy/quorum match.
 """
 
 from __future__ import annotations

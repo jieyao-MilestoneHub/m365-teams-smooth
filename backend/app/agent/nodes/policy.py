@@ -2,7 +2,8 @@
 
 Risk is the additive sum of the factors whose tags fired, banded into a level; any ``marks_unsafe``
 factor flags the change. Quorum (approvers + verdict options) is produced by an injected resolver —
-the default derives verdict options only; the tag-driven approver resolver lands in #86.
+the default derives verdict options only, while the tag-driven resolver also derives the required
+approvers.
 """
 
 from __future__ import annotations

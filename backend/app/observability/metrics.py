@@ -82,7 +82,7 @@ def configure_metrics(settings: Settings) -> None:
     """(Re)build the registry per ``metrics_enabled`` and light up the node-duration hook."""
     global _registry
     _registry = MetricsRegistry(enabled=settings.metrics_enabled)
-    # Point the no-op hook installed in #186 at the live registry.
+    # Point the no-op node-duration hook at the live registry.
     from app.agent.instrument import set_node_duration_hook
 
     set_node_duration_hook(_record_node_duration)
