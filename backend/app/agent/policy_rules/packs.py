@@ -24,7 +24,7 @@ LAUNCH_SLIP = RulePack(
     id="launch_slip",
     match=MatchRules(
         any_action_capability=["github.update_milestone_due"],
-        any_tag=["schedule.milestone_move"],
+        any_tag=["schedule.milestone_move", "schedule.contractual_breach_risk"],
     ),
     risk_factors=[
         RiskFactorRule(id="milestone_move", when_tag="schedule.milestone_move", weight=40),
@@ -37,12 +37,24 @@ LAUNCH_SLIP = RulePack(
             weight=30,
             marks_unsafe=True,
         ),
+        # A latent contractual/freeze/dependency breach the cross-system check derived: graver than
+        # a visible calendar clash, because no single system reveals it.
+        RiskFactorRule(
+            id="contractual_breach_risk",
+            when_tag="schedule.contractual_breach_risk",
+            weight=50,
+            marks_unsafe=True,
+        ),
     ],
     risk_bands=_STANDARD_BANDS,
     quorum=QuorumRules(
         approvers=[
             ApproverRule(role=ApproverRole.ENG_LEAD, when_tag="schedule.milestone_move"),
             ApproverRule(role=ApproverRole.COMMS, when_tag="comms.pending_announcement"),
+            # A contractual breach is a commercial matter: the account owner must sign off.
+            ApproverRule(
+                role=ApproverRole.ACCOUNT_OWNER, when_tag="schedule.contractual_breach_risk"
+            ),
         ],
         # Both the engineering and comms leads are surfaced as stakeholders, but a single
         # sign-off from either suffices to reach quorum (need = 1).

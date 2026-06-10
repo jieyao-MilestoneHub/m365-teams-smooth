@@ -20,8 +20,15 @@ from app.services.court_service import CourtService
 from app.services.dto import TrialSummary
 
 # The headline leads with the refusal — the agent saying "no" is the killer moment — then shows the
-# same machinery cleanly approving a safe date.
+# same machinery cleanly approving a safe date. The first trial is the deepest: a date that is free
+# on the calendar yet breaches a contract SLA, a release freeze, and a go-live buffer at once — a
+# latent conflict no single system reveals, which the court catches by cross-referencing three.
 _HEADLINE = [
+    (
+        "Reschedule — hidden contractual breach",
+        "move the launch rehearsal to 2026-06-22",
+        VerdictType.ACCEPT_ALTERNATIVE,
+    ),
     (
         "Reschedule — conflicting date",
         "move the rehearsal to 2026-06-16",

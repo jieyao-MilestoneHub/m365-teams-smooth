@@ -5,20 +5,30 @@ This single scenario shows the difference end to end, and it runs **credential-f
 
 ## The scenario
 
-A program manager types one sentence in Teams — **"move the rehearsal to 2026-06-16"** — and to
-them it's just changing a date. The court treats it as the cross-system change it really is, in
-three beats:
+A program manager types one sentence in Teams — **"move the launch rehearsal to 2026-06-22"** — and
+to them it's just changing a date. The 22nd is even **free on the calendar**. A human would approve
+it on sight. The court refuses it, because it reads what no single screen shows, in three beats:
 
-1. **Impact before approval.** It reads the load-bearing date across four systems: the **GitHub**
-   `Launch Rehearsal` milestone, the **Outlook** calendar, dependent **Planner** tasks, and the
-   **Teams** announcement. Risk: **HIGH**, with an `eng_lead` + `comms` quorum.
-2. **Safety before execution.** 2026-06-16 collides with a real **Board review**, so the court
-   **refuses the request as posed** and proposes the next free day, **2026-06-17**, as a safe
-   alternative — no plain "approve" is offered. The requester can propose it but cannot self-approve;
-   an *informed* approver — seeing the impact, the alternative, and the rollback hints — decides, and
-   the run resumes from its durable checkpoint to execute.
+1. **Impact before approval.** It reads the load-bearing date across systems: the **GitHub**
+   `Launch Rehearsal` milestone (and its **dependent** `Customer Go-Live` milestone), the **Outlook**
+   calendar, dependent **Planner** tasks, the **Teams** announcement, the **CRM** contract terms, and
+   the published **SharePoint** change-freeze calendar.
+2. **Safety before execution — the catch no human makes.** The 22nd is clear on the calendar, yet
+   cross-referencing three systems reveals a latent breach: it is **past the contractual
+   launch-readiness SLA** (clause LR-3, 2026-06-21 — CRM), **inside the release-freeze window**
+   (2026-06-19→24 — SharePoint), and it **compresses the `Customer Go-Live` buffer** (GitHub). Any
+   one is a yellow flag; together they are a hard breach. The court surfaces the **counterfactual**
+   ("had this been approved it would have breached … first breach date 2026-06-22"), **refuses the
+   request as posed**, and proposes the latest date that honors every constraint — **2026-06-18** —
+   as a safe alternative. No plain "approve" is offered; an *informed* approver (the `eng_lead`,
+   `comms`, and `account_owner` quorum), seeing the chain of reasoning, the alternative, and the
+   rollback hints, decides, and the run resumes from its durable checkpoint to execute.
 3. **Audit after action.** An append-only record of evidence, approvers, verdict, before/after
    snapshots, and rollback hints.
+
+The same machinery handles the simpler cases the same way: **"move the rehearsal to 2026-06-16"**
+collides visibly with a **Board review** and is refused for the next free day (**2026-06-17**), while
+a clean **2026-06-17** request is approved as feasible.
 
 One more moment worth showing: appending **"and delete the repo"** is **blocked at intake** — no
 registered capability supports it, so it is never planned or executed.
@@ -50,8 +60,9 @@ make bot                                           # terminal 1 — bot + backen
 npx @microsoft/teams-app-test-tool@latest start    # terminal 2 — opens the Playground UI
 ```
 
-Type `move the rehearsal to 2026-06-16` into the Playground chat, watch the Change Court card
-render, and click the verdict buttons (`queue` lists pending approvals). With `RUN_LINK_SECRET` set,
+Type `move the launch rehearsal to 2026-06-22` into the Playground chat, watch the Change Court card
+render the refusal and its reasoning, and click the verdict buttons (`queue` lists pending
+approvals). With `RUN_LINK_SECRET` set,
 each card also carries a **View pipeline run** link to the read-only, signed run log
 (`/runs/<thread_id>`) — it inspects; decisions still happen only on the card.
 

@@ -1,7 +1,9 @@
-"""Mock CRM adapter: read an account's renewal value/date and append account notes.
+"""Mock CRM adapter: read an account's renewal value/date and contract terms, and append notes.
 
 The seeded account carries a material renewal value, so the Customer Promise trial can weigh the
-commercial stake (renewal-at-risk) when a commitment would be unsafe.
+commercial stake (renewal-at-risk) when a commitment would be unsafe. It also carries a
+launch-readiness SLA clause, so a launch-date change can be cross-checked against a contractual
+commitment a human reading only the calendar would never see.
 """
 
 from __future__ import annotations
@@ -20,7 +22,18 @@ from app.ports.integration import ReadQuery, ReadResult
 _SYSTEM = "crm"
 
 _ACCOUNTS: dict[str, dict[str, object]] = {
-    "customer a": {"renewal_value": 250000, "renewal_date": "2026-09-30", "currency": "USD"},
+    "customer a": {
+        "renewal_value": 250000,
+        "renewal_date": "2026-09-30",
+        "currency": "USD",
+        # Contractual launch-readiness clause: the rehearsal must complete on or before the SLA
+        # date (five business days before the contractual go-live). Read by crm.read_contract.
+        "contract": {
+            "clause_id": "LR-3",
+            "launch_readiness_sla": "2026-06-21",
+            "contractual_go_live": "2026-06-26",
+        },
+    },
 }
 
 
@@ -37,6 +50,7 @@ class MockCRMAdapter(BaseIntegrationAdapter):
     def _capabilities(self) -> list[Capability]:
         return [
             Capability(system=_SYSTEM, name="crm.read_account", kind=CapabilityKind.READ),
+            Capability(system=_SYSTEM, name="crm.read_contract", kind=CapabilityKind.READ),
             Capability(
                 system=_SYSTEM,
                 name="crm.add_note",
@@ -49,7 +63,15 @@ class MockCRMAdapter(BaseIntegrationAdapter):
         if query.capability == "crm.read_account":
             account = str(query.params.get("account", "")).lower()
             record = _ACCOUNTS.get(account, {"renewal_value": 0, "renewal_date": None})
-            return ReadResult(capability=query.capability, data={"account": account, **record})
+            # The contract block is a separate read; don't leak it into the account summary.
+            summary = {k: v for k, v in record.items() if k != "contract"}
+            return ReadResult(capability=query.capability, data={"account": account, **summary})
+        if query.capability == "crm.read_contract":
+            account = str(query.params.get("account", "")).lower()
+            record = _ACCOUNTS.get(account, {})
+            contract = record.get("contract", {}) if isinstance(record, dict) else {}
+            data = dict(contract) if isinstance(contract, dict) else {}
+            return ReadResult(capability=query.capability, data={"account": account, **data})
         raise IntegrationError(f"{_SYSTEM}: unknown read capability '{query.capability}'")
 
     def _predict(self, step: ExecutionStep, before: dict[str, object]) -> PredictedEffect:
