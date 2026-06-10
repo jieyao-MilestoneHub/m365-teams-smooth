@@ -12,7 +12,7 @@ from typing import TypedDict
 
 from pydantic import BaseModel
 
-from app.domain import ChangeStatus, Principal, RunMode
+from app.domain import ChangeStatus, EvidenceItem, Principal, RunMode
 
 
 class CourtState(TypedDict, total=False):
@@ -46,10 +46,15 @@ def serialize(model: BaseModel) -> dict[str, object]:
     return model.model_dump(mode="json")
 
 
-# State is fully serialized on every checkpoint, so accumulating fields must stay bounded.
+# State is fully serialized on every checkpoint (see CourtState docstring), so every accumulating
+# field must stay bounded — an unbounded list inflates each subsequent checkpoint write and, for
+# evidence, every downstream prompt (it is re-sent to the Defender).
 MAX_ERRORS = 50
 # One entry per node (a handful); the cap is a runaway guard, not an expected limit.
 MAX_DELIBERATIONS = 50
+# Deterministic core evidence is small; the cap guards the agentic-read tail. High-severity items
+# (the decisive findings) are always kept.
+MAX_EVIDENCE_ITEMS = 30
 
 
 def bound_errors(errors: list[str]) -> list[str]:
@@ -63,6 +68,24 @@ def bound_errors(errors: list[str]) -> list[str]:
 def bound_deliberations(entries: list[dict[str, object]]) -> list[dict[str, object]]:
     """Cap the reasoning trace a node writes back, keeping the most recent entries."""
     return entries[-MAX_DELIBERATIONS:] if len(entries) > MAX_DELIBERATIONS else entries
+
+
+def bound_evidence(items: list[EvidenceItem]) -> list[EvidenceItem]:
+    """Cap the evidence a node writes back: keep every high-severity finding plus the most-recent
+    remainder, and replace the overflow with one marker item."""
+    if len(items) <= MAX_EVIDENCE_ITEMS:
+        return items
+    high = [i for i in items if i.severity == "high"]
+    others = [i for i in items if i.severity != "high"]
+    room = MAX_EVIDENCE_ITEMS - 1 - len(high)
+    kept = (high + others[-room:]) if room > 0 else high[: MAX_EVIDENCE_ITEMS - 1]
+    dropped = len(items) - len(kept)
+    marker = EvidenceItem(
+        system="court",
+        kind="truncation",
+        summary=f"... {dropped} further evidence item(s) truncated",
+    )
+    return [*kept, marker]
 
 
 def initial_state(
