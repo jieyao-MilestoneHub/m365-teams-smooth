@@ -31,10 +31,17 @@ class LlmRequest:
 
 @dataclass(frozen=True)
 class LlmResult:
-    """A generation result plus observability for cache hits."""
+    """A generation result plus per-call observability (token usage, provider request id).
+
+    The telemetry fields default to empty so offline fakes and test stubs satisfy the port
+    without ever touching them; real adapters fill them from the provider's usage accounting.
+    """
 
     text: str
     cached_prefix_tokens: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    request_id: str | None = None
 
 
 class LLMProvider(ABC):

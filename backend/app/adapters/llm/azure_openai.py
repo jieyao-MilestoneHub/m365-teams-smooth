@@ -119,6 +119,28 @@ class AzureOpenAILLMProvider(LLMProvider):
             metrics.increment(f"llm.errors.{error_class}")
             raise
         choice = response.choices[0]
+        usage = getattr(response, "usage", None)
+        input_tokens = getattr(usage, "prompt_tokens", 0) or 0
+        output_tokens = getattr(usage, "completion_tokens", 0) or 0
+        details = getattr(usage, "prompt_tokens_details", None)
+        cached = getattr(details, "cached_tokens", 0) or 0
+        request_id = getattr(response, "_request_id", None)
+        # Tokens are spent even when the payload turns out unusable below, so record the spend
+        # (and the provider-side id for support escalation) before the structured-output checks.
+        logger.info(
+            "llm.call",
+            extra={
+                "llm_request_id": request_id,
+                "schema_name": request.schema_name if request.json_schema else None,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "cached_prefix_tokens": cached,
+            },
+        )
+        metrics.increment("llm.calls")
+        metrics.increment("llm.tokens.input", input_tokens)
+        metrics.increment("llm.tokens.output", output_tokens)
+        metrics.increment("llm.tokens.cached", cached)
         if request.json_schema is not None:
             # Schema adherence does not survive truncation or a safety refusal; surface both so
             # the caller's deterministic fallback engages instead of parsing a broken payload.
@@ -129,6 +151,10 @@ class AzureOpenAILLMProvider(LLMProvider):
             refusal = getattr(choice.message, "refusal", None)
             if refusal:
                 raise LlmOutputError(f"model refused structured request: {refusal}")
-        details = getattr(getattr(response, "usage", None), "prompt_tokens_details", None)
-        cached = getattr(details, "cached_tokens", 0) or 0
-        return LlmResult(text=str(choice.message.content or ""), cached_prefix_tokens=cached)
+        return LlmResult(
+            text=str(choice.message.content or ""),
+            cached_prefix_tokens=cached,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            request_id=str(request_id) if request_id else None,
+        )
