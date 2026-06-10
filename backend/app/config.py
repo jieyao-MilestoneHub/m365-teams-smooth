@@ -79,6 +79,8 @@ class Settings(BaseSettings):
     # Verbosity and output shape for the structured logger; "text" aids local-dev readability.
     log_level: str = "INFO"
     log_format: str = "json"  # "json" | "text"
+    # Mask PII (emails, phone numbers) in JSON log output. The audit trail keeps full data.
+    log_redaction_enabled: bool = True
     # Default per-request wall-clock budget for adapters that lack an explicit one.
     http_timeout_seconds: float = 10.0
     # Closes the OpenAI no-timeout gap on the LLM-backed parser.
