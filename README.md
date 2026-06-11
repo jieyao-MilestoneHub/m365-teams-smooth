@@ -25,14 +25,15 @@ Runs **fully locally, credential-free** — every integration mocked, dry-run by
 365 tenant. Needs Python 3.11+ with [`uv`](https://docs.astral.sh/uv/).
 
 ```bash
-cd backend
-uv sync
-cp ../.env.example ../.env
+cp .env.example .env
 
+make sync     # provision the backend virtualenv (uv)
 make demo     # run the Informed Approval scenario end to end (the one recorded scenario)
 make demo-all # also tour the additional capabilities the same engine handles (not recorded)
 make check    # ruff + mypy + pytest
 ```
+
+Prefer Docker? `make compose-up` runs the backend fully mocked, no local Python needed.
 
 Informed Approval is the headline. The same engine also handles **Meeting Actions**, **Weekly
 Report**, **Customer Promise**, and **Vendor Access** — wired and tested, runnable via `make
@@ -42,7 +43,8 @@ demo-all`, but not part of the recorded demo.
 (`make bot`), or `make cards` and open a file from `m365/adaptive-cards/generated/` in the
 [Adaptive Cards Designer](https://adaptivecards.io/designer). Full walkthrough →
 [`docs/demo/`](docs/demo/README.md). Serve the API locally with
-`uv run uvicorn app.asgi:app --reload` (REST + the OAuth2-protected MCP server at `/mcp`).
+`cd backend && uv run uvicorn app.asgi:app --reload` (REST + the bot endpoint + the OAuth2-protected
+MCP server at `/mcp`).
 
 ## Use it in your own environment
 
@@ -64,11 +66,15 @@ Configuration is env-driven — see [`.env.example`](.env.example) (key switches
 ## Repository layout
 
 ```
-backend/   FastAPI app: agent/ mcp/ api/ services/ ports/ adapters/ domain/
-m365/      declarative agent manifest, plugin manifest, Adaptive Card templates
+backend/   FastAPI app: agent/ mcp/ api/ bot/ services/ ports/ adapters/ domain/
+           observability/ security/
+m365/      declarative agent manifest, plugin manifest, Adaptive Cards, Playground bot
 docs/      architecture diagrams, the demo, and ADRs
-scripts/   developer/demo scripts (verify.sh, seed data)
+scripts/   the end-to-end gate (verify.sh)
+infra/     Terraform for live hosting: Azure Container Apps + the Entra app registration
 ```
+
+`docker-compose.yml` runs the backend in Docker, fully mocked (`make compose-up`).
 
 ## More
 

@@ -1,7 +1,7 @@
 # Developer entry points. Backend lives in backend/ and uses uv.
 # `make check` is the local pre-PR gate (lint + type-check + tests).
 
-.PHONY: help sync run lint type test check demo demo-all cards cards-all verify setup-demo setup-demo-apply compose-up compose-down bot package
+.PHONY: help sync run lint type test check demo demo-all cards cards-all migrate verify setup-demo setup-demo-apply compose-up compose-down bot package
 
 help:
 	@echo "Targets:"

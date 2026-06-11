@@ -4,7 +4,7 @@ Thanks for your interest in **AI Change Court** — it governs risky enterprise 
 become real actions across Microsoft 365 and other systems, via an inspectable court flow:
 
 ```text
-intake → impact → options → policy + quorum → [verdict] → execute → audit
+intake → impact → options → policy + quorum → [verdict] → execute → verify → audit
 ```
 
 Good contributions include code, clear bug reports, reproducible tests, docs, design feedback, and
@@ -24,14 +24,13 @@ Runs fully locally with mock integrations — no Microsoft 365 tenant required.
 cd backend
 uv sync
 cp ../.env.example ../.env
-uv run uvicorn app.main:app --reload    # REST health only
-uv run uvicorn app.asgi:app --reload    # REST + the OAuth2-protected MCP server at /mcp
+uv run uvicorn app.main:app --reload    # REST only: health + the read-only run page
+uv run uvicorn app.asgi:app --reload    # + the bot endpoint and the OAuth2-protected MCP server at /mcp
 ```
 
 From the repo root: `make demo` (trials end-to-end), `scripts/verify.sh` (trials + safety + MCP +
 quality gates), `make check` (ruff + mypy + pytest). Card/playground work also uses `make cards` /
-`make bot`. Configuration is env-driven — see [`.env.example`](.env.example) and the Configuration
-section of the [README](README.md#configuration); never commit `.env`.
+`make bot`. Configuration is env-driven — see [`.env.example`](.env.example); never commit `.env`.
 
 ## Branches and commits
 Short-lived branch off `main`: `git checkout -b <type>/<scope>` where `<type>` is
