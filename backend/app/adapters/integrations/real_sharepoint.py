@@ -1,14 +1,17 @@
 """Real SharePoint adapter over Microsoft Graph: reads folder evidence and grants scoped access.
 
-Provides the *read* capability the Vendor Access trial relies on — listing a folder and detecting
-whether it holds customer data (the decisive evidence behind the over-broad-scope refusal) — from a
-configured SharePoint site's document libraries. The grant is contained: a LIVE
+Provides the *read* capabilities the trials rely on — listing a folder and detecting whether it
+holds customer data (the decisive evidence behind the over-broad-scope refusal), and reading the
+published change-freeze calendar (the release-freeze leg of the Reschedule breach evidence) — from
+a configured SharePoint site's document libraries. The grant is contained: a LIVE
 ``grant_folder_permission`` issues a real least-privilege, time-boxed Microsoft Graph invite; under
 DRY_RUN the base class predicts the effect instead. Selected when ``sharepoint`` runs in ``real``
 mode with Graph credentials configured.
 """
 
 from __future__ import annotations
+
+import json
 
 from app.adapters.integrations.base import BaseIntegrationAdapter
 from app.adapters.integrations.graph import GraphClient
@@ -27,6 +30,9 @@ from app.ports.integration import ReadQuery, ReadResult
 _SYSTEM = "sharepoint"
 # A child folder by this name marks its parent as holding customer data.
 _CUSTOMER_DATA_MARKER = "customerdata"
+# The published change-freeze calendar: a JSON document ({"freezes": [{start, end, …}]}) in the
+# demo library, seeded by scripts.seed_sharepoint from assets/sharepoint/.
+_CHANGE_CALENDAR_PATH = "/ProjectX/change-freeze-calendar.json"
 # Plan roles → Graph driveItem permission roles.
 _ROLE_MAP = {"read": ["read"], "write": ["write"]}
 
@@ -49,6 +55,9 @@ class RealSharePointAdapter(BaseIntegrationAdapter):
     def _capabilities(self) -> list[Capability]:
         return [
             Capability(system=_SYSTEM, name="sharepoint.read_folder", kind=CapabilityKind.READ),
+            Capability(
+                system=_SYSTEM, name="sharepoint.read_change_calendar", kind=CapabilityKind.READ
+            ),
             Capability(
                 system=_SYSTEM,
                 name="sharepoint.grant_folder_permission",
@@ -113,6 +122,23 @@ class RealSharePointAdapter(BaseIntegrationAdapter):
                     "items": names,
                     "contains_customer_data": contains_customer_data,
                 },
+            )
+        if query.capability == "sharepoint.read_change_calendar":
+            path = str(query.params.get("path", _CHANGE_CALENDAR_PATH))
+            parts = [p for p in safe_path(path).strip("/").split("/") if p]
+            if len(parts) < 2:
+                raise IntegrationError(
+                    f"{_SYSTEM}: change-calendar path must be '/<library>/<file>', got '{path}'"
+                )
+            library, rest = parts[0], "/".join(parts[1:])
+            raw = self._graph.get_content(
+                f"/sites/{self._site_id}/drives/{self._drive_id(library)}/root:/{rest}:/content"
+            )
+            calendar = json.loads(raw.decode("utf-8"))
+            freezes = calendar.get("freezes") if isinstance(calendar, dict) else None
+            return ReadResult(
+                capability=query.capability,
+                data={"freezes": freezes if isinstance(freezes, list) else []},
             )
         raise IntegrationError(f"{_SYSTEM}: unknown read capability '{query.capability}'")
 

@@ -11,12 +11,14 @@ import respx
 from app.adapters.integrations.graph import GraphClient
 from app.adapters.integrations.real_sharepoint import RealSharePointAdapter
 from app.domain import CapabilityRef, ExecutionStep, RunMode, StepStatus
+from app.ports.integration import ReadQuery
 
 _TOKEN_URL = "https://login.microsoftonline.com/t1/oauth2/v2.0/token"
 _GRAPH = "https://graph.microsoft.com/v1.0"
 _DRIVES = f"{_GRAPH}/sites/site1/drives"
 _ITEM = f"{_GRAPH}/sites/site1/drives/d1/root:/LaunchAssets:"
 _INVITE = f"{_GRAPH}/sites/site1/drives/d1/items/item1/invite"
+_CALENDAR = f"{_GRAPH}/sites/site1/drives/d1/root:/change-freeze-calendar.json:/content"
 
 
 def _token_route() -> None:
@@ -162,6 +164,28 @@ def test_injected_principal_is_rejected_before_any_call() -> None:
     assert result.status is StepStatus.FAILED
     assert result.error is not None and "invalid email" in result.error
     assert not drives.called
+
+
+@respx.mock
+def test_read_change_calendar_reads_the_published_document() -> None:
+    _token_route()
+    _drives_route()
+    calendar = {"freezes": [{"name": "Q2 freeze", "start": "2026-06-19", "end": "2026-06-24"}]}
+    respx.get(_CALENDAR).mock(
+        return_value=httpx.Response(200, content=json.dumps(calendar).encode())
+    )
+    data = _sharepoint().read(ReadQuery(capability="sharepoint.read_change_calendar")).data
+    assert data["freezes"] == calendar["freezes"]
+
+
+@respx.mock
+def test_read_change_calendar_without_freezes_returns_empty() -> None:
+    # A published document missing the "freezes" key reads as no freeze windows, not an error.
+    _token_route()
+    _drives_route()
+    respx.get(_CALENDAR).mock(return_value=httpx.Response(200, content=b"{}"))
+    data = _sharepoint().read(ReadQuery(capability="sharepoint.read_change_calendar")).data
+    assert data["freezes"] == []
 
 
 @respx.mock

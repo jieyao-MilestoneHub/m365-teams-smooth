@@ -72,6 +72,20 @@ class GraphClient:
         resp.raise_for_status()
         return dict(resp.json())
 
+    def get_content(self, path: str) -> bytes:
+        """GET a Graph path and return the raw body bytes (for ``…:/content`` downloads).
+
+        Content downloads answer with a 302 to a pre-signed storage URL, so this request —
+        unlike :meth:`get` — follows redirects.
+        """
+        resp = self._http.get(
+            f"{self._graph_url}{path}",
+            headers={"Authorization": f"Bearer {self._bearer()}"},
+            follow_redirects=True,
+        )
+        resp.raise_for_status()
+        return resp.content
+
     def post(self, path: str, payload: dict[str, object]) -> None:
         """POST a JSON payload to a Graph path; raises on any non-success status."""
         resp = self._http.post(
