@@ -108,6 +108,9 @@ def apply() -> None:
                 )
                 resp.raise_for_status()
                 number = resp.json()["number"]
+                # GitHub normalizes due_on to the owner's timezone on CREATION (a midnight-UTC
+                # date can land on the previous day); a follow-up PATCH stores it verbatim.
+                g.patch(f"/repos/{repo}/milestones/{number}", json=payload).raise_for_status()
                 print(f"created milestone '{spec['title']}' (#{number}) due {spec['due_on'][:10]}")
 
 
