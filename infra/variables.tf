@@ -171,6 +171,12 @@ variable "azure_openai_deployment" {
   default     = ""
 }
 
+variable "azure_openai_deployment_fast" {
+  type        = string
+  description = "Optional: cheaper/faster chat deployment for lightweight call sites (request parsing, the deliberation trace). Empty runs every call site on azure_openai_deployment."
+  default     = ""
+}
+
 variable "llm_api_key" {
   type        = string
   description = "Optional: Azure OpenAI API key. Stored as a Container App secret. Omit for keyless."
