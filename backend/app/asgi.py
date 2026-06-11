@@ -1,9 +1,9 @@
 """Deployment ASGI app: the REST health surface, the bot endpoint, and the mounted MCP server.
 
-Composition happens here, at the edge — ``create_app`` stays health-only and the MCP server and
-bot stay façades over the one shared service (so a trial opened over MCP is approvable from the
-bot's card buttons). Serve with ``uvicorn app.asgi:app``. The MCP endpoint is at ``/mcp``; the Bot
-Framework messaging endpoint is at ``/api/messages``.
+Composition happens here, at the edge — ``create_app`` stays read-only (health + the run page)
+and the MCP server and bot stay façades over the one shared service (so a trial opened over MCP
+is approvable from the bot's card buttons). Serve with ``uvicorn app.asgi:app``. The MCP endpoint
+is at ``/mcp``; the Bot Framework messaging endpoint is at ``/api/messages``.
 """
 
 from __future__ import annotations

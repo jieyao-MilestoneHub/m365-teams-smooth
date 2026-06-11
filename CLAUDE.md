@@ -16,18 +16,20 @@ The court pipeline: **intake → impact → options → policy+quorum → [verdi
 ## Current status — read first
 
 The backend engine is **implemented and runs end-to-end locally, credential-free**. `backend/` holds
-the full layered app (`agent/ mcp/ api/ services/ ports/ adapters/ domain/`), the LangGraph court
-pipeline, SQLAlchemy persistence, and a green test suite; the headline demo and its additional
-capabilities pass under `scripts/verify.sh`. GitHub is the one real integration; the other six
-systems are mocks. There is
+the full layered app (`agent/ mcp/ api/ bot/ services/ ports/ adapters/ domain/ observability/
+security/`), the LangGraph court pipeline, SQLAlchemy persistence, and a green test suite; the
+headline demo and its additional capabilities pass under `scripts/verify.sh`. Every integration has
+a mock; real adapters exist for GitHub (default) and — when Graph credentials are configured —
+Outlook, SharePoint, and Teams. There is
 **no frontend build** — the Teams Adaptive Card is the decision UI, rendered tenant-free via the
 Playground bot or the exported card JSON; the one web surface is a read-only, signed-link-gated
 pipeline **run page** (a static file the backend serves — it inspects a trial's run, never decides).
 The commands and module paths below are runnable today.
 
 What remains is **going live in a real tenant** (the *Pending tenant* items in `scripts/verify.sh`):
-hosting the backend over public HTTPS, Entra ID OAuth2, sideloading the declarative agent, and —
-optionally — replacing the mocks with real Microsoft Graph adapters. Phases and PR slicing live in
+hosting the backend over public HTTPS (Terraform under `infra/` provisions Azure Container Apps and
+the Entra app registration), Entra ID OAuth2, and sideloading the declarative agent. Phases and PR
+slicing live in
 GitHub issues (labeled `ready`/`blocked`, `area:*`); keep PRs single-responsibility. **Stay
 convergent:** every change must serve the headline demo (**Informed Approval** — the Reschedule
 scenario, the only one recorded) or the additional capabilities the same engine already handles
@@ -44,7 +46,7 @@ summarizes them:
 - `git-workflow.md` — branching, PR size, commit conventions.
 - `docs.md` — **hard rule:** all shipped/public text (README, docstrings, code comments,
   commit messages, PR descriptions, M365 manifests, and *this file*) describes **function and
-  architecture only**. `.claude/rules/` also holds gitignored, internal-only guidance whose subject
+  architecture only**. `.claude/rules/` also holds internal-only guidance whose subject
   must never appear in any shipped text. Before committing docs, run the self-check grep defined in
   `docs.md`.
 
@@ -57,9 +59,11 @@ M365 Copilot Chat / Teams
   └─ Declarative Agent (m365/)         MCP + OAuth2
         ▼
   FastAPI (backend/)
-     mcp/  api/  services/  agent/  ports/  adapters/  domain/
-  Teams Adaptive Card = the only DECISION UI; the read-only run page
-  (signed links, /runs/{thread_id}) is the one web surface — no dashboard
+     mcp/  api/  bot/  services/  agent/  ports/  adapters/  domain/
+     observability/ (logging+metrics)   security/ (run-link HMAC)
+  Teams Adaptive Card = the only DECISION UI (MCP tools and the bot's card
+  buttons share one service); the read-only run page (signed links,
+  /runs/{thread_id}) is the one web surface — no dashboard
   SQLite now → Postgres later (DB_URL-driven)
 ```
 
@@ -106,8 +110,8 @@ Backend (FastAPI, Python 3.11+, `uv`):
 ```bash
 cd backend
 uv sync
-uv run uvicorn app.main:app --reload   # REST health only (/api/health)
-uv run uvicorn app.asgi:app --reload   # REST + the OAuth2-protected MCP server at /mcp
+uv run uvicorn app.main:app --reload   # REST only: health + the read-only run page
+uv run uvicorn app.asgi:app --reload   # + the bot endpoint (/api/messages) and the OAuth2-protected MCP server at /mcp
 uv run ruff check                      # lint
 uv run mypy                            # type-check
 uv run pytest                          # tests
@@ -121,6 +125,7 @@ make demo            # run the headline (Informed Approval) end-to-end (make dem
 make check           # ruff + mypy + pytest
 make bot             # clickable Change Court card via the Playground bot (tenant-free)
 make cards           # export the headline Adaptive Card JSON (make cards-all for every capability)
+make compose-up      # run the backend in Docker (fully mocked)
 scripts/verify.sh    # full gate: trials + safety + MCP + quality (tenant checks report PENDING)
 ```
 
@@ -129,8 +134,9 @@ exposed via an MCP resource. REST serves health plus the read-only run page (`/r
 its poll endpoint, HMAC-signed links, no mutating action — see ADR-0011). The MCP surface is
 implemented in `backend/app/mcp/`: tools `submit_change`, `get_status`, `get_trial`,
 `send_for_approval`, `decide`, `cast_verdict`, `withdraw_change`, `list_pending_approvals`,
-`acknowledge_outcome`, plus resources for trial / audit / capabilities. `cast_verdict` and `decide`
-hold idempotent parity across both MCP and REST. Package the M365 app with `make package`.
+`acknowledge_outcome`, plus resources for trial / audit / capabilities / metrics. `cast_verdict` and
+`decide` hold idempotent parity across MCP and the bot's card buttons (`bot/`, `POST /api/messages`)
+— both close over the same `CourtService`. Package the M365 app with `make package`.
 
 ## Configuration & run modes
 
@@ -141,14 +147,22 @@ Env-driven via `config.py` (pydantic-settings) — see `.env.example`. Architect
 - `DRY_RUN_DEFAULT` — whether new decisions default to dry-run.
 - `DB_URL` — SQLite locally, Postgres later.
 - `GITHUB_TOKEN` — only when the GitHub adapter runs in `real` mode. `OAUTH_*` — MCP OAuth2 settings.
+- `GRAPH_TENANT_ID` / `GRAPH_CLIENT_ID` / `GRAPH_CLIENT_SECRET` plus a per-system target
+  (`OUTLOOK_CALENDAR_UPN`, `SHAREPOINT_SITE_ID`, `TEAMS_NOTIFY_RECIPIENT`) — enable the real
+  Microsoft Graph adapters.
+- `RUN_LINK_SECRET` — HMAC secret for run-page deep links; empty disables the run page (404).
+- `APPROVER_DIRECTORY` — role→identity map for identity-aware approvals; empty keeps the legacy
+  single-verdict path.
 - `AZURE_OPENAI_ENDPOINT` / `AZURE_OPENAI_DEPLOYMENT` — set both to enable the real LLM provider
   (keyless `DefaultAzureCredential` unless `LLM_API_KEY` is set); leave empty for the offline fake
   LLM provider (the default for local development and fully-mocked runs). `LLM_TIMEOUT_SECONDS` /
   `LLM_MAX_RETRIES` / `LLM_MAX_TOKENS` bound every call; `CONTENT_SAFETY_ENDPOINT` switches the
-  guardrail from the offline heuristic to Azure Prompt Shields.
+  guardrail from the offline heuristic to Azure Prompt Shields. `AZURE_OPENAI_DEPLOYMENT_FAST`
+  optionally routes the lightweight call sites (parser, deliberation trace) to a cheaper deployment.
 
-GitHub is the one real adapter; the rest (Outlook, Planner, SharePoint, Teams, CRM, Entra) are mocks
-returning realistic data, so the system runs fully locally. Only the adapters the headline and its
+Seven systems are integrated, each with a mock returning realistic data, so everything runs fully
+locally. Real adapters exist for GitHub (default) and — behind `GRAPH_*` credentials — Outlook,
+SharePoint, and Teams; Planner, CRM, and Entra are mock-only. Only the adapters the headline and its
 additional capabilities need are built — no ServiceNow / generic Graph adapter.
 
 ## Git / PR workflow
@@ -162,8 +176,9 @@ additional capabilities need are built — no ServiceNow / generic Graph adapter
   changes. Follow single-responsibility slicing: one adapter / one node / one router per PR.
 - Conventional commits (`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`), imperative mood.
   Squash-merge; delete the branch after merge.
-- CI today: `.github/workflows/security.yml` (gitleaks secret scan) + weekly Dependabot. No secrets
-  in the repo — use env vars.
+- CI today: `.github/workflows/ci.yml` (ruff + mypy + pytest for the backend and the Playground bot)
+  + `.github/workflows/security.yml` (gitleaks secret scan) + weekly Dependabot. No secrets in the
+  repo — use env vars.
 
 The demo spine is **one headline scenario — Informed Approval** (the Reschedule scenario): one
 request moves the GitHub milestone, the Outlook calendar, the Planner tasks, and the Teams

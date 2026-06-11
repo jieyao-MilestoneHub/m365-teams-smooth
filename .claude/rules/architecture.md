@@ -15,10 +15,13 @@ Microsoft 365 Copilot Chat / Teams
   FastAPI process (backend/)
      ├─ mcp/        MCP server: tools + resources + OAuth2 resource server (primary surface)
      ├─ api/        minimal REST: health + the read-only run page (signed links; no business logic)
-     ├─ services/   single business layer (REST + MCP both delegate here — no duplication)
-     ├─ agent/      LangGraph court: intake → impact → options → policy+quorum → [verdict] → execute → audit
+     ├─ bot/        Bot Framework endpoint (/api/messages): the Change Court card's buttons
+     ├─ services/   single business layer (MCP, REST, and the bot all delegate here — no duplication)
+     ├─ agent/      LangGraph court: intake → impact → options → policy+quorum → [verdict] → execute → verify → audit
      ├─ ports/      abstract interfaces (DIP boundary)
-     ├─ adapters/   integrations (real GitHub + mock others), persistence, llm, knowledge, guardrail, notifiers
+     ├─ adapters/   integrations (real + mock), persistence, llm, knowledge, guardrail, notifiers
+     ├─ observability/  structured logging, metrics, request-id propagation, PII redaction
+     ├─ security/   HMAC signing for run-page deep links
      └─ domain/     pure models/enums/errors (no framework or SDK imports)
   Teams Adaptive Card = the decision UI (Change Court card). The one web surface is the
   read-only pipeline run page (/runs/{thread_id}, HMAC-signed deep links — ADR-0011):
@@ -30,8 +33,9 @@ Microsoft 365 Copilot Chat / Teams
 
 - **Dependency Inversion:** `agent/` and `services/` depend on `ports/` only — never on the GitHub
   SDK, SQLAlchemy, or an LLM client directly. Concrete implementations live in `adapters/`.
-- **One business layer:** MCP tools and REST routers are thin façades over `services/`. No business
-  logic in routers or tools. The Adaptive Card renders data the services produce.
+- **One business layer:** MCP tools, REST routers, and the bot handler are thin façades over
+  `services/`. No business logic in routers, tools, or turns. The Adaptive Card renders data the
+  services produce.
 - **Pure domain:** `domain/` imports nothing from FastAPI, LangGraph, or any adapter.
 
 ## LangGraph single-agent "Change Court"
@@ -40,8 +44,9 @@ A single, inspectable graph, presented as courtroom roles (Prosecutor = impact, 
 Clerk = audit, Executor = execute). It is one agent today; the multi-agent path is a seam, not a
 rewrite (see below).
 
-- **State** (serializable, checkpointed): `thread_id, change_id, raw_request, source, run_mode,
-  change, impact, options, plan, risk, quorum, verdict, results, audit_id, errors`.
+- **State** (serializable, checkpointed): `thread_id, change_id, raw_request, source, requester,
+  run_mode, change, impact, options, risk, quorum, verdict, selected_plan, results, verifications,
+  deliberations, audit_id, status, errors`.
 - **Nodes** (single responsibility each):
   - `intake` — parse the request into a structured `Change`; **validate every requested action
     against registered adapter capabilities** (hallucination guard — unsupported actions are blocked,
@@ -51,10 +56,13 @@ rewrite (see below).
   - `options` (Defender) — produce a feasible `ExecutionPlan`; when the request is unsafe, produce a
     **safe alternative** (e.g. private preview instead of GA; least-privilege + expiry instead of
     broad access).
-  - `policy + quorum` — deterministic risk scoring → `requires_approval`; derive the **required
-    approvers** (quorum) from impact tags and the available **verdict options**. Rules are data, not code.
+  - `policy` (one node covering policy + quorum) — deterministic risk scoring →
+    `requires_approval`; derive the **required approvers** (quorum) from impact tags and the
+    available **verdict options**. Rules are data, not code.
   - `execute` (Executor) — registry → adapter per step; honors `run_mode` (DRY_RUN returns predicted
     effects, no side effects).
+  - `verify` — check the live writes against the reviewed plan (agentic when an LLM is configured);
+    findings land in `verifications`.
   - `audit` (Clerk) — append-only before/after snapshot + rollback hints + the full trial record
     (impact, options, approvers, verdict).
 - **Verdict = durable interrupt:** suspend at `interrupt()` / `interrupt_before=["execute"]`,
@@ -74,8 +82,9 @@ rewrite (see below).
 - **Open/Closed:** a new integration = one adapter module + one registration. No edits to graph,
   services, REST, or MCP.
 - **Scope discipline:** only the adapters the headline demo (Informed Approval) and the additional
-  capabilities the engine already handles require are built — GitHub (real) and mock Outlook,
-  Planner, SharePoint, Teams, CRM, Entra. Others (ServiceNow, a generic Graph adapter) are backlog.
+  capabilities the engine already handles require are built. All seven systems have mocks; real
+  adapters exist for GitHub and — behind `GRAPH_*` credentials — Outlook, SharePoint, and Teams;
+  Planner, CRM, and Entra are mock-only. Others (ServiceNow, a generic Graph adapter) are backlog.
 
 ## LLM provider & guardrail
 
@@ -123,7 +132,8 @@ rewrite (see below).
   Clerk, Executor) slot in behind a `SubAgentRegistry` mirroring `IntegrationRegistry`.
 - **More MCP tools / Adaptive Cards:** `mcp/tools.py` is a thin façade; card templates are data in
   `m365/adaptive-cards/`.
-- **Notifier port** for future approval channels (email, webhook) without graph changes.
+- **`ApprovalNotifier` port:** approval channels compose behind it without graph changes — the
+  Teams activity feed and the proactive bot card today; email/webhook later.
 
 Record significant choices as ADRs under `docs/adr/` (e.g. the verdict-interrupt-vs-MCP-statelessness
 decision).
