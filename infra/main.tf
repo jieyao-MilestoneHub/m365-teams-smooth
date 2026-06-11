@@ -267,6 +267,13 @@ resource "azurerm_container_app" "this" {
         }
       }
       dynamic "env" {
+        for_each = var.azure_openai_deployment_fast == "" ? [] : [1]
+        content {
+          name  = "AZURE_OPENAI_DEPLOYMENT_FAST"
+          value = var.azure_openai_deployment_fast
+        }
+      }
+      dynamic "env" {
         for_each = var.llm_api_key == "" ? [] : [1]
         content {
           name        = "LLM_API_KEY"

@@ -27,6 +27,7 @@ class LlmRequest:
     json_schema: dict[str, object] | None = None  # plain JSON Schema; no SDK types
     schema_name: str = "response"
     max_tokens: int | None = None  # per-call override of the provider default
+    model: str | None = None  # per-call model/deployment override; None → the provider default
 
 
 @dataclass(frozen=True)

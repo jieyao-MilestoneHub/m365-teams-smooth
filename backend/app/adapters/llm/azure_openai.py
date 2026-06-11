@@ -102,7 +102,7 @@ class AzureOpenAILLMProvider(LLMProvider):
             }
         try:
             response = self._client.chat.completions.create(
-                model=self._deployment,
+                model=request.model or self._deployment,
                 messages=messages,
                 temperature=0,
                 max_tokens=request.max_tokens or self._max_tokens,

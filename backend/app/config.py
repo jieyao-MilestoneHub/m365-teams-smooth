@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     # auth is keyless (DefaultAzureCredential) unless llm_api_key is set.
     azure_openai_endpoint: str = ""
     azure_openai_deployment: str = ""
+    # Optional cheaper/faster deployment for the lightweight call sites (the request parser, the
+    # deliberation trace); empty -> every call site uses azure_openai_deployment.
+    azure_openai_deployment_fast: str = ""
     azure_openai_api_version: str = "2024-10-21"
 
     # --- Knowledge / Foundry IQ (empty endpoint -> offline fake provider) ---

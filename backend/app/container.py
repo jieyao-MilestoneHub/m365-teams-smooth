@@ -29,6 +29,7 @@ from app.adapters.knowledge.foundry_iq import FoundryIqKnowledgeProvider
 from app.adapters.knowledge.local_corpus import LocalCorpusKnowledgeProvider
 from app.adapters.llm.azure_openai import AzureOpenAILLMProvider
 from app.adapters.llm.fake_llm import FakeLLMProvider
+from app.adapters.llm.tiered import ModelTierLLMProvider
 from app.adapters.notifiers.teams_activity import TeamsActivityNotifier
 from app.adapters.parsers.deterministic import DeterministicRequestParser
 from app.adapters.parsers.llm_backed import LlmRequestParser
@@ -249,6 +250,13 @@ def build_court_service(
             max_retries=settings.llm_max_retries,
         )
 
+    # Call-site model tiering: the lightweight sites (parser, deliberation trace) run on the
+    # optional fast deployment; the reasoning-heavy roles (Prosecutor, Defender) keep the default.
+    # One client underneath — the wrapper only defaults the per-request model.
+    fast_llm: LLMProvider = llm
+    if llm_is_real and settings.azure_openai_deployment_fast:
+        fast_llm = ModelTierLLMProvider(llm, model=settings.azure_openai_deployment_fast)
+
     # Input shield: managed Azure Prompt Shields when configured, else the offline heuristic. It
     # screens third-party content (the request, gathered evidence) for prompt injection before the
     # LLM reasons over it; a flag falls back to the deterministic path.
@@ -265,7 +273,7 @@ def build_court_service(
         parser: RequestParser = request_parser
     elif llm_is_real:
         parser = LlmRequestParser(
-            llm,
+            fast_llm,
             registry,
             fallback=DeterministicRequestParser(today=today),
             today=today,
@@ -309,7 +317,9 @@ def build_court_service(
     if not llm_is_real or settings.deliberation_llm == "off":
         deliberator: Deliberator = OfflineDeliberator()
     else:
-        deliberator = LlmDeliberator(llm, dedicated_calls=settings.deliberation_llm == "always")
+        deliberator = LlmDeliberator(
+            fast_llm, dedicated_calls=settings.deliberation_llm == "always"
+        )
 
     graph = build_court_graph(
         intake=IntakeNode(parser, registry, deliberator),

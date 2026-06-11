@@ -81,7 +81,9 @@ rewrite (see below).
 
 - Port `LLMProvider`: `complete()` for free text plus `generate(LlmRequest) → LlmResult`. The
   request carries provider-agnostic intent — `cacheable_prefix` (stable system text),
-  `system_suffix` (volatile system text), a plain-JSON `json_schema`, a per-call `max_tokens` — and
+  `system_suffix` (volatile system text), a plain-JSON `json_schema`, a per-call `max_tokens`, an
+  optional per-call `model`/deployment override (the composition root maps the lightweight call
+  sites — the parser, the deliberation trace — onto `AZURE_OPENAI_DEPLOYMENT_FAST` when set) — and
   the result returns the text plus per-call telemetry (`input_tokens`, `output_tokens`,
   `cached_prefix_tokens`, provider `request_id`). No SDK types cross the port; offline fakes and
   stubs implement only `complete()` and the default `generate()` keeps working.
