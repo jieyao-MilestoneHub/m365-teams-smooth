@@ -49,7 +49,7 @@
     },
     {
       "type": "TextBlock",
-      "text": "    ↳ Release & Change Management Policy — Coordinated downstream updates",
+      "text": "    ↳ Release & Change Management Policy — Schedule changes are controlled changes; Release & Change Management Policy — Coordinated downstream updates; Meeting & Event Scheduling Guidelines — Rescheduling a routine meeting",
       "wrap": true,
       "isSubtle": true,
       "spacing": "Small"
@@ -77,7 +77,7 @@
     },
     {
       "type": "TextBlock",
-      "text": "+1 more impact item(s) · grounded in 1 governance fact(s) — see the run page",
+      "text": "+1 more impact item(s) · grounded in 6 governance fact(s) — see the run page",
       "wrap": true,
       "isSubtle": true,
       "spacing": "Small"
@@ -112,6 +112,13 @@
       "type": "TextBlock",
       "text": "Approvers required (any): eng_lead, comms",
       "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "🧠 Prosecutor: Gathered 6 evidence item(s); tags: schedule.milestone_move, schedule.calendar_conflict, schedule.target_date_conflict, schedule.planner_shift, comms.pending_announcement. Decisive…",
+      "wrap": true,
+      "isSubtle": true,
+      "spacing": "Small"
     }
   ],
   "actions": [

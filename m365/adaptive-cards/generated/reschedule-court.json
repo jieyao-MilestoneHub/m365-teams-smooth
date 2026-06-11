@@ -49,6 +49,13 @@
     },
     {
       "type": "TextBlock",
+      "text": "grounded in 3 governance fact(s) — see the run page",
+      "wrap": true,
+      "isSubtle": true,
+      "spacing": "Small"
+    },
+    {
+      "type": "TextBlock",
       "text": "Proposed plan: Move the rehearsal to 2026-06-17; update calendar, schedule, and announcement.",
       "wrap": true,
       "weight": "Bolder"
@@ -77,6 +84,13 @@
       "type": "TextBlock",
       "text": "Approvers required (any): eng_lead, comms",
       "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "🧠 Prosecutor: Gathered 5 evidence item(s); tags: schedule.milestone_move, schedule.calendar_conflict, schedule.planner_shift, comms.pending_announcement. No high-severity findings.",
+      "wrap": true,
+      "isSubtle": true,
+      "spacing": "Small"
     }
   ],
   "actions": [
