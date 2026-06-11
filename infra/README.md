@@ -5,6 +5,9 @@ Provisions everything needed to run the backend in a tenant and have the declara
 - **Azure Container Apps** (Consumption) running the backend image, with HTTPS ingress on `/mcp`.
 - **Azure Container Registry** (Basic) the app pulls from, plus a user-assigned identity with `AcrPull`.
 - **Log Analytics** workspace for the Container Apps environment.
+- **Azure Files share** mounted at `/data` holding the SQLite database (`DB_URL`), so trials,
+  checkpoints, the audit log, and bot conversation references survive redeploys (a Container App's
+  own filesystem is ephemeral — every revision starts empty).
 - **Entra ID app registration** exposing the `court.use` scope, with `api://<client-id>` as the
   audience the backend validates — wired straight into the app's `OAUTH_*` env.
 
@@ -133,6 +136,7 @@ calculator):
 | Container Apps | Consumption | ~$0 with `min_replicas = 0` (scales to zero) | Monthly free grant covers light demo traffic; cold start on first call. Set `min_replicas = 1` for a warm demo (~a few $/month while running). |
 | Container Registry | Basic | ~$0.17/day (~$5/month) | The main standing cost; prorated. |
 | Log Analytics | Pay-as-you-go | a few cents | Tiny ingestion for a demo. |
+| Storage account (Azure Files) | Standard LRS, 1 GiB share | a few cents/month | Holds the persistent SQLite database. |
 | Entra app registration | — | free | No charge. |
 
 So expect **single-digit USD** for a demo window, dominated by ACR Basic. Run `terraform destroy`

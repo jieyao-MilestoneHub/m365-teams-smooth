@@ -57,6 +57,40 @@ resource "azurerm_container_app_environment" "this" {
   log_analytics_workspace_id = azurerm_log_analytics_workspace.this.id
 }
 
+# Durable storage for the app database. A Container App's filesystem is ephemeral — every revision
+# (each `apply` or image push) starts empty — so the SQLite file (trials, checkpoints, audit,
+# conversation references) lives on an Azure Files share mounted at /data and survives deploys.
+resource "random_string" "data_storage" {
+  length  = 6
+  lower   = true
+  upper   = false
+  numeric = true
+  special = false
+}
+
+resource "azurerm_storage_account" "data" {
+  name                     = substr("${replace(var.name, "-", "")}data${random_string.data_storage.result}", 0, 24)
+  resource_group_name      = azurerm_resource_group.this.name
+  location                 = azurerm_resource_group.this.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+}
+
+resource "azurerm_storage_share" "data" {
+  name               = "appdata"
+  storage_account_id = azurerm_storage_account.data.id
+  quota              = 1
+}
+
+resource "azurerm_container_app_environment_storage" "data" {
+  name                         = "appdata"
+  container_app_environment_id = azurerm_container_app_environment.this.id
+  account_name                 = azurerm_storage_account.data.name
+  share_name                   = azurerm_storage_share.data.name
+  access_key                   = azurerm_storage_account.data.primary_access_key
+  access_mode                  = "ReadWrite"
+}
+
 locals {
   # Container Apps ingress FQDN is "<app-name>.<environment-default-domain>" — known from the
   # environment before the app exists, so PUBLIC_BASE_URL has no dependency cycle.
@@ -135,12 +169,30 @@ resource "azurerm_container_app" "this" {
     min_replicas = var.min_replicas
     max_replicas = 1
 
+    # The database share. `nobrl` disables SMB byte-range locks (SQLite's locking fails over CIFS
+    # without it); uid/gid match the image's unprivileged appuser (uid 1000).
+    volume {
+      name          = "data"
+      storage_type  = "AzureFile"
+      storage_name  = azurerm_container_app_environment_storage.data.name
+      mount_options = "uid=1000,gid=1000,nobrl,mfsymlinks"
+    }
+
     container {
       name   = "backend"
       image  = "${azurerm_container_registry.this.login_server}/${var.image_repository}:${var.image_tag}"
       cpu    = 0.5
       memory = "1Gi"
 
+      volume_mounts {
+        name = "data"
+        path = "/data"
+      }
+
+      env {
+        name  = "DB_URL"
+        value = "sqlite:////data/app.db"
+      }
       env {
         name  = "FORCE_ALL_MOCK"
         value = tostring(var.force_all_mock)
