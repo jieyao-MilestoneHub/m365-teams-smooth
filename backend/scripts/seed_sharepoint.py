@@ -1,9 +1,10 @@
 """Seed the demo SharePoint site so the ``sharepoint:real`` evidence path reads a real library.
 
 Creates the document library and folder layout in ``assets/sharepoint/library.json`` on the
-configured site (``SHAREPOINT_SITE_ID``) via app-only Microsoft Graph. The Vendor Access trial reads
-the ``ProjectX`` library root; the presence of a ``CustomerData`` folder is what drives the
-over-broad-scope refusal.
+configured site (``SHAREPOINT_SITE_ID``) via app-only Microsoft Graph, and publishes the
+change-freeze calendar (``assets/sharepoint/change-freeze-calendar.json``) at the library root.
+The Vendor Access trial reads the ``ProjectX`` library root (a ``CustomerData`` folder drives the
+over-broad-scope refusal); the Reschedule breach evidence reads the freeze calendar.
 
 Idempotent: existing folders/files are left in place (Graph ``conflictBehavior: fail`` is treated as
 "already there"). Requirements: the ``GRAPH_*`` app credentials and **Sites.ReadWrite.All**
@@ -33,6 +34,12 @@ _LIBRARY = Path(
         "SHAREPOINT_LIBRARY_JSON",
         Path(__file__).resolve().parents[2] / "assets" / "sharepoint" / "library.json",
     )
+)
+# The published change-freeze calendar, uploaded to the library root; the real adapter's
+# read_change_calendar fetches it back as the release-freeze evidence.
+_CALENDAR_NAME = "change-freeze-calendar.json"
+_CALENDAR_ASSET = (
+    Path(__file__).resolve().parents[2] / "assets" / "sharepoint" / _CALENDAR_NAME
 )
 
 
@@ -77,17 +84,18 @@ def _drive_id(g: httpx.Client, site: str, library: str) -> str | None:
     )
 
 
-def _root_folder_names(g: httpx.Client, site: str, drive: str) -> set[str]:
+def _root_children(g: httpx.Client, site: str, drive: str) -> list[dict[str, Any]]:
     resp = g.get(f"{_GRAPH}/sites/{site}/drives/{drive}/root/children?$select=name,folder&$top=200")
     resp.raise_for_status()
-    return {str(c["name"]) for c in resp.json().get("value", []) if c.get("folder") is not None}
+    return list(resp.json().get("value", []))
 
 
 def audit() -> dict[str, object]:
-    """Read-only: does the demo library + its folders already exist? Never writes.
+    """Read-only: do the demo library, its folders, and the freeze calendar exist? Never writes.
 
     Returns ``{ready, present, detail}`` — ``present`` True when the library exists and holds every
-    expected folder (``CustomerData`` is the load-bearing one for the refusal path).
+    expected folder (``CustomerData`` is the load-bearing one for the refusal path) plus the
+    published change-freeze calendar.
     """
     spec = _spec()
     library = spec["library"]
@@ -99,13 +107,17 @@ def audit() -> dict[str, object]:
         drive = _drive_id(g, site, library)
         if drive is None:
             return {"ready": True, "present": False, "detail": f"library '{library}' missing"}
-        have = _root_folder_names(g, site, drive)
-    missing = wanted - have
+        children = _root_children(g, site, drive)
+    have = {str(c["name"]) for c in children if c.get("folder") is not None}
+    files = {str(c["name"]) for c in children if c.get("folder") is None}
+    missing = sorted(wanted - have)
+    if _CALENDAR_NAME not in files:
+        missing.append(_CALENDAR_NAME)
     present = not missing
     detail = (
-        f"library '{library}' + {len(wanted)} folder(s)"
+        f"library '{library}' + {len(wanted)} folder(s) + the freeze calendar"
         if present
-        else f"library '{library}' present; missing folder(s): {', '.join(sorted(missing))}"
+        else f"library '{library}' present; missing: {', '.join(missing)}"
     )
     return {"ready": True, "present": present, "detail": detail}
 
@@ -148,6 +160,17 @@ def apply() -> None:
                 if put.status_code not in (200, 201):
                     put.raise_for_status()
             print(f"  ensured /{folder['name']} + {len(folder.get('files', []))} file(s)")
+
+        # Publish (or refresh) the change-freeze calendar at the library root; overwriting keeps
+        # the live document canonical with the asset the tests pin.
+        put = g.put(
+            f"{_GRAPH}/sites/{site}/drives/{drive}/root:/{_CALENDAR_NAME}:/content",
+            headers={"Content-Type": "application/json"},
+            content=_CALENDAR_ASSET.read_bytes(),
+        )
+        if put.status_code not in (200, 201):
+            put.raise_for_status()
+        print(f"  published /{_CALENDAR_NAME}")
     print("done — SharePoint library seeded")
 
 
@@ -163,6 +186,7 @@ def main() -> None:
     print(f"site: {site}\nlibrary: {library}")
     for f in folders:
         print(f"  folder /{f['name']}  ({len(f.get('files', []))} file(s))")
+    print(f"  document /{_CALENDAR_NAME}  (published change-freeze calendar)")
     if args.dry_run:
         return
 

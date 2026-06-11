@@ -1,0 +1,11 @@
+{
+  "_comment": "Published release-freeze calendar for the demo site, uploaded to the ProjectX library root by backend/scripts/seed_sharepoint.py and read by real_sharepoint's sharepoint.read_change_calendar. The window mirrors the mock so the Reschedule breach evidence behaves identically in real mode.",
+  "freezes": [
+    {
+      "name": "Q2 financial close freeze",
+      "start": "2026-06-19",
+      "end": "2026-06-24",
+      "policy": "No production-affecting changes during the quarter-end close window."
+    }
+  ]
+}
