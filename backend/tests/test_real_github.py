@@ -70,6 +70,65 @@ def test_read_closed_issues_filters_prs_and_widens_since() -> None:
 
 
 @respx.mock
+def test_read_milestone_dependencies_parses_the_description_convention() -> None:
+    # Dependencies are data in the dependent milestone's description; only milestones whose
+    # depends_on names the requested one count, and the buffer parses to an int.
+    respx.get(f"{_API}/repos/octo/launch/milestones").mock(
+        return_value=httpx.Response(
+            200,
+            json=[
+                {"title": "Launch", "due_on": "2026-06-10T00:00:00Z", "description": "rehearsal"},
+                {
+                    "title": "Customer Go-Live",
+                    "due_on": "2026-06-26T00:00:00Z",
+                    "description": "Go-live.\ndepends_on: Launch\nrequired_buffer_days: 5",
+                },
+                {
+                    "title": "Unrelated",
+                    "due_on": "2026-07-01T00:00:00Z",
+                    "description": "depends_on: Something Else\nrequired_buffer_days: 3",
+                },
+            ],
+        )
+    )
+    data = _adapter().read(
+        ReadQuery(capability="github.read_milestone_dependencies", params={"milestone": "Launch"})
+    ).data
+    assert data["dependents"] == [
+        {
+            "milestone": "Customer Go-Live",
+            "due_on": "2026-06-26T00:00:00Z",
+            "depends_on": "Launch",
+            "required_buffer_days": 5,
+        }
+    ]
+
+
+@respx.mock
+def test_read_milestone_dependencies_omits_an_unparseable_buffer() -> None:
+    # A declared dependency without a parseable buffer still surfaces (the gatherer requires an
+    # int buffer to score it, so the key is simply absent rather than fabricated).
+    respx.get(f"{_API}/repos/octo/launch/milestones").mock(
+        return_value=httpx.Response(
+            200,
+            json=[
+                {
+                    "title": "Customer Go-Live",
+                    "due_on": "2026-06-26T00:00:00Z",
+                    "description": "depends_on: Launch\nrequired_buffer_days: soon",
+                },
+            ],
+        )
+    )
+    data = _adapter().read(
+        ReadQuery(capability="github.read_milestone_dependencies", params={"milestone": "Launch"})
+    ).data
+    assert data["dependents"] == [
+        {"milestone": "Customer Go-Live", "due_on": "2026-06-26T00:00:00Z", "depends_on": "Launch"}
+    ]
+
+
+@respx.mock
 def test_read_blocking_issues_excludes_prs_and_normalizes() -> None:
     # The /issues endpoint returns pull requests too; they must not be counted as blockers, and
     # only the {number, title, state} fields should survive into the evidence.

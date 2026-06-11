@@ -1,4 +1,4 @@
-"""Real GitHub adapter: the one live integration (read blockers/milestone, write milestone/issue).
+"""Real GitHub adapter: reads milestones/blockers/dependencies, writes milestone/issue.
 
 Implements the same github capabilities as the mock over the GitHub REST API. The base class owns
 the dry-run branch (so DRY_RUN never calls the API) and maps any HTTP/SDK error to IntegrationError;
@@ -6,6 +6,8 @@ this adapter only fills the read/predict/apply hooks. Selected when github runs 
 """
 
 from __future__ import annotations
+
+import re
 
 import httpx
 
@@ -24,6 +26,12 @@ from app.ports.integration import ReadQuery, ReadResult
 
 _SYSTEM = "github"
 _API = "https://api.github.com"
+
+# GitHub has no native milestone dependencies, so they are declared as data in the dependent
+# milestone's description: a "depends_on: <title>" line names the upstream milestone and
+# "required_buffer_days: <n>" the gap it needs before its own due date (the mock's data shape).
+_DEPENDS_ON = re.compile(r"^\s*depends_on:\s*(.+?)\s*$", re.IGNORECASE | re.MULTILINE)
+_BUFFER_DAYS = re.compile(r"^\s*required_buffer_days:\s*(\d+)\s*$", re.IGNORECASE | re.MULTILINE)
 
 
 class RealGitHubAdapter(BaseIntegrationAdapter):
@@ -68,6 +76,9 @@ class RealGitHubAdapter(BaseIntegrationAdapter):
             ),
             Capability(
                 system=_SYSTEM, name="github.read_closed_issues", kind=CapabilityKind.READ
+            ),
+            Capability(
+                system=_SYSTEM, name="github.read_milestone_dependencies", kind=CapabilityKind.READ
             ),
             Capability(
                 system=_SYSTEM,
@@ -147,6 +158,25 @@ class RealGitHubAdapter(BaseIntegrationAdapter):
                 if "pull_request" not in item
             ][:10]
             return ReadResult(capability=query.capability, data={"issues": issues})
+        if query.capability == "github.read_milestone_dependencies":
+            title = str(query.params.get("milestone", "Launch Rehearsal"))
+            milestones = self._get(f"/repos/{repo}/milestones", state="all").json()
+            dependents: list[dict[str, object]] = []
+            for milestone in milestones:
+                description = str(milestone.get("description") or "")
+                depends = _DEPENDS_ON.search(description)
+                if depends is None or depends.group(1) != title:
+                    continue
+                dependent: dict[str, object] = {
+                    "milestone": milestone.get("title"),
+                    "due_on": milestone.get("due_on"),
+                    "depends_on": title,
+                }
+                buffer_days = _BUFFER_DAYS.search(description)
+                if buffer_days is not None:
+                    dependent["required_buffer_days"] = int(buffer_days.group(1))
+                dependents.append(dependent)
+            return ReadResult(capability=query.capability, data={"dependents": dependents})
         raise IntegrationError(f"{_SYSTEM}: unknown read capability '{query.capability}'")
 
     def _predict(self, step: ExecutionStep, before: dict[str, object]) -> PredictedEffect:
