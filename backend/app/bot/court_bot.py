@@ -47,7 +47,7 @@ RequestCardBuilder = Callable[..., Card]
 ResultCardBuilder = Callable[..., Card]
 
 WELCOME = (
-    "Put a cross-system change on trial. Type a request — for example:\n\n"
+    "Describe a cross-system change — I'll gather the impact evidence first. For example:\n\n"
     "*move the rehearsal to 2026-06-16*"
 )
 

@@ -17,7 +17,7 @@ invoke response refreshes the card in place. The data keeps a `tool` key so lega
 The card also carries a compact **pipeline stage strip** (one subtle `TextBlock` tracing
 intake → … → audit for the trial's current status) and — when the deployment configures
 `PUBLIC_BASE_URL` and `RUN_LINK_SECRET` — a single subtle **View pipeline run** markdown link to
-the read-only run page, where the full courtroom flow can be inspected live. The link sits in the
+the read-only run page, where the full pipeline run can be inspected live. The link sits in the
 body (one focus per surface, and it renders even in hosts that suppress `Action.OpenUrl`), leaving
 the action row dedicated to decisions. The card stays the only decision surface; the run page never
 mutates anything.
