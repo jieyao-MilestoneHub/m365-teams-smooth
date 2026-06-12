@@ -14,8 +14,8 @@
     "full": "AI Change Court — governed execution"
   },
   "description": {
-    "short": "Put a risky decision on trial before it becomes action.",
-    "full": "AI Change Court gathers cross-system impact evidence for a risky change, proposes a feasible plan or a safer alternative, resolves the required approvers, collects a verdict, executes, and records an append-only audit trail."
+    "short": "Impact evidence before action; approval only when risk demands it.",
+    "full": "AI Change Court runs a cross-system impact analysis before a change executes, proposes a feasible plan or a safer alternative, lets routine low-risk changes proceed on the requester's own confirmation, convenes named approvers only when the evidence shows real risk, and records an append-only audit trail."
   },
   "icons": {
     "color": "color.png",
