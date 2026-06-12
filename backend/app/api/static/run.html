@@ -475,7 +475,14 @@ function stageBody(id) {
   if (id === "policy" && t.risk) {
     const rules = (t.risk.matched_rule_ids || []).join(", ");
     return `<div class="row">risk <b>${esc(t.risk.level)}</b> (score ${esc(t.risk.score)})${rules ? ` · rules: ${esc(rules)}` : ""}</div>` +
-      (t.risk.factors || []).map(f => `<div class="row">• ${esc(f.id || f.reason || JSON.stringify(f))}${f.weight ? ` <span class="sev-high">+${esc(f.weight)}</span>` : ""}</div>`).join("");
+      (t.risk.factors || []).map(f => {
+        const c = f.grounded_citations || [];
+        const basis = c.length
+          ? `<details class="cites"><summary>policy basis (${c.length})</summary>` +
+            c.map(x => `<span class="cite">${esc(x)}</span>`).join("") + `</details>`
+          : "";
+        return `<div class="row">• ${esc(f.id || f.reason || JSON.stringify(f))}${f.weight ? ` <span class="sev-high">+${esc(f.weight)}</span>` : ""}${basis}</div>`;
+      }).join("");
   }
   if (id === "verify") {
     const v = t.verifications || [];
