@@ -81,11 +81,14 @@ def render_markdown(packet: dict[str, object]) -> str:
         rows = []
         steps = plan.get("steps")
         if isinstance(steps, list):
-            rows = [
-                f"- {step.get('system')}.{step.get('capability')}"
-                for step in steps
-                if isinstance(step, dict)
-            ]
+            for step in steps:
+                if isinstance(step, dict):
+                    system = str(step.get("system", ""))
+                    capability = str(step.get("capability", ""))
+                    # Capability names may already carry their system prefix.
+                    if not capability.startswith(f"{system}."):
+                        capability = f"{system}.{capability}"
+                    rows.append(f"- {capability}")
         lines.append(f"**{kind}:** {plan.get('rationale', '')}")
         lines.append("")
         _section(lines, "Steps", rows)
