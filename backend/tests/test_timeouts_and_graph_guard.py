@@ -11,10 +11,8 @@ import pytest
 from app.adapters.knowledge.foundry_iq import FoundryIqKnowledgeProvider
 from app.adapters.llm.azure_openai import AzureOpenAILLMProvider
 from app.agent.runner import CourtRunner
-from app.agent.state import CourtState
+from app.domain import RunMode
 from app.domain.errors import GraphTimeoutError
-
-_EMPTY: CourtState = {}
 
 # --- outbound client timeouts ---------------------------------------------
 
@@ -96,7 +94,9 @@ def test_start_raises_typed_error_on_timeout_and_leaves_checkpoint() -> None:
     runner = CourtRunner(graph, timeout_seconds=0.05)
 
     with pytest.raises(GraphTimeoutError):
-        runner.start("t1", _EMPTY)
+        runner.start(
+        "t1", change_id="c1", raw_request="r", source="test", run_mode=RunMode.DRY_RUN
+    )
 
     # The checkpoint is still readable (intact and resumable) after the guard fires.
     assert runner.state("t1") == {"status": "evaluating"}
@@ -105,7 +105,9 @@ def test_start_raises_typed_error_on_timeout_and_leaves_checkpoint() -> None:
 def test_fast_run_completes_within_budget() -> None:
     graph = _FakeGraph(invoke_seconds=0.0, values={"status": "done"})
     runner = CourtRunner(graph, timeout_seconds=5.0)
-    result = runner.start("t1", _EMPTY)
+    result = runner.start(
+        "t1", change_id="c1", raw_request="r", source="test", run_mode=RunMode.DRY_RUN
+    )
     assert result == {"status": "done"}
     assert graph.invoked == 1
 
@@ -113,5 +115,7 @@ def test_fast_run_completes_within_budget() -> None:
 def test_no_budget_runs_inline() -> None:
     graph = _FakeGraph(invoke_seconds=0.0, values={"status": "done"})
     runner = CourtRunner(graph)  # timeout_seconds=None
-    result = runner.start("t1", _EMPTY)
+    result = runner.start(
+        "t1", change_id="c1", raw_request="r", source="test", run_mode=RunMode.DRY_RUN
+    )
     assert result == {"status": "done"}

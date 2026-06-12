@@ -18,7 +18,7 @@ from uuid import uuid4
 from pydantic import BaseModel
 
 from app.agent.runner import CourtRunner
-from app.agent.state import CourtState, initial_state, serialize
+from app.agent.state import CourtState, serialize
 from app.domain import (
     ApprovalDecision,
     ApprovalEvent,
@@ -158,14 +158,11 @@ class CourtService:
         change_id = self._id()
         state = self._runner.start(
             thread_id,
-            initial_state(
-                thread_id=thread_id,
-                change_id=change_id,
-                raw_request=raw_request,
-                source=source,
-                run_mode=mode,
-                requester=requester,
-            ),
+            change_id=change_id,
+            raw_request=raw_request,
+            source=source,
+            run_mode=mode,
+            requester=requester,
         )
         logger.info(
             "trial.submitted",

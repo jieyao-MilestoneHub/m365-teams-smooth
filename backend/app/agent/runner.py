@@ -11,8 +11,8 @@ from __future__ import annotations
 import concurrent.futures
 from typing import Any, cast
 
-from app.agent.state import CourtState, serialize
-from app.domain import Verdict
+from app.agent.state import CourtState, initial_state, serialize
+from app.domain import Principal, RunMode, Verdict
 from app.domain.errors import GraphTimeoutError
 
 
@@ -27,9 +27,30 @@ class CourtRunner:
     def _config(thread_id: str) -> dict[str, Any]:
         return {"configurable": {"thread_id": thread_id}}
 
-    def start(self, thread_id: str, state: CourtState) -> CourtState:
-        """Run intake → … → policy; the graph suspends before execute and persists a checkpoint."""
+    def start(
+        self,
+        thread_id: str,
+        *,
+        change_id: str,
+        raw_request: str,
+        source: str,
+        run_mode: RunMode,
+        requester: Principal | None = None,
+    ) -> CourtState:
+        """Run intake → … → policy; the graph suspends before execute and persists a checkpoint.
+
+        State construction stays behind this boundary: callers describe the submission, the
+        runner builds the graph's initial state from it.
+        """
         config = self._config(thread_id)
+        state = initial_state(
+            thread_id=thread_id,
+            change_id=change_id,
+            raw_request=raw_request,
+            source=source,
+            run_mode=run_mode,
+            requester=requester,
+        )
         self._invoke(state, config, thread_id)
         return self.state(thread_id)
 
