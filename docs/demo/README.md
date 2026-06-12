@@ -56,7 +56,8 @@ make cards    # exports the Adaptive Card JSON to m365/adaptive-cards/generated/
 ```
 
 To see the evidence packet land on an existing ticket, run the reference receiver and point the
-webhook at it:
+webhook at it (`make setup-demo-apply` creates the demo ticket and prints its `EVIDENCE_ISSUE`
+number; re-running it also clears the ticket's prior evidence comments between takes):
 
 ```bash
 GITHUB_TOKEN=<token> GITHUB_REPO=<owner/name> EVIDENCE_ISSUE=<number> \
