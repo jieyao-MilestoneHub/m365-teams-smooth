@@ -88,8 +88,9 @@ M365 Copilot Chat / Teams
   - `impact` — gather second-order consequences via adapter **read** capabilities → evidence.
   - `options` — feasible plan, or a **safe alternative** when the request is unsafe.
   - `policy+quorum` — deterministic risk → `requires_approval` + required approvers + verdict options;
-    rules are data, not code. A change no pack governs lands on the UNGOVERNED floor (MEDIUM,
-    manager approval) — unknown means "ask a human".
+    rules are data, not code (built-in literals or a YAML pack file via `POLICY_PACKS_PATH`).
+    A change no pack governs lands on the UNGOVERNED floor (MEDIUM, manager approval) — unknown
+    means "ask a human".
   - `execute` — registry → adapter per step; honors `run_mode`.
   - `verify` — checks the live writes against the reviewed plan (agentic when an LLM is configured).
   - `audit` — append-only before/after + rollback hints + trial record.
@@ -153,6 +154,8 @@ Env-driven via `config.py` (pydantic-settings) — see `.env.example`. Architect
 - `INTEGRATION_MODE` — per-system `real`/`mock` selection (default: GitHub `real`, others `mock`).
 - `FORCE_ALL_MOCK=true` — run every integration as a mock, with **zero external credentials**.
 - `DRY_RUN_DEFAULT` — whether new decisions default to dry-run.
+- `POLICY_PACKS_PATH` — YAML rule-pack file extending/replacing the built-in packs (see
+  `docs/extending.md`); empty keeps the built-ins.
 - `DB_URL` — SQLite locally, Postgres later.
 - `GITHUB_TOKEN` — only when the GitHub adapter runs in `real` mode. `OAUTH_*` — MCP OAuth2 settings.
 - `GRAPH_TENANT_ID` / `GRAPH_CLIENT_ID` / `GRAPH_CLIENT_SECRET` plus a per-system target

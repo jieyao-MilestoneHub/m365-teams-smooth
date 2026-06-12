@@ -37,9 +37,9 @@ See the [architecture diagrams](docs/architecture/index.html) for how it's built
 
 ## When does it ask a human?
 
-Approval routing is data, not code. Each change subject has a **rule pack**
-([`backend/app/agent/policy_rules/packs.py`](backend/app/agent/policy_rules/packs.py)) mapping
-evidence tags to risk weights and approver roles:
+Approval routing is data, not code. Each change subject has a **rule pack** — a built-in literal
+([`backend/app/agent/policy_rules/packs.py`](backend/app/agent/policy_rules/packs.py)) or an entry
+in your own `POLICY_PACKS_PATH` file — mapping evidence tags to risk weights and approver roles:
 
 - **Low risk → no approver.** The requester's own confirmation executes the change.
   Internal-authority subjects — meeting action items, the weekly status report — declare an empty
@@ -114,8 +114,10 @@ MCP server at `/mcp`).
   INTEGRATION_MODE=github:real GITHUB_TOKEN=<token> GITHUB_REPO=<owner/name> make demo
   ```
 
-- **Extend it.** A new integration is one adapter + one registration; a new scenario is one rule pack
-  + gatherer + planner. The graph, services, REST, and MCP stay untouched.
+- **Extend it.** A new integration is one adapter + one registration; a new scenario is a
+  rule-pack entry in a data file (`POLICY_PACKS_PATH` — a specialized gatherer/planner is
+  optional). The graph, services, REST, and MCP stay untouched — see
+  [docs/extending.md](docs/extending.md).
 - **Go live in Microsoft 365.** Host the backend over public HTTPS (e.g. Azure Container Apps),
   configure Entra ID OAuth2, and sideload the declarative agent in [`m365/`](m365/).
 
