@@ -18,8 +18,10 @@ Microsoft 365 Copilot Chat / Teams
      ├─ bot/        Bot Framework endpoint (/api/messages): the Change Court card's buttons
      ├─ services/   single business layer (MCP, REST, and the bot all delegate here — no duplication)
      ├─ agent/      LangGraph court: intake → impact → options → policy+quorum → [verdict] → execute → verify → audit
-     ├─ ports/      abstract interfaces (DIP boundary)
-     ├─ adapters/   integrations (real + mock), persistence, llm, knowledge, guardrail, notifiers
+     ├─ ports/      abstract interfaces (DIP boundary, incl. the court-runner port)
+     ├─ adapters/   integrations (real + mock), persistence, llm providers, knowledge, guardrail, parsers, notifiers
+     ├─ presentation/  cross-surface decision-UI rendering (the Adaptive Card builders)
+     ├─ llm/        provider-agnostic LLM wire utilities (strict JSON-Schema rendering, untrusted fencing)
      ├─ observability/  structured logging, metrics, request-id propagation, PII redaction
      ├─ security/   HMAC signing for run-page deep links
      └─ domain/     pure models/enums/errors (no framework or SDK imports)
@@ -37,6 +39,36 @@ Microsoft 365 Copilot Chat / Teams
   `services/`. No business logic in routers, tools, or turns. The Adaptive Card renders data the
   services produce.
 - **Pure domain:** `domain/` imports nothing from FastAPI, LangGraph, or any adapter.
+
+### Why each level exists (read this before adding a file)
+
+Every top-level package answers one question; a new file goes where its *importers* say it
+belongs, not where it was first needed:
+
+- `domain/` — what the business talks about (one concept per file, zero framework imports).
+- `ports/` — the contracts `agent/` and `services/` are allowed to see (incl. `ports/runner.py`,
+  the court-runner port the business layer drives the graph through).
+- `adapters/` — one subfolder per technology seam (integrations, persistence, llm providers,
+  knowledge, guardrail, parsers, notifiers); real/mock pairs; no loose files at the root.
+- `agent/` — root files are graph infrastructure (state/graph/runner/instrument) and the
+  deterministic behavior libraries (gatherers/planners/deliberate); `nodes/` is the state machine;
+  `agentic/` wraps the libraries with LLM reasoning (every wrapper has a deterministic sibling and
+  falls back to it); `policy_rules/` is policy as data.
+- `services/` — the single business layer; `mcp/ api/ bot/` are its thin façades.
+- `presentation/` — rendering shared by several surfaces (the card builders); a module used by
+  bot, notifiers, and tooling must not live inside one surface's folder.
+- `llm/` — provider-agnostic wire utilities shared by `agent/` and `adapters/`; distinct from
+  `adapters/llm/`, the concrete providers.
+- `observability/`, `security/` — cross-cutting single implementations (deliberately not ports).
+- Root: `config.py` (env), `container.py` + `asgi.py` (the only composition roots), `main.py`
+  (REST-only factory).
+
+**Sanctioned exception:** `adapters/persistence/checkpointer.py` imports LangGraph — it *is* the
+graph-saver adapter, so the SDK belongs there. The condition: only the composition root wires it,
+and nothing in `agent/` imports the checkpointer directly.
+
+**Size watch:** `services/court_service.py` is large but single-responsibility; split it into a
+package only if it grows past ~1000 lines or gains a second concern.
 
 ## LangGraph single-agent "Change Court"
 
@@ -97,7 +129,7 @@ rewrite (see below).
   `cached_prefix_tokens`, provider `request_id`). No SDK types cross the port; offline fakes and
   stubs implement only `complete()` and the default `generate()` keeps working.
 - **Structured output is native and strict.** Wire models render through
-  `agent/agentic/structured.py: schema_of()` into the cross-provider strict schema subset (every
+  `app/llm/structured.py: schema_of()` into the cross-provider strict schema subset (every
   property required, `additionalProperties: false`, no defaults; free-form dicts travel as
   JSON-encoded strings, decoded by a model validator). The Azure adapter sends it as a strict
   `response_format`; a truncated (`finish_reason=length`) or refused structured reply raises a
@@ -113,7 +145,7 @@ rewrite (see below).
 - Port `GuardrailPort` screens untrusted input (the raw request, gathered evidence) **before** any
   LLM reasons over it — Azure Prompt Shields when `CONTENT_SAFETY_ENDPOINT` is set, an offline
   heuristic otherwise; flagged input falls back to the deterministic path. Third-party content is
-  fenced in `<untrusted_data>` blocks (`agent/agentic/untrusted.py`). Screening never raises.
+  fenced in `<untrusted_data>` blocks (`app/llm/untrusted.py`). Screening never raises.
 - Portability seams for a second platform adapter (credential providers rather than static keys,
   logical-model → platform-ID mapping, normalized throttling, capability flags) and the
   deliberately deferred hardening (circuit breaker, streaming, batch APIs) are recorded in
