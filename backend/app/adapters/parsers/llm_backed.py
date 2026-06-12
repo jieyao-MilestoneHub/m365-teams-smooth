@@ -12,9 +12,9 @@ import logging
 
 from pydantic import BaseModel, Field, field_validator
 
-from app.agent.agentic.structured import decode_json_object, parse_json, schema_of
-from app.agent.agentic.untrusted import HARDENING, fence
 from app.domain import Change, RequestedAction
+from app.llm.structured import decode_json_object, parse_json, schema_of
+from app.llm.untrusted import HARDENING, fence
 from app.observability import metrics
 from app.ports.guardrail import GuardrailPort
 from app.ports.llm import LLMProvider, LlmRequest
