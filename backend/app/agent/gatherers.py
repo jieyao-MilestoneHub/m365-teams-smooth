@@ -9,8 +9,14 @@ from __future__ import annotations
 import logging
 from datetime import date
 
-from app.agent.grounding_queries import GROUNDING_QUERIES
 from app.agent.nodes.impact import Gatherer
+from app.agent.policy_rules.packs import (
+    CUSTOMER_PROMISE,
+    LAUNCH_SLIP,
+    MEETING_ACTIONS,
+    VENDOR_ACCESS,
+    WEEKLY_REPORT,
+)
 from app.domain import Change, EvidenceItem, ImpactEvidence
 from app.domain.errors import IntegrationError
 from app.ports.integration import ReadQuery
@@ -103,7 +109,7 @@ def gather_launch(
                     ),
                     data={"event": clash, "title": clash.get("title")},
                     severity="high",
-                    grounded=knowledge.ground(GROUNDING_QUERIES["launch"]),
+                    grounded=knowledge.ground(LAUNCH_SLIP.grounding_query),
                 )
             )
             tags.append("schedule.target_date_conflict")
@@ -225,7 +231,7 @@ def _derive_contractual_breach(
                 severity="high",
                 # Ground on the launch phrase tuned to rank the change-management policy first
                 # (its "impact assessment" section covers contractual and downstream implications).
-                grounded=knowledge.ground(GROUNDING_QUERIES["launch"]),
+                grounded=knowledge.ground(LAUNCH_SLIP.grounding_query),
             )
         )
         tags.append("schedule.contractual_breach_risk")
@@ -276,7 +282,7 @@ def gather_sso_ga(
                 summary=f"Security review on {review_date} is after the promised {change.due_by}",
                 data=review,
                 severity="high",
-                grounded=knowledge.ground(GROUNDING_QUERIES["sso-ga"]),
+                grounded=knowledge.ground(CUSTOMER_PROMISE.grounding_query),
             )
         )
         tags.append("security.review_after_due_date")
@@ -326,7 +332,7 @@ def gather_project_access(
                 summary=f"'{path}' holds customer data",
                 data=folder,
                 severity="high",
-                grounded=knowledge.ground(GROUNDING_QUERIES["project-access"]),
+                grounded=knowledge.ground(VENDOR_ACCESS.grounding_query),
             )
         )
         tags.append("data.customer_data_present")
@@ -354,7 +360,7 @@ def gather_meeting_actions(
                 kind="meeting_notes",
                 summary=f"{len(notes)} spoken follow-up(s) in the standup discussion",
                 data={"notes": notes},
-                grounded=knowledge.ground(GROUNDING_QUERIES["meeting-actions"]),
+                grounded=knowledge.ground(MEETING_ACTIONS.grounding_query),
             )
         )
         tags.append("meeting.action_items_found")
@@ -391,7 +397,7 @@ def gather_weekly_report(
                 kind="closed_issues",
                 summary=f"{len(closed)} issue(s) closed recently",
                 data={"issues": closed},
-                grounded=knowledge.ground(GROUNDING_QUERIES["weekly-report"]),
+                grounded=knowledge.ground(WEEKLY_REPORT.grounding_query),
             )
         )
         tags.append("report.activity_collected")

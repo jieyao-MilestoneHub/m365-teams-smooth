@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from app.adapters.integrations.registry import ConfigIntegrationRegistry
 from app.adapters.knowledge.local_corpus import LocalCorpusKnowledgeProvider
-from app.agent.grounding_queries import GROUNDING_QUERIES
 from app.agent.nodes.impact import ImpactNode
+from app.agent.policy_rules.packs import default_packs
+from app.agent.policy_rules.vocabulary import grounding_queries
 from app.agent.state import CourtState, initial_state, serialize
 from app.domain import (
     Change,
@@ -16,6 +17,8 @@ from app.domain import (
 )
 from app.ports.knowledge import KnowledgePort
 from app.ports.registry import IntegrationRegistry
+
+_GROUNDING = grounding_queries(default_packs())
 
 
 class _SpyKnowledge(KnowledgePort):
@@ -66,7 +69,9 @@ def _state_with_change(change: Change) -> CourtState:
 def test_impact_runs_subject_gatherer_and_grounds(
     mock_registry: ConfigIntegrationRegistry, knowledge: LocalCorpusKnowledgeProvider
 ) -> None:
-    node = ImpactNode(mock_registry, knowledge, {"launch": _launch_gatherer})
+    node = ImpactNode(
+        mock_registry, knowledge, {"launch": _launch_gatherer}, grounding=_GROUNDING
+    )
     change = Change(change_id="c1", raw_request="slip the launch milestone", subject="launch")
 
     result = node(_state_with_change(change))
@@ -80,7 +85,7 @@ def test_impact_runs_subject_gatherer_and_grounds(
 def test_impact_without_gatherer_still_grounds(
     mock_registry: ConfigIntegrationRegistry, knowledge: LocalCorpusKnowledgeProvider
 ) -> None:
-    node = ImpactNode(mock_registry, knowledge, {})
+    node = ImpactNode(mock_registry, knowledge, {}, grounding=_GROUNDING)
     change = Change(change_id="c1", raw_request="promise SSO is GA", subject="sso-ga")
     result = node(_state_with_change(change))
     evidence = ImpactEvidence.model_validate(result["impact"])
@@ -102,12 +107,12 @@ def test_impact_grounds_the_subject_phrase_not_the_raw_request(
     mock_registry: ConfigIntegrationRegistry,
 ) -> None:
     spy = _SpyKnowledge()
-    node = ImpactNode(mock_registry, spy, {})
+    node = ImpactNode(mock_registry, spy, {}, grounding=_GROUNDING)
     change = Change(
         change_id="c1", raw_request="move the rehearsal to 2026-06-16", subject="launch"
     )
     node(_state_with_change(change))
-    assert spy.queries == [GROUNDING_QUERIES["launch"]]
+    assert spy.queries == [_GROUNDING["launch"]]
 
 
 def test_impact_grounds_the_raw_request_when_unclassified(
@@ -120,3 +125,17 @@ def test_impact_grounds_the_raw_request_when_unclassified(
     )
     node(_state_with_change(change))
     assert spy.queries == ["something the parser did not classify"]
+
+
+def test_impact_grounds_the_raw_request_for_an_unmapped_subject(
+    mock_registry: ConfigIntegrationRegistry,
+) -> None:
+    # A novel subject with no pack-supplied phrase grounds on the raw request — same degradation
+    # as an unclassified change, so generic-path grounding never goes dark.
+    spy = _SpyKnowledge()
+    node = ImpactNode(mock_registry, spy, {}, grounding=_GROUNDING)
+    change = Change(
+        change_id="c1", raw_request="archive the old channels", subject="channel-archival"
+    )
+    node(_state_with_change(change))
+    assert spy.queries == ["archive the old channels"]

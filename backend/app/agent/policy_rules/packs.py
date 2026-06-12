@@ -21,8 +21,14 @@ from app.domain import ApproverRole, VerdictType
 
 _STANDARD_BANDS = RiskBands(low=0, medium=30, high=60)
 
+# Each pack's grounding_query is tuned so the knowledge base ranks the intended governance policy
+# above its adversarial near-misses — validated by backend/scripts/eval_retrieval.py. Grounding is
+# citations only: it never produces tags and never affects risk, quorum, or the verdict.
+
 LAUNCH_SLIP = RulePack(
     id="launch_slip",
+    subjects=["launch"],
+    grounding_query="schedule change controlled coordinated milestone date",
     match=MatchRules(
         any_action_capability=["github.update_milestone_due"],
         any_tag=["schedule.milestone_move", "schedule.contractual_breach_risk"],
@@ -84,6 +90,8 @@ LAUNCH_SLIP = RulePack(
 
 CUSTOMER_PROMISE = RulePack(
     id="customer_promise",
+    subjects=["sso-ga"],
+    grounding_query="SSO GA promise security review sign-off",
     match=MatchRules(
         any_tag=[
             "security.review_after_due_date",
@@ -122,6 +130,8 @@ CUSTOMER_PROMISE = RulePack(
 
 VENDOR_ACCESS = RulePack(
     id="vendor_access",
+    subjects=["project-access"],
+    grounding_query="vendor access least privilege scope expiry",
     match=MatchRules(
         any_action_capability=["sharepoint.grant_folder_permission"],
         any_tag=["access.overbroad_scope", "access.ambiguous_duration"],
@@ -156,6 +166,8 @@ VENDOR_ACCESS = RulePack(
 
 MEETING_ACTIONS = RulePack(
     id="meeting_actions",
+    subjects=["meeting-actions"],
+    grounding_query="meeting follow-through action item owner due date accountability",
     match=MatchRules(
         any_action_capability=["planner.create_task"],
         any_tag=["meeting.action_items_found"],
@@ -175,6 +187,8 @@ MEETING_ACTIONS = RulePack(
 
 WEEKLY_REPORT = RulePack(
     id="weekly_report",
+    subjects=["weekly-report"],
+    grounding_query="status reporting weekly cadence single source of record",
     match=MatchRules(
         any_action_capability=["teams.post_message"],
         any_tag=["report.activity_collected"],

@@ -10,7 +10,6 @@ from __future__ import annotations
 from typing import Protocol
 
 from app.agent.deliberate import Deliberator, OfflineDeliberator, record
-from app.agent.grounding_queries import grounding_query
 from app.agent.state import CourtState, bound_errors, bound_evidence, serialize
 from app.domain import Change, ChangeStatus, EvidenceItem, ImpactEvidence
 from app.ports.knowledge import KnowledgePort
@@ -51,12 +50,14 @@ class ImpactNode:
         deliberator: Deliberator | None = None,
         *,
         default_gatherer: Gatherer | None = None,
+        grounding: dict[str, str] | None = None,
     ) -> None:
         self._registry = registry
         self._knowledge = knowledge
         self._gatherers = gatherers
         self._deliberator = deliberator or OfflineDeliberator()
         self._default_gatherer = default_gatherer
+        self._grounding = dict(grounding or {})
 
     def __call__(self, state: CourtState) -> CourtState:
         change = Change.model_validate(state["change"])
@@ -72,7 +73,12 @@ class ImpactNode:
         # degrades gracefully (like a failed gatherer read): a slow or down knowledge service costs
         # the trial its citations, never the trial itself.
         try:
-            facts = self._knowledge.ground(grounding_query(change.subject, change.raw_request))
+            query = (
+                self._grounding.get(change.subject, change.raw_request)
+                if change.subject
+                else change.raw_request
+            )
+            facts = self._knowledge.ground(query)
         except Exception as exc:  # noqa: BLE001 — any provider failure becomes evidence-level
             facts = []
             errors.append(f"knowledge grounding unavailable: {exc}")

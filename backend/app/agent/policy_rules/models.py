@@ -68,3 +68,8 @@ class RulePack(BaseModel):
     risk_bands: RiskBands
     quorum: QuorumRules = Field(default_factory=QuorumRules)
     verdict_options: VerdictOptionRules = Field(default_factory=VerdictOptionRules)
+    # The parser subjects this pack specializes (informational + the grounding key); empty for
+    # packs that match purely on capabilities/tags (and for the UNGOVERNED fallback).
+    subjects: list[str] = Field(default_factory=list)
+    # Targeted knowledge-retrieval phrase for those subjects ("" -> raw-request grounding).
+    grounding_query: str = ""

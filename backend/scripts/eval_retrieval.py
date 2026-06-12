@@ -16,7 +16,10 @@ import os
 import sys
 
 from app.adapters.knowledge.foundry_iq import FoundryIqKnowledgeProvider
-from app.agent.grounding_queries import GROUNDING_QUERIES
+from app.agent.policy_rules.packs import default_packs
+from app.agent.policy_rules.vocabulary import grounding_queries
+
+GROUNDING_QUERIES = grounding_queries(default_packs())
 
 ENDPOINT = os.environ.get(
     "KNOWLEDGE_SEARCH_ENDPOINT", "https://iqs-search-mm65ytt5g64nw.search.windows.net"
@@ -27,7 +30,7 @@ EFFORT = os.environ.get("KNOWLEDGE_REASONING_EFFORT", "medium")
 
 # (label, query, target substring, exclude-from-target, near-miss substrings that must not outrank).
 # Queries are the SAME phrases the impact node and gatherers ground with, sourced from
-# app.agent.grounding_queries.GROUNDING_QUERIES — so this eval guards what actually runs.
+# the rule packs' grounding_query fields — so this eval guards what actually runs.
 CASES = [
     ("Reschedule", GROUNDING_QUERIES["launch"],
      "Release & Change Management Policy", ("DEPRECATED", "v1"),
