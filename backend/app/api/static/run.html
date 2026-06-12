@@ -621,22 +621,45 @@ function renderLanes() {
   }).join("");
 }
 
+// Per-trial LLM spend, summed from the durable node_finished events — survives the verdict pause.
+function llmTotals() {
+  const t = { calls: 0, input: 0, output: 0, cached: 0, deployments: new Set() };
+  events.forEach(e => {
+    const u = e.payload && e.payload.llm_usage;
+    if (!u) return;
+    t.calls += u.calls || 0;
+    t.input += u.input_tokens || 0;
+    t.output += u.output_tokens || 0;
+    t.cached += u.cached_tokens || 0;
+    (u.deployments || []).forEach(d => t.deployments.add(d));
+  });
+  return t;
+}
+
 function renderRecord() {
   const a = document.getElementById("audit");
-  if (view && (view.audit_id || TERMINAL.includes(status()))) {
+  const llm = llmTotals();
+  if (view && (view.audit_id || TERMINAL.includes(status()) || llm.calls > 0)) {
     a.classList.remove("hide");
     a.innerHTML =
       `<span><span class="k">audit</span>${esc(view.audit_id || "—")}</span>` +
       `<span><span class="k">outcome</span>${esc(status())}</span>` +
       `<span><span class="k">mode</span>${esc(view.run_mode || "")}</span>` +
       `<span><span class="k">events</span>${events.length}</span>` +
-      (view.summary.acknowledged ? `<span><span class="k">ack</span>requester confirmed</span>` : "");
+      (llm.calls > 0
+        ? `<span><span class="k">llm</span>${llm.calls} call(s) · ${llm.input.toLocaleString()} in / ${llm.output.toLocaleString()} out` +
+          (llm.cached > 0 ? ` · ${llm.cached.toLocaleString()} cached` : "") +
+          ` · ${esc([...llm.deployments].join(", "))}</span>`
+        : "") +
+      (view.summary && view.summary.acknowledged ? `<span><span class="k">ack</span>requester confirmed</span>` : "");
   }
   document.getElementById("transcript").innerHTML = events.map(e => {
     const k = e.status === "failed" ? "k-fail" : e.kind.endsWith("started") ? "k-started" : "k-finished";
     const dur = e.payload && e.payload.duration_seconds != null ? ` (${fmtDur(e.payload.duration_seconds)})` : "";
     const sys = e.payload && e.payload.system ? ` [${esc(e.payload.system)}]` : "";
-    return `<div class="tline"><span class="seq">${e.seq}</span><span class="${k}">${esc(e.kind)}</span> <b>${esc(e.name)}</b>${sys}${e.status ? ` → ${esc(e.status)}` : ""}${dur}</div>`;
+    const u = e.payload && e.payload.llm_usage;
+    const spend = u ? ` · ${u.calls} llm call(s), ${((u.input_tokens || 0) + (u.output_tokens || 0)).toLocaleString()} tok` : "";
+    return `<div class="tline"><span class="seq">${e.seq}</span><span class="${k}">${esc(e.kind)}</span> <b>${esc(e.name)}</b>${sys}${e.status ? ` → ${esc(e.status)}` : ""}${dur}${spend}</div>`;
   }).join("");
 }
 

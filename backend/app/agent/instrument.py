@@ -12,6 +12,7 @@ import time
 from collections.abc import Callable
 
 from app.agent.state import CourtState
+from app.observability import llm_usage
 from app.observability.context import bind, reset
 
 logger = logging.getLogger(__name__)
@@ -59,6 +60,7 @@ def instrument(node: Node, name: str) -> Node:
         tokens = bind(thread_id=state.get("thread_id"), change_id=state.get("change_id"))
         logger.info("node.start", extra={"node": name})
         _run_emitter(thread_id, "started", name, {})
+        llm_usage.reset()  # a reused worker thread must not inherit a prior request's usage
         start = time.perf_counter()
         status = ""
         try:
@@ -70,9 +72,11 @@ def instrument(node: Node, name: str) -> Node:
             duration = time.perf_counter() - start
             logger.info("node.end", extra={"node": name, "duration_seconds": duration})
             _node_duration_hook(name, duration)
-            _run_emitter(
-                thread_id, "finished", name, {"duration_seconds": duration, "status": status}
-            )
+            payload: dict[str, object] = {"duration_seconds": duration, "status": status}
+            usage = llm_usage.drain()
+            if usage is not None:
+                payload["llm_usage"] = usage
+            _run_emitter(thread_id, "finished", name, payload)
             reset(tokens)
 
     return wrapped
