@@ -11,7 +11,7 @@
     },
     {
       "type": "TextBlock",
-      "text": "move the rehearsal to 2026-06-16",
+      "text": "give the vendor access to Project X until the campaign is done",
       "wrap": true
     },
     {
@@ -30,7 +30,7 @@
     },
     {
       "type": "TextBlock",
-      "text": "The requested 2026-06-16 collides with an existing commitment (Board review); propose 2026-06-17 instead, with the same calendar, schedule, and announcement ripple.",
+      "text": "Grant least-privilege read-only access to /ProjectX/LaunchAssets until 2026-06-30, then auto-revoke.",
       "wrap": true,
       "color": "Attention"
     },
@@ -43,13 +43,13 @@
     },
     {
       "type": "TextBlock",
-      "text": "• [outlook] The requested date 2026-06-16 collides with 'Board review'",
+      "text": "• [sharepoint] '/ProjectX' holds customer data",
       "wrap": true,
       "weight": "Bolder"
     },
     {
       "type": "TextBlock",
-      "text": "    ↳ Release & Change Management Policy — Schedule changes are controlled changes; Release & Change Management Policy — Coordinated downstream updates; Meeting & Event Scheduling Guidelines — Rescheduling a routine meeting",
+      "text": "    ↳ Third-Party Vendor & Contractor Access Policy — Principle of least privilege; Third-Party Vendor & Contractor Access Policy — Purpose and scope; Third-Party Vendor & Contractor Access Policy — Periodic access review",
       "wrap": true,
       "isSubtle": true,
       "spacing": "Small"
@@ -62,55 +62,45 @@
     },
     {
       "type": "TextBlock",
-      "text": "• [github] Milestone 'Launch Rehearsal' currently due 2026-06-10",
+      "text": "• [request] Requested access has no end date ('until done')",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "• [outlook] Calendar events near the new date",
+      "text": "• [request] Requested scope '/ProjectX' is broader than necessary",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "• [planner] 2 planner task(s) must shift",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
-      "text": "+1 more impact item(s) · grounded in 6 governance fact(s) — see the run page",
+      "text": "grounded in 6 governance fact(s) — see the run page",
       "wrap": true,
       "isSubtle": true,
       "spacing": "Small"
     },
     {
       "type": "TextBlock",
-      "text": "Safe alternative: The requested 2026-06-16 collides with an existing commitment (Board review); propose 2026-06-17 instead, with the same calendar, schedule, and announcement ripple.",
+      "text": "Safe alternative: Grant least-privilege read-only access to /ProjectX/LaunchAssets until 2026-06-30, then auto-revoke.",
       "wrap": true,
       "weight": "Bolder"
     },
     {
       "type": "TextBlock",
-      "text": "• github.update_milestone_due",
+      "text": "• sharepoint.grant_folder_permission",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "• outlook.create_event",
+      "text": "• entra.invite_guest",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "• planner.shift_task_dates",
+      "text": "• entra.schedule_access_revoke",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "• teams.update_announcement",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
-      "text": "Approvers required (any): eng_lead, comms",
+      "text": "Approvers required (all): manager, security_lead",
       "wrap": true
     },
     {
@@ -123,7 +113,7 @@
     },
     {
       "type": "TextBlock",
-      "text": "🧠 Prosecutor: Gathered 6 evidence item(s); tags: schedule.milestone_move, schedule.calendar_conflict, schedule.target_date_conflict, schedule.planner_shift, comms.pending_announcement. Decisive…",
+      "text": "🧠 Prosecutor: Gathered 4 evidence item(s); tags: access.ambiguous_duration, access.overbroad_scope, data.customer_data_present. Decisive: '/ProjectX' holds customer data",
       "wrap": true,
       "isSubtle": true,
       "spacing": "Small"
