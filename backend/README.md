@@ -15,4 +15,5 @@ uv run pytest                        # tests
 ```
 
 Copy `../.env.example` to `../.env` and adjust as needed. `FORCE_ALL_MOCK=true` runs every
-integration as a mock with zero external credentials.
+integration as a mock with zero external credentials — the verification mode used by CI and the
+scenario reproduction; the product path runs with a real LLM provider (ADR-0016).

@@ -10,10 +10,11 @@ that risk. The gate's job is to *not* fire for routine work.
 ## Risk bands
 
 Risk is a deterministic sum of weighted **evidence tags** — machine-readable facts the impact
-phase derived from reading the affected systems. Tags are produced by adapter reads and
-deterministic checks, never by the LLM (see
-[ADR-0009](adr/0009-agentic-roles-and-governed-autonomy.md)): the same evidence always produces
-the same score, the same level, and the same approvers.
+phase derived from reading the affected systems. Tags come from adapter reads, deterministic
+checks, and (additive-only, strictly within the vocabulary the rule packs define) the agentic
+gatherer (see [ADR-0016](adr/0016-llm-deterministic-allocation-contract.md)): a flagged tag can
+raise risk or convene an approver, never lower or remove one, and scoring over the fired tags is
+always deterministic — the same tags always produce the same score, level, and approvers.
 
 | Band | Score | Consequence |
 | --- | --- | --- |
@@ -51,7 +52,9 @@ in — but every action, including the routine ones, carries a real identity int
 
 Approvers are derived **per tag, not per request**: a milestone move adds the engineering lead; a
 pending announcement adds comms; a derived contractual-breach risk adds the account owner. No tag,
-no approver.
+no approver — with one floor: a change **no pack governs at all** lands at MEDIUM with a manager
+quorum (the `ungoverned_change` factor). For an approval gate, "unknown" means "ask a human",
+never "free pass".
 
 ## When a quorum does fire
 
