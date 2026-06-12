@@ -64,6 +64,7 @@ M365 Copilot Chat / Teams
         ▼
   FastAPI (backend/)
      mcp/  api/  bot/  services/  agent/  ports/  adapters/  domain/
+     presentation/ (cross-surface card builders)   llm/ (wire utilities)
      observability/ (logging+metrics)   security/ (run-link HMAC)
   Teams Adaptive Card = the only DECISION UI (MCP tools and the bot's card
   buttons share one service); the read-only run page (signed links,
@@ -100,8 +101,8 @@ M365 Copilot Chat / Teams
 - **LLM calls are governed.** The `LLMProvider` port carries caching + structured-output intent
   (`LlmRequest`) and returns per-call usage telemetry (`LlmResult`); structured output is native
   strict JSON Schema with a typed failure (`LlmOutputError`) and a deterministic fallback at every
-  call site; untrusted content is screened (`GuardrailPort`) and fenced before any LLM reasons over
-  it. Portability seams and deliberately deferred hardening: ADR-0013.
+  call site; untrusted content is screened (`GuardrailPort`) and fenced (`app/llm/untrusted.py`) before any
+  LLM reasons over it. Portability seams and deliberately deferred hardening: ADR-0013.
 - **Audit is append-only** — never updated. Rollback hints are advisory data, never auto-executed.
 
 When you make a significant design choice (e.g. the interrupt-vs-statelessness decision), record it
