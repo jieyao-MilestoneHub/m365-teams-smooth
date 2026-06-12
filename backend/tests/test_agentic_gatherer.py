@@ -76,8 +76,12 @@ def _deterministic(
 _CHANGE = Change(change_id="c1", raw_request="slip the launch", subject="launch")
 
 
-def _response(reads: list[dict[str, object]], assessment: str = "risky") -> str:
-    return json.dumps({"reads": reads, "assessment": assessment})
+def _response(
+    reads: list[dict[str, object]],
+    assessment: str = "risky",
+    tags: list[str] | None = None,
+) -> str:
+    return json.dumps({"reads": reads, "assessment": assessment, "tags": tags or []})
 
 
 def test_valid_reads_append_evidence_and_assessment() -> None:
@@ -95,7 +99,7 @@ def test_valid_reads_append_evidence_and_assessment() -> None:
     assert ("core", "milestone") in kinds  # deterministic core preserved
     assert ("teams", "agentic") in kinds  # LLM-selected read executed
     assert ("prosecutor", "assessment") in kinds
-    assert evidence.tags == ["schedule.milestone_move"]  # tags never come from the LLM
+    assert evidence.tags == ["schedule.milestone_move"]  # no vocabulary -> LLM tags dropped
     assert errors == []
 
 
@@ -248,3 +252,61 @@ def test_blank_assessment_adds_no_item(assessment: str) -> None:
 
     evidence = gatherer(_CHANGE, registry, _NoKnowledge(), [])  # type: ignore[arg-type]
     assert all(i.kind != "assessment" for i in evidence.items)
+
+
+# --- vocabulary-bounded agentic tags ----------------------------------------------------------
+
+
+def test_in_vocabulary_tags_merge_into_the_evidence() -> None:
+    registry = _FakeRegistry({}, [_read_cap("teams", "teams.read_announcement")])
+    llm = _ScriptedLLM(_response([], tags=["crm.renewal_at_risk", "schedule.milestone_move"]))
+    gatherer = LlmEvidenceGatherer(
+        llm,
+        fallback=_deterministic,
+        tag_vocabulary=frozenset({"crm.renewal_at_risk", "schedule.milestone_move"}),
+    )
+    errors: list[str] = []
+    evidence = gatherer(_CHANGE, registry, _NoKnowledge(), errors)  # type: ignore[arg-type]
+    # accepted and deduped against the deterministic core's tags
+    assert evidence.tags == ["schedule.milestone_move", "crm.renewal_at_risk"]
+    assert errors == []
+
+
+def test_out_of_vocabulary_tags_are_dropped_and_recorded() -> None:
+    registry = _FakeRegistry({}, [_read_cap("teams", "teams.read_announcement")])
+    llm = _ScriptedLLM(_response([], tags=["made.up_tag"]))
+    gatherer = LlmEvidenceGatherer(
+        llm, fallback=_deterministic, tag_vocabulary=frozenset({"crm.renewal_at_risk"})
+    )
+    errors: list[str] = []
+    evidence = gatherer(_CHANGE, registry, _NoKnowledge(), errors)  # type: ignore[arg-type]
+    assert evidence.tags == ["schedule.milestone_move"]
+    assert any("made.up_tag" in e for e in errors)
+
+
+def test_without_a_vocabulary_proposed_tags_are_dropped_silently() -> None:
+    registry = _FakeRegistry({}, [_read_cap("teams", "teams.read_announcement")])
+    llm = _ScriptedLLM(_response([], tags=["crm.renewal_at_risk"]))
+    gatherer = LlmEvidenceGatherer(llm, fallback=_deterministic)
+    errors: list[str] = []
+    evidence = gatherer(_CHANGE, registry, _NoKnowledge(), errors)  # type: ignore[arg-type]
+    assert evidence.tags == ["schedule.milestone_move"]
+    assert errors == []  # back-compat: no vocabulary, no error noise
+
+
+def test_prompt_lists_the_vocabulary_only_when_configured() -> None:
+    registry = _FakeRegistry({}, [_read_cap("teams", "teams.read_announcement")])
+    llm = _ScriptedLLM(_response([]))
+    LlmEvidenceGatherer(
+        llm, fallback=_deterministic, tag_vocabulary=frozenset({"crm.renewal_at_risk"})
+    )(_CHANGE, registry, _NoKnowledge(), [])  # type: ignore[arg-type]
+    assert "crm.renewal_at_risk" in llm.prompts[0][1]
+
+    bare = _ScriptedLLM(_response([]))
+    LlmEvidenceGatherer(bare, fallback=_deterministic)(
+        _CHANGE,
+        registry,  # type: ignore[arg-type]
+        _NoKnowledge(),
+        [],
+    )
+    assert "flag evidence tags" not in bare.prompts[0][1]
