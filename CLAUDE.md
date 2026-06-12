@@ -4,12 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this project is
 
-**AI Change Court** — governed execution for risky enterprise decisions in Microsoft Teams. It puts a
-risky decision *on trial* before it becomes action: parse the request, gather cross-system **impact
-evidence**, generate a feasible plan (or a **safe alternative** when the request is unsafe), resolve
-which stakeholders must approve (**quorum**), collect a **verdict**, then execute and keep an
-**append-only audit trail**. The differentiator is that it can **refuse an unsafe decision and
-propose a safer one**. It is not a chatbot and not a workflow macro.
+**AI Change Court** — cross-system impact evidence before a change executes, with an
+**exception-based approval gate** in Microsoft Teams. Every request gets the same automatic
+analysis: parse it, gather cross-system **impact evidence**, generate a feasible plan (or a **safe
+alternative** when the request is unsafe), and score risk deterministically. Routine, low-risk
+changes auto-proceed on the requester's own confirmation — zero approvers added; a **quorum** of
+named roles convenes only when the evidence shows real risk, decides from the evidence chain
+(**verdict**), then the court executes and keeps an **append-only audit trail**. The
+differentiators: it can **refuse an unsafe decision and propose a safer one**, and it composes with
+existing ticket processes instead of duplicating them (analysis-only mode, evidence webhook) —
+it is not a second approval board.
 
 The court pipeline: **intake → impact → options → policy+quorum → [verdict] → execute → verify → audit**.
 
