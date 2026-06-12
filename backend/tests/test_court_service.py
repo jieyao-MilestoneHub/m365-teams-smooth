@@ -83,9 +83,9 @@ def test_submit_holds_for_review_then_cast_completes_idempotently() -> None:
 
 
 def test_low_risk_change_executes_on_requester_send() -> None:
-    # No rule packs -> no governing pack -> no approver: the requester's own confirmation
+    # An approval-free court (no packs AND no policy floor): the requester's own confirmation
     # carries the authority, so sending executes without an approval round-trip.
-    service = build_court_service(_settings(), packs=[])
+    service = build_court_service(_settings(), packs=[], fallback_pack=None)
     summary = service.submit_change(_REQ, requester=REQUESTER)
     assert summary.status == ChangeStatus.AWAITING_REQUESTER_REVIEW.value
 
@@ -176,8 +176,8 @@ def test_analysis_only_terminates_analyzed_even_when_high_risk() -> None:
 
 
 def test_analysis_only_low_risk_does_not_execute() -> None:
-    # Without the analyze guard the no-pack path would execute on the requester's send.
-    service = build_court_service(_settings(), packs=[])
+    # Without the analyze guard the approval-free path would execute on the requester's send.
+    service = build_court_service(_settings(), packs=[], fallback_pack=None)
     summary = service.submit_change(_REQ, run_mode=RunMode.ANALYZE, requester=REQUESTER)
     assert summary.status == ChangeStatus.ANALYZED.value
     trial = service.get_trial(summary.thread_id)

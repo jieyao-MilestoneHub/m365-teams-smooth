@@ -8,6 +8,10 @@ from pydantic import BaseModel, Field
 
 from app.domain import ApproverRole, VerdictType
 
+# Injected into the fired-tag set when no pack governs a change, so the UNGOVERNED fallback
+# pack's factor and quorum rules fire data-driven (the policy node adds no scoring semantics).
+UNGOVERNED_TAG = "governance.ungoverned"
+
 
 class MatchRules(BaseModel):
     """How a pack is selected for a change."""

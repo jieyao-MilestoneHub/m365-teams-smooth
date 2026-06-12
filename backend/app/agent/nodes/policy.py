@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Protocol
 
 from app.agent.deliberate import Deliberator, OfflineDeliberator, record
-from app.agent.policy_rules.models import RulePack
+from app.agent.policy_rules.models import UNGOVERNED_TAG, RulePack
 from app.agent.state import CourtState, serialize
 from app.domain import (
     Approver,
@@ -140,10 +140,13 @@ class PolicyNode:
         packs: list[RulePack],
         resolver: QuorumResolver | None = None,
         deliberator: Deliberator | None = None,
+        *,
+        fallback_pack: RulePack | None = None,
     ) -> None:
         self._packs = packs
         self._resolver = resolver or DefaultQuorumResolver()
         self._deliberator = deliberator or OfflineDeliberator()
+        self._fallback_pack = fallback_pack
 
     def __call__(self, state: CourtState) -> CourtState:
         change = Change.model_validate(state["change"])
@@ -151,6 +154,12 @@ class PolicyNode:
         tags = impact.tags
 
         pack = next((p for p in self._packs if _governs(p, change, tags)), None)
+        if pack is None and self._fallback_pack is not None:
+            # The policy floor: an ungoverned change is never waved through. The sentinel tag
+            # joins the local fired set only (the recorded impact evidence is untouched), so the
+            # fallback pack's factor and quorum rules fire like any other data-driven rule.
+            pack = self._fallback_pack
+            tags = [*tags, UNGOVERNED_TAG]
         if pack is None:
             risk = RiskResult(level=RiskLevel.LOW, score=0, requires_approval=False)
             quorum = Quorum()
