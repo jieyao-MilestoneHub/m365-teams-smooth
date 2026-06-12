@@ -91,3 +91,17 @@ class CompositeNotifier(ApprovalNotifier):
                     "notify.channel_failed",
                     extra={"thread_id": thread_id, "channel": type(notifier).__name__},
                 )
+
+    def analyzed(self, *, thread_id: str, title: str, requester_upn: str) -> None:
+        for notifier in self._notifiers:
+            try:
+                notifier.analyzed(
+                    thread_id=thread_id,
+                    title=title,
+                    requester_upn=requester_upn,
+                )
+            except Exception:
+                logger.warning(
+                    "notify.channel_failed",
+                    extra={"thread_id": thread_id, "channel": type(notifier).__name__},
+                )

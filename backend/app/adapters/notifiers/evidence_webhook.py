@@ -101,6 +101,11 @@ class EvidenceWebhookNotifier(ApprovalNotifier):
             {"title": title, "requester": requester_upn, "approvers": approver_upns},
         )
 
+    def analyzed(self, *, thread_id: str, title: str, requester_upn: str) -> None:
+        # An analysis-only trial has no verdict and no results, so those packet sections are
+        # naturally absent; risk, impact, plan, and the would-be quorum are what the ticket needs.
+        self._post("analyzed", thread_id, {"title": title, "requester": requester_upn})
+
     def _post(self, event: str, thread_id: str, fields: dict[str, object]) -> None:
         payload: dict[str, object] = {"event": event, "thread_id": thread_id, **fields}
         payload.update(self._packet(thread_id))

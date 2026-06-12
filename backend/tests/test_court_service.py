@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from app.adapters.notifiers import FakeNotifier
 from app.agent.policy_rules.models import (
     ApproverRule,
     MatchRules,
@@ -203,6 +204,42 @@ def test_analysis_only_rejects_a_verdict() -> None:
         service.cast_verdict(summary.thread_id, VerdictType.APPROVE, principal=APPROVER)
     trial = service.get_trial(summary.thread_id)
     assert trial is not None and trial.results == []
+
+
+def test_analysis_only_fires_the_analyzed_notification() -> None:
+    # The webhook channel is how the packet reaches an existing ticket — exactly one event,
+    # carrying the thread, the request title, and the requester for the record.
+    service = _analyze_service()
+    fake = FakeNotifier()
+    service.attach_notifier(fake)
+    summary = service.submit_change(_REQ, run_mode=RunMode.ANALYZE, requester=REQUESTER)
+    assert summary.status == ChangeStatus.ANALYZED.value
+    assert fake.analyzed_events == [
+        {
+            "thread_id": summary.thread_id,
+            "title": _REQ[:80],
+            "requester_upn": REQUESTER.upn,
+        }
+    ]
+
+
+def test_normal_submit_fires_no_analyzed_notification() -> None:
+    service = _analyze_service()
+    fake = FakeNotifier()
+    service.attach_notifier(fake)
+    service.submit_change(_REQ, requester=REQUESTER)
+    assert fake.analyzed_events == []
+
+
+def test_analyzed_notification_failure_does_not_fail_submit() -> None:
+    class _ExplodingAnalyzed(FakeNotifier):
+        def analyzed(self, **_: object) -> None:
+            raise RuntimeError("channel down")
+
+    service = _analyze_service()
+    service.attach_notifier(_ExplodingAnalyzed())
+    summary = service.submit_change(_REQ, run_mode=RunMode.ANALYZE, requester=REQUESTER)
+    assert summary.status == ChangeStatus.ANALYZED.value
 
 
 def test_analysis_only_skips_the_requester_review_hold() -> None:

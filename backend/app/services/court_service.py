@@ -184,6 +184,7 @@ class CourtService:
                 change.requester = requester
                 self._runner.update(thread_id, {"change": change.model_dump(mode="json")})
             state = self._runner.advance(thread_id)
+            self._notify_analyzed(thread_id, raw_request, requester)
             return self._summary(thread_id, state)
 
         # Stamp the requester onto the change and hold for self-review. Sending a no-approver
@@ -558,6 +559,28 @@ class CourtService:
                     "event": "approval_requested",
                     "reason": str(err)[:200],
                 },
+            )
+            metrics.increment("notify.failed")
+
+    def _notify_analyzed(self, thread_id: str, raw_request: str, requester: Principal) -> None:
+        """Best-effort delivery of the analysis-only packet; never fails the submit itself."""
+        if self._notifier is None:
+            return
+        try:
+            self._notifier.analyzed(
+                thread_id=thread_id,
+                title=raw_request[:80],
+                requester_upn=requester.upn or requester.key(),
+            )
+            logger.info(
+                "notify.sent",
+                extra={"thread_id": thread_id, "event": "analyzed"},
+            )
+            metrics.increment("notify.sent")
+        except Exception as err:
+            logger.warning(
+                "notify.failed",
+                extra={"thread_id": thread_id, "event": "analyzed", "reason": str(err)[:200]},
             )
             metrics.increment("notify.failed")
 

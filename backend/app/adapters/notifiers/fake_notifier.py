@@ -12,6 +12,7 @@ class FakeNotifier(ApprovalNotifier):
         self.requested: list[dict[str, object]] = []
         self.decisions: list[dict[str, object]] = []
         self.acks: list[dict[str, object]] = []
+        self.analyzed_events: list[dict[str, object]] = []
 
     def approval_requested(
         self,
@@ -67,5 +68,14 @@ class FakeNotifier(ApprovalNotifier):
                 "title": title,
                 "requester_upn": requester_upn,
                 "approver_upns": approver_upns,
+            }
+        )
+
+    def analyzed(self, *, thread_id: str, title: str, requester_upn: str) -> None:
+        self.analyzed_events.append(
+            {
+                "thread_id": thread_id,
+                "title": title,
+                "requester_upn": requester_upn,
             }
         )
