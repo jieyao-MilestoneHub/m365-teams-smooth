@@ -70,7 +70,8 @@ does not add a second approval board — it supplies the evidence your existing 
 - **Evidence into your ticket.** Set `EVIDENCE_WEBHOOK_URL` and each approval event POSTs the
   evidence packet — findings with citations, risk factors, the plan or safer alternative, the
   run-page link — to your ITSM or ticketing endpoint, so the approver you already have approves
-  informed.
+  informed. A reference receiver that lands the packet as a comment on an existing GitHub issue
+  ships in [`backend/scripts/evidence_receiver.py`](backend/scripts/evidence_receiver.py).
 - **Quorum only for exceptions.** If you let it execute, the built-in gate stays exception-based:
   routine changes proceed on the requester's confirmation; named roles are convened only by the
   specific risk evidence that concerns them.
