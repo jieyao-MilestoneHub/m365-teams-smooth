@@ -2,7 +2,7 @@
 
 The bot reuses the backend in-process: it imports ``app.*`` from the sibling ``backend/`` project.
 That package is an application (not pip-installable), so we put it on ``sys.path`` here, before any
-submodule imports ``app.container`` / ``app.mcp.cards``. The bot owns no business logic.
+submodule imports ``app.container`` / ``app.presentation.cards``. The bot owns no business logic.
 """
 
 from __future__ import annotations
