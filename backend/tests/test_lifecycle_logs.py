@@ -161,9 +161,10 @@ def test_adapter_selection_and_fallback(caplog: pytest.LogCaptureFixture) -> Non
     assert _levels(caplog, "adapter.selected") == ["INFO"]
 
 
-def test_parser_fallback_on_garbage_and_unknown_subject(
+def test_parser_fallback_on_garbage(
     caplog: pytest.LogCaptureFixture, mock_registry: ConfigIntegrationRegistry
 ) -> None:
+    # A novel subject is no longer a fallback reason — only an unparseable reply is.
     deterministic = DeterministicRequestParser()
 
     with caplog.at_level(logging.WARNING):
@@ -179,6 +180,5 @@ def test_parser_fallback_on_garbage_and_unknown_subject(
         for r in caplog.records
         if r.getMessage() == "parser.llm_fallback"
     ]
-    assert "parse_error" in reasons
-    assert "unknown_subject" in reasons
-    assert _levels(caplog, "parser.llm_fallback") == ["WARNING", "WARNING"]
+    assert reasons == ["parse_error"]
+    assert _levels(caplog, "parser.llm_fallback") == ["WARNING"]
