@@ -27,7 +27,6 @@ from app.agent.policy_rules.models import (
     VerdictOptionRules,
 )
 from app.agent.runner import CourtRunner
-from app.agent.state import initial_state
 from app.domain import (
     Change,
     ChangeStatus,
@@ -78,9 +77,9 @@ def _build(audit_repo: InMemoryAuditRepository, store: SqliteCheckpointStore) ->
     )
 
 
-def _start_state(thread_id: str) -> Any:
-    return initial_state(
-        thread_id=thread_id,
+def _start(runner: CourtRunner, thread_id: str) -> Any:
+    return runner.start(
+        thread_id,
         change_id="c1",
         raw_request="slip the launch from 2026-06-10 to 2026-06-17",
         source="test",
@@ -94,7 +93,7 @@ def test_run_suspends_at_verdict_then_resumes_to_done() -> None:
     store.setup()
     runner = CourtRunner(_build(repo, store))
 
-    state = runner.start("t1", _start_state("t1"))
+    state = _start(runner, "t1")
     assert state["status"] == ChangeStatus.AWAITING_VERDICT.value
     assert runner.is_awaiting_verdict("t1")
     assert repo.records == []  # nothing audited before the verdict
@@ -112,7 +111,7 @@ def test_run_records_a_deliberation_trace_per_node() -> None:
     store = SqliteCheckpointStore(":memory:")
     store.setup()
     runner = CourtRunner(_build(repo, store))
-    runner.start("t1", _start_state("t1"))
+    _start(runner, "t1")
     runner.resume("t1", Verdict(verdict_id="v1", type=VerdictType.APPROVE, idempotency_key="k1"))
 
     trial = repo.records[0].trial
@@ -128,7 +127,7 @@ def test_resume_is_idempotent_at_runner_level() -> None:
     store = SqliteCheckpointStore(":memory:")
     store.setup()
     runner = CourtRunner(_build(repo, store))
-    runner.start("t1", _start_state("t1"))
+    _start(runner, "t1")
 
     verdict = Verdict(verdict_id="v1", type=VerdictType.APPROVE, idempotency_key="k1")
     runner.resume("t1", verdict)
@@ -141,7 +140,7 @@ def test_fresh_runner_resumes_from_checkpoint() -> None:
     repo = InMemoryAuditRepository()
     store = SqliteCheckpointStore(":memory:")
     store.setup()
-    CourtRunner(_build(repo, store)).start("t1", _start_state("t1"))
+    _start(CourtRunner(_build(repo, store)), "t1")
 
     # A brand-new graph + runner sharing only the checkpoint store resumes the run.
     fresh = CourtRunner(_build(repo, store))
