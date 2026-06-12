@@ -17,8 +17,6 @@ from uuid import uuid4
 
 from pydantic import BaseModel
 
-from app.agent.runner import CourtRunner
-from app.agent.state import CourtState, serialize
 from app.domain import (
     ApprovalDecision,
     ApprovalEvent,
@@ -57,6 +55,7 @@ from app.ports.notifier import ApprovalNotifier
 from app.ports.registry import IntegrationRegistry
 from app.ports.repository import ApprovalLedger, AuditRepository, VerdictLedger
 from app.ports.run_event_sink import RunEventReader
+from app.ports.runner import CourtRunnerPort, CourtState
 from app.security.run_links import run_page_url, sign_thread, verify_thread
 from app.services.approver_directory import ApproverDirectory
 from app.services.dto import ApprovalTimelineEntry, CastResult, RunView, TrialSummary
@@ -76,7 +75,7 @@ class CourtService:
 
     def __init__(
         self,
-        runner: CourtRunner,
+        runner: CourtRunnerPort,
         audit_repo: AuditRepository,
         ledger: VerdictLedger,
         *,
@@ -183,7 +182,7 @@ class CourtService:
             change = _model(state, "change", Change)
             if change is not None:
                 change.requester = requester
-                self._runner.update(thread_id, {"change": serialize(change)})
+                self._runner.update(thread_id, {"change": change.model_dump(mode="json")})
             state = self._runner.advance(thread_id)
             return self._summary(thread_id, state)
 
@@ -194,7 +193,7 @@ class CourtService:
         update: CourtState = {"status": ChangeStatus.AWAITING_REQUESTER_REVIEW.value}
         if change is not None:
             change.requester = requester
-            update["change"] = serialize(change)
+            update["change"] = change.model_dump(mode="json")
         state = self._runner.update(thread_id, dict(update))
         return self._summary(thread_id, state)
 
