@@ -23,7 +23,9 @@ from app.config import Settings
 from app.container import build_court_service
 from app.domain import (
     Change,
+    ChangeStatus,
     ImpactEvidence,
+    RunMode,
     TrialRecord,
     VerdictType,
 )
@@ -164,6 +166,26 @@ def test_acknowledged_posts_the_approvers() -> None:
 
 
 @respx.mock
+def test_analyzed_posts_the_would_be_packet() -> None:
+    # An analysis-only trial: no verdict was cast and nothing executed, so those sections are
+    # absent; what lands on the ticket is the evidence, the risk, the plan, and the would-be quorum.
+    route = respx.post(_URL).mock(return_value=httpx.Response(200))
+    trial = _trial().model_copy(update={"results": []})
+    _notifier(trial=trial).analyzed(
+        thread_id="t-7", title="launch", requester_upn="req@example.com"
+    )
+    assert route.call_count == 1
+    payload = json.loads(route.calls[0].request.content)
+    assert payload["event"] == "analyzed"
+    assert payload["requester"] == "req@example.com"
+    assert payload["risk"]["requires_approval"] is True
+    assert payload["quorum"] == {"policy": "all", "required_roles": ["eng_lead"]}
+    assert "verdict" not in payload
+    assert "results" not in payload
+    assert payload["run_url"] == "https://court.example.com/runs/t-7?t=sig"
+
+
+@respx.mock
 def test_bearer_token_sent_only_when_configured() -> None:
     route = respx.post(_URL).mock(return_value=httpx.Response(200))
     _notifier(token="s3cret", trial=_trial()).acknowledged(
@@ -250,3 +272,29 @@ def test_webhook_failure_does_not_fail_send_for_approval() -> None:
     payload = json.loads(route.calls[0].request.content)
     assert payload["event"] == "approval_requested"
     assert cast(dict[str, object], payload["risk"])["requires_approval"] is True
+
+
+@respx.mock
+def test_webhook_failure_does_not_fail_an_analyze_submit() -> None:
+    # The analyze run delivers its packet through the same composed channel; a dead endpoint
+    # is contained and the submit still concludes ANALYZED.
+    route = respx.post(_URL).mock(return_value=httpx.Response(500))
+    settings = Settings(
+        force_all_mock=True,
+        db_url="sqlite:///:memory:",
+        dry_run_default=True,
+        approver_directory="eng_lead:joel@example.com",
+        evidence_webhook_url=_URL,
+    )
+    service = build_court_service(settings, gatherers={"launch": _gatherer}, packs=[_PACK])
+    summary = service.submit_change(
+        "slip the launch from 2026-06-10 to 2026-06-17",
+        run_mode=RunMode.ANALYZE,
+        requester=_REQUESTER,
+    )
+    assert summary.status == ChangeStatus.ANALYZED.value
+    assert route.call_count == 1
+    payload = json.loads(route.calls[0].request.content)
+    assert payload["event"] == "analyzed"
+    assert "verdict" not in payload
+    assert "results" not in payload
