@@ -67,6 +67,11 @@ class ExecuteNode:
         plan = ExecutionPlan.model_validate(state["options"])
         errors = list(state.get("errors", []))
 
+        # Analysis-only runs never execute — checked before the verdict gate so that not even an
+        # injected approving verdict can run a step. The audit node still records the full trial.
+        if run_mode is RunMode.ANALYZE:
+            return {"results": [], "status": ChangeStatus.ANALYZED.value, "errors": errors}
+
         verdict_data = state.get("verdict")
         verdict_type: VerdictType | None = None
         if verdict_data is not None:

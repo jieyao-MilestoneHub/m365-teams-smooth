@@ -109,3 +109,10 @@ def test_failed_step_run_event_carries_error() -> None:
     assert failed.name == "s2"
     assert failed.status == "failed"
     assert failed.payload["error"]
+
+def test_analyze_skips_execution_even_with_an_approving_verdict() -> None:
+    # The analyze check sits before the verdict gate: not even an injected APPROVE runs a step.
+    node = ExecuteNode(build_mock_registry())
+    result = node(_state(RunMode.ANALYZE, _approve()))
+    assert result["results"] == []
+    assert result["status"] == ChangeStatus.ANALYZED.value

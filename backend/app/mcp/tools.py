@@ -72,7 +72,13 @@ def register_tools(mcp: FastMCP, service: CourtService) -> None:
     def submit_change(
         raw_request: str, source: str = "mcp", run_mode: str = "dry_run"
     ) -> dict[str, object]:
-        """Put a change on trial; returns the trial summary (status, risk, plan, verdicts)."""
+        """Put a change on trial; returns the trial summary (status, risk, plan, verdicts).
+
+        ``run_mode`` is ``"dry_run"`` (predict effects, no side effects), ``"live"`` (apply), or
+        ``"analyze"`` — an impact check only: the trial returns its evidence, risk, plan, and
+        would-be approvers with status ``analyzed`` and never executes; use ``get_trial`` for the
+        full record (the approvers are under ``quorum.required_approvers``).
+        """
         summary = service.submit_change(
             raw_request,
             source=source,

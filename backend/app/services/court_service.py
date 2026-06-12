@@ -135,6 +135,10 @@ class CourtService:
         (``AWAITING_REQUESTER_REVIEW``) — it is *not* auto-approved; the requester must
         :meth:`send_for_approval` or :meth:`withdraw_change`. Without a requester (legacy/local
         flow) a low-risk change is auto-approved so it completes without a human verdict.
+
+        ``run_mode=ANALYZE`` is an impact check: the trial records its evidence, plan, risk, and
+        would-be approvers, then ends ``ANALYZED`` — nothing executes regardless of risk level,
+        no approval round-trip starts, and the run cannot later be resumed into execution.
         """
         # Boundary validation: a change request is a sentence or two; reject (never truncate)
         # anything else so the court only ever deliberates on exactly what was asked.
@@ -169,6 +173,18 @@ class CourtService:
             },
         )
         metrics.increment("trials.submitted")
+
+        if mode is RunMode.ANALYZE:
+            # Analysis-only: stamp the requester for the record, then drive the run through the
+            # skipping execute node to audit — it ends ANALYZED with no resumable next step, so
+            # it never holds for review and the low-risk auto-approve below never engages.
+            if requester is not None:
+                change = _model(state, "change", Change)
+                if change is not None:
+                    change.requester = requester
+                    self._runner.update(thread_id, {"change": serialize(change)})
+            state = self._runner.advance(thread_id)
+            return self._summary(thread_id, state)
 
         if requester is not None and self.approvals_configured():
             # Identity-aware flow: stamp the requester onto the change and hold for self-review.
@@ -208,6 +224,7 @@ class CourtService:
         separation of duties. Without a principal (local, identity-free runs) the legacy
         behaviour is unchanged.
         """
+        self._reject_if_analysis_only(thread_id)
         if principal is not None and self._directory is not None:
             trial = self._trial_or_raise(thread_id)
             requester = trial.change.requester
@@ -281,6 +298,14 @@ class CourtService:
             run_url=self.run_link(thread_id),
         )
 
+    def _reject_if_analysis_only(self, thread_id: str) -> None:
+        """An analysis-only trial carries no executable intent — approval mutations are invalid."""
+        if str(self._runner.state(thread_id).get("run_mode", "")) == RunMode.ANALYZE.value:
+            raise InvalidRequestError(
+                "trial is analysis-only — nothing can be approved or executed; "
+                "submit a new change to act"
+            )
+
     # --- Identity-aware approval routing (two-gate workflow + separation of duties) ---
 
     def send_for_approval(self, thread_id: str, *, actor: Principal, note: str) -> TrialSummary:
@@ -288,6 +313,7 @@ class CourtService:
 
         When the change needs no approver the requester carries the authority, so this executes.
         """
+        self._reject_if_analysis_only(thread_id)
         trial = self._trial_or_raise(thread_id)
         self._require_is_requester(trial, actor, "send their change for approval")
         if not note.strip():
@@ -307,6 +333,7 @@ class CourtService:
 
     def withdraw_change(self, thread_id: str, *, actor: Principal) -> TrialSummary:
         """Requester gives up before approval; terminal and audited, nothing executes."""
+        self._reject_if_analysis_only(thread_id)
         trial = self._trial_or_raise(thread_id)
         self._require_is_requester(trial, actor, "withdraw their change")
         self._append(thread_id, actor, ApprovalDecision.WITHDRAW)
@@ -321,6 +348,7 @@ class CourtService:
         self, thread_id: str, *, actor: Principal, approve: bool, note: str = ""
     ) -> TrialSummary:
         """Approver gate: an authorized approver (≠ requester) approves, or rejects with a note."""
+        self._reject_if_analysis_only(thread_id)
         trial = self._trial_or_raise(thread_id)
         requester = trial.change.requester
         required = self._required_roles(trial)

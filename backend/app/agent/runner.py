@@ -47,6 +47,19 @@ class CourtRunner:
         self._invoke(None, config, thread_id)
         return self.state(thread_id)
 
+    def advance(self, thread_id: str) -> CourtState:
+        """Continue a suspended run past the gate without recording a verdict.
+
+        Used by analysis-only runs: the execute node skips on ``run_mode`` alone, so driving the
+        graph through to ``audit`` leaves a finished checkpoint (no resumable next step) and a
+        persisted audit record. Past the gate this is a no-op, like :meth:`resume`.
+        """
+        config = self._config(thread_id)
+        if not self._graph.get_state(config).next:
+            return self.state(thread_id)
+        self._invoke(None, config, thread_id)
+        return self.state(thread_id)
+
     def _invoke(
         self, input_state: CourtState | None, config: dict[str, Any], thread_id: str
     ) -> None:
