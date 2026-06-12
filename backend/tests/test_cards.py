@@ -239,3 +239,27 @@ def test_blocked_card_states_the_refusal() -> None:
     thread_id, trial = _trial(_service(), "slip the launch from 2026-06-10 to 2026-06-17")
     blocked = _texts(build_change_court_card(thread_id, trial, status="blocked"))
     assert "Blocked" in blocked and "unsupported action" in blocked
+
+def test_no_approver_card_states_the_approval_requirement_explicitly() -> None:
+    # The routine path: an empty quorum renders the explicit no-approval line.
+    service = _service()
+    summary = service.submit_change("post the Project X weekly report")
+    trial = service.get_trial(summary.thread_id)
+    assert trial is not None
+    assert trial.quorum is not None and not trial.quorum.required_approvers
+
+    blob = _texts(build_change_court_card(summary.thread_id, trial))
+    assert "Approval required: none — the requester's confirmation executes it." in blob
+    assert "Approvers required" not in blob
+
+
+def test_quorum_card_keeps_the_approvers_line_only() -> None:
+    service = _service()
+    summary = service.submit_change("promise Customer A that SSO is GA by 2026-06-17")
+    trial = service.get_trial(summary.thread_id)
+    assert trial is not None
+    assert trial.quorum is not None and trial.quorum.required_approvers
+
+    blob = _texts(build_change_court_card(summary.thread_id, trial))
+    assert "Approvers required" in blob
+    assert "Approval required: none" not in blob
