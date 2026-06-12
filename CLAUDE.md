@@ -19,7 +19,8 @@ The court pipeline: **intake → impact → options → policy+quorum → [verdi
 
 ## Current status — read first
 
-The backend engine is **implemented and runs end-to-end locally, credential-free**. `backend/` holds
+The backend engine is **implemented and runs end-to-end locally** (credential-free verification
+mode — offline fakes exist to verify the product path, not to replace it; ADR-0016). `backend/` holds
 the full layered app (`agent/ mcp/ api/ bot/ services/ ports/ adapters/ domain/ observability/
 security/`), the LangGraph court pipeline, SQLAlchemy persistence, and a green test suite; the
 headline demo and its additional capabilities pass under `scripts/verify.sh`. Every integration has
@@ -81,12 +82,14 @@ M365 Copilot Chat / Teams
 - **LangGraph single-agent "Change Court."** Nodes `intake → impact → options → policy+quorum →
   execute → verify → audit`, each state-in/state-out, presented as roles (Prosecutor=impact,
   Defender=options, Clerk=audit, Executor=execute):
-  - `intake` — parse into a structured `Change`; validate every requested action against **registered
+  - `intake` — parse into a structured `Change` (open kebab-case subject; the five specialized
+    subjects are prompt hints, not a gate); validate every requested action against **registered
     capabilities** (hallucination guard — unsupported actions blocked, not planned).
   - `impact` — gather second-order consequences via adapter **read** capabilities → evidence.
   - `options` — feasible plan, or a **safe alternative** when the request is unsafe.
   - `policy+quorum` — deterministic risk → `requires_approval` + required approvers + verdict options;
-    rules are data, not code.
+    rules are data, not code. A change no pack governs lands on the UNGOVERNED floor (MEDIUM,
+    manager approval) — unknown means "ask a human".
   - `execute` — registry → adapter per step; honors `run_mode`.
   - `verify` — checks the live writes against the reviewed plan (agentic when an LLM is configured).
   - `audit` — append-only before/after + rollback hints + trial record.
@@ -123,7 +126,7 @@ uv run pytest                          # tests
 uv run pytest path/to/test.py::test_name   # single test
 ```
 
-Common workflows from the repo root (all fully mocked / credential-free):
+Common workflows from the repo root (verification mode — fully mocked, credential-free):
 
 ```bash
 make demo            # run the headline (Informed Approval) end-to-end (make demo-all adds the rest)

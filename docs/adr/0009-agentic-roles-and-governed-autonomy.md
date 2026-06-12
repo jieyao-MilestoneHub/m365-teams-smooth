@@ -1,6 +1,8 @@
 # ADR-0009: Agentic roles under governed autonomy
 
-- **Status:** Accepted
+- **Status:** Accepted — amended by [ADR-0016](0016-llm-deterministic-allocation-contract.md)
+  (the "tags never come from the LLM" stance is superseded by vocabulary-bounded, additive-only
+  agentic tags)
 - **Date:** 2026-06-04
 
 ## Context

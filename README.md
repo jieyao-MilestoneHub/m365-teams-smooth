@@ -78,8 +78,10 @@ does not add a second approval board — it supplies the evidence your existing 
 
 ## Quick start — reproduce the demo
 
-Runs **fully locally, credential-free** — every integration mocked, dry-run by default, no Microsoft
-365 tenant. Needs Python 3.11+ with [`uv`](https://docs.astral.sh/uv/).
+The commands below run the **verification mode** — every integration mocked, the offline LLM
+fake, dry-run by default, no Microsoft 365 tenant — for reproducing the scenarios and keeping CI
+green. The product path runs with a real LLM provider and real identities; the offline fixtures
+exist to verify it, not to replace it. Needs Python 3.11+ with [`uv`](https://docs.astral.sh/uv/).
 
 ```bash
 cp .env.example .env

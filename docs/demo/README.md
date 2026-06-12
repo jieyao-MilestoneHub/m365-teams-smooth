@@ -37,7 +37,9 @@ collides visibly with a **Board review** and is refused for the next free day (*
 a clean **2026-06-17** request is approved as feasible.
 
 One more moment worth showing: appending **"and delete the repo"** is **blocked at intake** — no
-registered capability supports it, so it is never planned or executed.
+registered capability supports it, so it is never planned or executed. And an off-script request
+the rule packs don't govern is never waved through either: it lands on the ungoverned floor and
+waits for a manager.
 
 Every step runs through the same surfaces: the **Change Court Adaptive Card** (the decision UI), the
 **read-only pipeline run page** on a second screen (signed links, CI-style stage rail), and the
