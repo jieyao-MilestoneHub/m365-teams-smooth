@@ -66,7 +66,7 @@ from app.agent.nodes.verify import VerifyNode
 from app.agent.planners import PLANNERS, generic_planner
 from app.agent.policy_rules.models import RulePack
 from app.agent.policy_rules.packs import UNGOVERNED, default_packs
-from app.agent.policy_rules.vocabulary import marks_unsafe_tags
+from app.agent.policy_rules.vocabulary import marks_unsafe_tags, tag_vocabulary
 from app.agent.runner import CourtRunner
 from app.config import Settings
 from app.domain.run_events import RunEventKind
@@ -316,6 +316,7 @@ def build_court_service(
     # top of each subject's deterministic gatherer, and the Defender drafts each plan within the
     # deterministic baseline's kind (refusal authority stays deterministic). Offline/mocked runs
     # stay fully deterministic.
+    vocabulary = tag_vocabulary(packs)
     if llm_is_real:
         gatherers = {
             subject: LlmEvidenceGatherer(
@@ -325,6 +326,7 @@ def build_court_service(
                 memory=memory,
                 guardrail=guardrail,
                 guardrail_blocking=block,
+                tag_vocabulary=vocabulary,
             )
             for subject, gatherer in gatherers.items()
         }
@@ -355,6 +357,7 @@ def build_court_service(
             memory=memory,
             guardrail=guardrail,
             guardrail_blocking=block,
+            tag_vocabulary=vocabulary,
         )
         default_planner = LlmPlanner(
             llm,

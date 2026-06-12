@@ -49,6 +49,10 @@ class _LlmRead(BaseModel):
 class _LlmGather(BaseModel):
     reads: list[_LlmRead] = Field(default_factory=list)
     assessment: str = ""
+    # Evidence tags the model proposes — accepted only from the registered vocabulary, so the
+    # LLM can escalate (raise risk, convene approvers, trigger the deterministic refusal) but
+    # never invent a signal policy doesn't know.
+    tags: list[str] = Field(default_factory=list)
 
 
 _GATHER_SCHEMA = schema_of(_LlmGather)
@@ -66,10 +70,12 @@ class LlmEvidenceGatherer:
         memory: MemoryPort | None = None,
         guardrail: GuardrailPort | None = None,
         guardrail_blocking: bool = True,
+        tag_vocabulary: frozenset[str] = frozenset(),
     ) -> None:
         self._llm = llm
         self._fallback = fallback
         self._max_reads = max_reads
+        self._vocabulary = tag_vocabulary
         self._memory = memory
         self._guardrail = guardrail
         self._block = guardrail_blocking
@@ -83,12 +89,13 @@ class LlmEvidenceGatherer:
     ) -> ImpactEvidence:
         evidence = self._fallback(change, registry, knowledge, errors)
         try:
-            extra = self._agentic_items(change, registry, evidence, errors)
+            extra, tags = self._agentic_items(change, registry, evidence, errors)
         except Exception as exc:  # noqa: BLE001 — an unsure Prosecutor adds nothing
             logger.warning("agentic.gather_fallback", extra={"error": str(exc)})
             metrics.increment("agentic.gather.fallbacks")
             return evidence
         evidence.items.extend(extra)
+        evidence.tags.extend(t for t in tags if t not in evidence.tags)
         return evidence
 
     # --- the agentic loop -------------------------------------------------------------------
@@ -99,14 +106,14 @@ class LlmEvidenceGatherer:
         registry: IntegrationRegistry,
         gathered: ImpactEvidence,
         errors: list[str],
-    ) -> list[EvidenceItem]:
+    ) -> tuple[list[EvidenceItem], list[str]]:
         catalog = {
             (c.system, c.name): c
             for c in registry.capabilities()
             if c.kind is CapabilityKind.READ
         }
         if not catalog:
-            return []
+            return [], []
 
         # The request and gathered evidence come from third parties; screen for prompt injection
         # before the Prosecutor reasons over them. A flag falls back to the deterministic evidence.
@@ -116,7 +123,7 @@ class LlmEvidenceGatherer:
             if verdict.flagged:
                 logger.warning("agentic.guardrail_blocked", extra={"cats": verdict.categories})
                 metrics.increment("guardrail.input_blocked")
-                return []
+                return [], []
 
         text = self._llm.generate(
             LlmRequest(
@@ -180,7 +187,15 @@ class LlmEvidenceGatherer:
                     summary=result.assessment.strip()[:_MAX_ASSESSMENT_CHARS],
                 )
             )
-        return items
+
+        # Tag validation is deterministic and additive-only: in-vocabulary tags pass through to
+        # policy; everything else is dropped. With no vocabulary configured every proposal is
+        # dropped silently — the construction-time default keeps legacy wiring tag-free.
+        accepted = [t for t in dict.fromkeys(result.tags) if t in self._vocabulary]
+        rejected = sorted(set(result.tags) - self._vocabulary)
+        if rejected and self._vocabulary:
+            errors.append(f"rejected unrecognized agentic tag(s): {', '.join(rejected)}")
+        return items, accepted
 
     @staticmethod
     def _missing_params(capability: Capability, params: dict[str, object]) -> list[str]:
@@ -222,8 +237,15 @@ class LlmEvidenceGatherer:
             lines.append(f"- {system} :: {name}: {cap.description or 'no description'}{req}")
         shape = (
             '{"reads": [{"system": str, "name": str, "params": JSON-encoded object string}], '
-            '"assessment": str}'
+            '"assessment": str, "tags": [str]}'
         )
+        vocabulary = ""
+        if self._vocabulary:
+            listed = ", ".join(sorted(self._vocabulary))
+            vocabulary = (
+                "You may also flag evidence tags — ONLY from this list, and only when the "
+                f"gathered evidence supports them: {listed}.\n"
+            )
         return (
             "You are the Prosecutor in a change-governance court: your job is to surface "
             "second-order consequences of a risky change before it executes.\n"
@@ -232,5 +254,6 @@ class LlmEvidenceGatherer:
             "already gathered) that would reveal blockers, conflicts, commitments, or exposure. "
             "Only use capabilities from this catalog:\n" + "\n".join(lines) + "\n"
             "Then write a one-paragraph impact assessment of the strongest risk you see.\n"
-            f"Respond with ONLY a JSON object of this shape: {shape}"
+            + vocabulary
+            + f"Respond with ONLY a JSON object of this shape: {shape}"
         )

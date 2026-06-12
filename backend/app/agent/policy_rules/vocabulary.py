@@ -15,3 +15,12 @@ def marks_unsafe_tags(packs: list[RulePack]) -> frozenset[str]:
     return frozenset(
         rule.when_tag for pack in packs for rule in pack.risk_factors if rule.marks_unsafe
     )
+
+
+def tag_vocabulary(packs: list[RulePack]) -> frozenset[str]:
+    """Every tag policy can react to: risk factors, quorum approver rules, pack match rules."""
+    return frozenset(
+        [rule.when_tag for pack in packs for rule in pack.risk_factors]
+        + [approver.when_tag for pack in packs for approver in pack.quorum.approvers]
+        + [tag for pack in packs for tag in pack.match.any_tag]
+    )
