@@ -14,8 +14,6 @@ import logging
 from pydantic import BaseModel, Field, field_validator
 
 from app.agent.agentic.precedents import render_precedents
-from app.agent.agentic.structured import decode_json_object, parse_json, schema_of
-from app.agent.agentic.untrusted import HARDENING, fence
 from app.agent.nodes.options import Planner
 from app.domain import (
     Capability,
@@ -28,6 +26,8 @@ from app.domain import (
     PlanKind,
     param_violations,
 )
+from app.llm.structured import decode_json_object, parse_json, schema_of
+from app.llm.untrusted import HARDENING, fence
 from app.observability import metrics
 from app.ports.guardrail import GuardrailPort
 from app.ports.llm import LLMProvider, LlmRequest

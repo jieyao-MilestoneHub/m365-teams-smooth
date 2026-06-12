@@ -2,8 +2,8 @@
 
 ``schema_of`` renders a Pydantic wire model as a strict-mode JSON Schema for native structured
 output; ``parse_json`` reads the response back, tolerating prose from providers that don't honor
-schemas (the offline fake, test stubs). ``agent/`` depends on ports only, so everything here is
-plain JSON — no SDK types.
+schemas (the offline fake, test stubs). Everything here is plain JSON — no SDK types — so both
+the agent roles and the LLM-backed adapters can share it without crossing a layer boundary.
 """
 
 from __future__ import annotations

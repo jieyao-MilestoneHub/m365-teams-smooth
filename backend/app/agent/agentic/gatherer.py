@@ -16,11 +16,11 @@ from concurrent.futures import ThreadPoolExecutor
 from pydantic import BaseModel, Field, field_validator
 
 from app.agent.agentic.precedents import render_precedents
-from app.agent.agentic.structured import decode_json_object, parse_json, schema_of
-from app.agent.agentic.untrusted import HARDENING, fence
 from app.agent.nodes.impact import Gatherer
 from app.domain import Capability, CapabilityKind, Change, EvidenceItem, ImpactEvidence
 from app.domain.errors import IntegrationError
+from app.llm.structured import decode_json_object, parse_json, schema_of
+from app.llm.untrusted import HARDENING, fence
 from app.observability import metrics
 from app.ports.guardrail import GuardrailPort
 from app.ports.integration import ReadQuery

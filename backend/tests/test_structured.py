@@ -10,7 +10,7 @@ import pytest
 from app.adapters.parsers.llm_backed import _LlmParse
 from app.agent.agentic.gatherer import _LlmGather, _LlmRead
 from app.agent.agentic.planner import _LlmPlan
-from app.agent.agentic.structured import (
+from app.llm.structured import (
     decode_json_object,
     extract_json,
     parse_json,
