@@ -58,7 +58,7 @@ make cards    # exports the Adaptive Card JSON to m365/adaptive-cards/generated/
 Open any exported card in the [Adaptive Cards Designer](https://adaptivecards.io/designer) for a
 pixel-faithful, tenant-free preview.
 
-**Clickable cards with live verdict buttons** — the [Playground bot](../../m365/playground-bot/)
+**Clickable cards with live approval buttons** — the [Playground bot](../../m365/playground-bot/)
 renders the real cards with no tenant:
 
 ```bash
@@ -67,8 +67,9 @@ npx @microsoft/teams-app-test-tool@latest start    # terminal 2 — opens the Pl
 ```
 
 Type `move the launch rehearsal to 2026-06-22` into the Playground chat, watch the Change Court card
-render the refusal and its reasoning, and click the verdict buttons (`queue` lists pending
-approvals). With `RUN_LINK_SECRET` set,
+render the refusal and its reasoning, and drive the two identity gates with the Playground's user
+switcher: send it for approval as the requester, then switch users and decide as the approver
+(`queue` lists the approvals waiting on you). With `RUN_LINK_SECRET` set,
 each card also carries a **View pipeline run** link to the read-only, signed run log
 (`/runs/<thread_id>`) — it inspects; decisions still happen only on the card.
 

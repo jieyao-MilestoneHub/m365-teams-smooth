@@ -48,8 +48,10 @@ evidence tags to risk weights and approver roles:
 - **Specific evidence pulls in the role that owns that risk.** A milestone move adds the
   engineering lead; a pending announcement adds comms; a derived contractual-breach risk adds the
   account owner. No tag, no approver.
-- **Separation of duties is enforced**, not assumed: when a quorum is required, the requester
-  cannot approve their own change, and approvals are an append-only event ledger
+- **Separation of duties is enforced**, not assumed: every action — submit, confirm, decide —
+  carries an authenticated identity
+  ([ADR-0014](docs/adr/0014-identity-required-approvals.md)); when a quorum is required, the
+  requester cannot approve their own change, and approvals are an append-only event ledger
   ([ADR-0006](docs/adr/0006-approval-routing-separation-of-duties.md)).
 - **Risk scoring and quorum derivation are deterministic on purpose** — the same evidence always
   asks the same people ([ADR-0009](docs/adr/0009-agentic-roles-and-governed-autonomy.md)).

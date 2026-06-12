@@ -42,11 +42,12 @@ writes the audit record, but no one else is asked and nothing waits in a queue.
 
 ## What auto-approves, and why
 
-When a trial's risk lands in the **low** band, the service auto-approves it: the change executes
-without a human verdict, and the trial record shows exactly what was read and written. With an
-authenticated requester, the trial instead pauses once at the requester's *own* review gate —
-self-confirmation, not an approval layer. Either way, no second person is involved unless an
-evidence tag pulled one in.
+Every trial is identity-bound: the authenticated requester submits, and the trial pauses once at
+the requester's *own* review gate — self-confirmation, not an approval layer
+([ADR-0014](adr/0014-identity-required-approvals.md)). When the trial's risk lands in the **low**
+band, sending it executes it right there, on the requester's confirmation; the trial record shows
+exactly what was read and written. No second person is involved unless an evidence tag pulled one
+in — but every action, including the routine ones, carries a real identity into the audit trail.
 
 Approvers are derived **per tag, not per request**: a milestone move adds the engineering lead; a
 pending announcement adds comms; a derived contractual-breach risk adds the account owner. No tag,
