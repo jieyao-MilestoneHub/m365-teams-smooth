@@ -79,4 +79,6 @@ competing:
   resumable: a pre-ticket answer to "what would this break, and who would it concern?".
 - **The evidence webhook** (`EVIDENCE_WEBHOOK_URL`) POSTs each approval event with the trial's
   evidence packet — findings with citations, risk factors, the plan or safer alternative, the
-  run-page link — so your existing ticket carries the analysis its approver was missing.
+  run-page link — so your existing ticket carries the analysis its approver was missing. A
+  reference receiver that posts the packet onto an existing GitHub issue ships in
+  [`backend/scripts/evidence_receiver.py`](../backend/scripts/evidence_receiver.py).
