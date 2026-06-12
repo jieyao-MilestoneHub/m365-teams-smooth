@@ -1,7 +1,7 @@
 # Developer entry points. Backend lives in backend/ and uses uv.
 # `make check` is the local pre-PR gate (lint + type-check + tests).
 
-.PHONY: help sync run lint type test check demo demo-all cards cards-all migrate verify setup-demo setup-demo-apply compose-up compose-down bot package
+.PHONY: help sync run lint type test check demo demo-all demo-ticket cards cards-all migrate verify setup-demo setup-demo-apply compose-up compose-down bot package
 
 help:
 	@echo "Targets:"
@@ -13,6 +13,7 @@ help:
 	@echo "  check        lint + type + test (local pre-PR gate)"
 	@echo "  demo         run the headline demo end-to-end (Informed Approval) and print each Change Court"
 	@echo "  demo-all     demo + the additional capabilities the engine handles (not recorded)"
+	@echo "  demo-ticket  analysis-only trial + evidence packet posted back to the ticket (credential-free by default)"
 	@echo "  cards        export the headline Change Court Adaptive Card JSON (m365/adaptive-cards/generated)"
 	@echo "  cards-all    export cards for every capability, not just the headline"
 	@echo "  migrate      apply database migrations (alembic upgrade head)"
@@ -45,6 +46,9 @@ demo:
 
 demo-all:
 	cd backend && uv run python -m scripts.demo --all
+
+demo-ticket:
+	cd backend && uv run python -m scripts.demo_ticket
 
 cards:
 	cd backend && uv run python -m scripts.export_cards
