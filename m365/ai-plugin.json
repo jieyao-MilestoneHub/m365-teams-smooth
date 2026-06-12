@@ -3,7 +3,7 @@
   "schema_version": "v2.4",
   "name_for_human": "AI Change Court",
   "description_for_human": "Cross-system impact evidence for a change; approvers only when evidence shows risk; full audit.",
-  "description_for_model": "Use to open and review an impact-analysis trial for a cross-system change (routine low-risk changes need no approver; risky ones resolve required approver roles). submit_change opens a trial and returns the impact, risk, plan (or safe alternative), and required approvers; get_trial returns the full record; cast_verdict records a decision (use accept_alternative for the safe alternative); send_for_approval/withdraw_change/decide drive the separation-of-duties approval flow; list_pending_approvals is the approver's queue; acknowledge_outcome lets the requester confirm a concluded trial's outcome; get_status returns the lifecycle state.",
+  "description_for_model": "Use to open and review an impact-analysis trial for a cross-system change (routine low-risk changes need no approver; risky ones resolve required approver roles). submit_change opens a trial and returns the impact, risk, plan (or safe alternative), and required approvers (run_mode=\"analyze\" makes it an impact check that never executes and reports the would-be approvers); get_trial returns the full record; cast_verdict records a decision (use accept_alternative for the safe alternative); send_for_approval/withdraw_change/decide drive the separation-of-duties approval flow; list_pending_approvals is the approver's queue; acknowledge_outcome lets the requester confirm a concluded trial's outcome; get_status returns the lifecycle state.",
   "namespace": "changecourt",
   "functions": [
     {
