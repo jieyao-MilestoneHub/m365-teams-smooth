@@ -22,7 +22,8 @@ trail.
 
 What that buys a team, concretely:
 
-- **Fewer half-done changes** — one request updates every affected system, or none.
+- **Fewer half-done changes** — one request carries every affected system in one reviewed plan,
+  executed step by step; failures are recorded, verified, and auditable, never silently dropped.
 - **Fewer latent breaches reaching execution** — conflicts no single screen shows are caught and
   refused, with a safer date or scope already proposed.
 - **Faster informed sign-off** — the rare approver starts from the evidence packet, not an
@@ -61,17 +62,22 @@ The full model — risk bands, the shipped rule packs, what auto-approves and wh
 
 ## Where it fits your existing process
 
-If your changes already flow through a ticket with review, notification, and audit, Change Court
-does not add a second approval board — it supplies the evidence your existing approval is missing:
+**The ticket stays the system of record. Change Court supplies the evidence packet the ticket was
+missing.** If your changes already flow through a ticket with review, notification, and audit,
+Change Court does not add a second approval board — it strengthens your existing approval process
+with evidence:
 
 - **Analysis-only pre-check.** Submit with `run_mode="analyze"`: the impact pipeline runs and
   stops — the evidence, the would-be plan, the risk level, and the would-be approvers, with nothing
-  executed. A pre-ticket answer to "what would this break?".
-- **Evidence into your ticket.** Set `EVIDENCE_WEBHOOK_URL` and each approval event POSTs the
-  evidence packet — findings with citations, risk factors, the plan or safer alternative, the
-  run-page link — to your ITSM or ticketing endpoint, so the approver you already have approves
-  informed. A reference receiver that lands the packet as a comment on an existing GitHub issue
-  ships in [`backend/scripts/evidence_receiver.py`](backend/scripts/evidence_receiver.py).
+  executed. The concluded analysis is itself delivered as an `analyzed` webhook event, so the
+  answer to "what would this break, and who would it concern?" lands where the ticket lives.
+- **Evidence into your ticket.** Set `EVIDENCE_WEBHOOK_URL` and every trial event — the `analyzed`
+  conclusion and each approval event — POSTs the evidence packet (findings with citations, risk
+  factors, the plan or safer alternative, the run-page link) to your ITSM or ticketing endpoint,
+  so the approver you already have approves informed. A reference receiver that lands the packet
+  as a comment on an existing GitHub issue ships in
+  [`backend/scripts/evidence_receiver.py`](backend/scripts/evidence_receiver.py), and
+  `make demo-ticket` runs the whole flow credential-free.
 - **Quorum only for exceptions.** If you let it execute, the built-in gate stays exception-based:
   routine changes proceed on the requester's confirmation; named roles are convened only by the
   specific risk evidence that concerns them.

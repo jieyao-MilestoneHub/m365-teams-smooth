@@ -1,8 +1,10 @@
 # Demo-day checklist
 
-Operational guardrails for walking the live deployment through the **Informed Approval** headline
-(and the two-user approval flow) without self-inflicted surprises. The credential-free local path
-(`make demo`, the Playground bot) needs none of this — this page is for the deployed instance.
+Operational guardrails for walking the live deployment through the headline — the **ticket
+demo** (analysis-only evidence packet onto the ticket, then the escalation with its two-user
+approval flow) — without self-inflicted surprises. The credential-free local path
+(`make demo-ticket`, `make demo`, the Playground bot) needs none of this — this page is for the
+deployed instance.
 
 ## Freeze the deployment
 
@@ -24,7 +26,20 @@ Operational guardrails for walking the live deployment through the **Informed Ap
 4. Tail the logs while doing it: `az containerapp logs show -n changecourt -g changecourt-rg
    --follow` — `notify.sent`, `proactive.create`, and `llm.call` lines confirm each leg.
 
-## The two-user separation-of-duties walk
+## The ticket pre-flight (Act 1)
+
+1. `make setup-demo-apply` — creates the demo ticket if missing and prints its `EVIDENCE_ISSUE`
+   number; re-running it clears the ticket's prior evidence comments, so run it **between takes**
+   (every `make demo-ticket` adds 2–4 comments).
+2. Start the receiver where the backend can reach it:
+   `GITHUB_TOKEN=… GITHUB_REPO=… EVIDENCE_ISSUE=… uv run uvicorn scripts.evidence_receiver:app
+   --port 8088` (from `backend/`), and set `EVIDENCE_WEBHOOK_URL=http://<receiver-host>:8088/evidence`
+   on the backend.
+3. One throwaway `EVIDENCE_WEBHOOK_URL=… make demo-ticket`; confirm the issue gains the
+   **"Impact analysis — nothing executed"** comments (would-be approvers on the breach, none on
+   the routine request) before the window.
+
+## The two-user separation-of-duties walk (Act 2)
 
 Prerequisites: `APPROVER_DIRECTORY` maps the quorum roles (`eng_lead`, `comms`, `account_owner`,
 …) to the **approver's Entra object id** (the directory keys on oid, not UPN), and the requester
@@ -45,8 +60,10 @@ signs in as a different, low-privilege account.
 ## Recording
 
 - Record the headline scenario only (see [the demo script](./README.md)); keep it under five
-  minutes: one sentence in → impact evidence → refusal + safe alternative → informed verdict →
-  execution → audit.
+  minutes: the ticket and its missing evidence → the analysis-only packet lands as a comment
+  (would-be approvers; nothing executed) → escalation: refusal + safe alternative → informed
+  verdict → step-by-step execution → audit, with the decision comments arriving on the same
+  ticket.
 - Capture the run page on a second screen for the execution beats.
 - Do a full silent dry run immediately before recording; if anything misfires, fix, re-verify the
   *After the final pre-demo deploy* list, and only then record.

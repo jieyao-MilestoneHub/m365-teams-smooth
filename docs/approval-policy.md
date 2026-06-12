@@ -80,9 +80,13 @@ competing:
 
 - **Analysis-only mode** (`run_mode="analyze"`) runs the impact pipeline and stops — the evidence,
   the would-be plan, the risk level, and the would-be approvers, with nothing executed and nothing
-  resumable: a pre-ticket answer to "what would this break, and who would it concern?".
-- **The evidence webhook** (`EVIDENCE_WEBHOOK_URL`) POSTs each approval event with the trial's
-  evidence packet — findings with citations, risk factors, the plan or safer alternative, the
-  run-page link — so your existing ticket carries the analysis its approver was missing. A
-  reference receiver that posts the packet onto an existing GitHub issue ships in
-  [`backend/scripts/evidence_receiver.py`](../backend/scripts/evidence_receiver.py).
+  resumable: a pre-ticket answer to "what would this break, and who would it concern?". The
+  concluded analysis is delivered as an `analyzed` webhook event, not only as the API response.
+- **The evidence webhook** (`EVIDENCE_WEBHOOK_URL`) POSTs each trial event — the `analyzed`
+  conclusion and every approval event — with the trial's evidence packet: findings with citations,
+  risk factors, the plan or safer alternative, the run-page link — so your existing ticket carries
+  the analysis its approver was missing. A reference receiver that posts the packet onto an
+  existing GitHub issue ships in
+  [`backend/scripts/evidence_receiver.py`](../backend/scripts/evidence_receiver.py); the analyzed
+  packet renders with conditional language (the would-be gate and would-be approvers).
+  `make demo-ticket` runs the whole flow credential-free.

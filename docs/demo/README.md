@@ -1,71 +1,88 @@
-# The demo — Informed Approval
+# The demo — the ticket stays the system of record
 
-*One request. Four systems. No blind approval.* Approval is common; **informed** approval is rare.
-This single scenario shows the difference end to end, and it runs **credential-free** on a laptop.
+A change-request ticket already exists in the team's normal system of record — a GitHub issue, an
+ITSM change, an approval queue. The ticket holds the request; it is missing the impact evidence.
+That gap is what this demo fills:
 
-## The scenario
+> **The ticket stays the system of record. AI Change Court supplies the evidence packet the
+> ticket was missing.**
 
-A program manager types one sentence in Teams — **"move the launch rehearsal to 2026-06-22"** — and
-to them it's just changing a date. The 22nd is even **free on the calendar**. A human would approve
-it on sight. The court refuses it, because it reads what no single screen shows, in three beats:
+The court is not a second approval board. It strengthens the existing approval process with
+evidence: before anyone approves, an **analysis-only trial** reads the connected systems, gathers
+what would break, proposes a safer alternative when the request is unsafe as posed, and works out
+which approvers the evidence would actually concern — **nothing executes** — and the packet lands
+back on the ticket as a comment. Routine work shows **zero would-be approvers**; high-risk work
+names the specific owners its evidence implicates. The whole flow runs **credential-free** on a
+laptop.
 
-1. **Impact before approval.** It reads the load-bearing date across systems: the **GitHub**
-   `Launch Rehearsal` milestone (and its **dependent** `Customer Go-Live` milestone), the **Outlook**
-   calendar, dependent **Planner** tasks, the **Teams** announcement, the **CRM** contract terms, and
-   the published **SharePoint** change-freeze calendar.
-2. **Safety before execution — the catch no human makes.** The 22nd is clear on the calendar, yet
-   cross-referencing three systems reveals a latent breach: it is **past the contractual
-   launch-readiness SLA** (clause LR-3, 2026-06-21 — CRM), **inside the release-freeze window**
-   (2026-06-19→24 — SharePoint), and it **compresses the `Customer Go-Live` buffer** (GitHub). Any
-   one is a yellow flag; together they are a hard breach. The court surfaces the **counterfactual**
-   ("had this been approved it would have breached … first breach date 2026-06-22"), **refuses the
-   request as posed**, and proposes the latest date that honors every constraint — **2026-06-18** —
-   as a safe alternative. No plain "approve" is offered; an *informed* approver (the `eng_lead`,
-   `comms`, and `account_owner` quorum), seeing the chain of reasoning, the alternative, and the
-   rollback hints, decides, and the run resumes from its durable checkpoint to execute.
-3. **Audit after action.** An append-only record of evidence, approvers, verdict, before/after
-   snapshots, and rollback hints.
+## Act 1 — the evidence packet (analysis only)
 
-**And the beat by omission: no redundant approval.** The same gate that convenes a three-role
-quorum here adds **zero approvers** to routine work — meeting action items and the weekly report
-run on the requester's own confirmation, and the card states it plainly ("Approval required:
-none — the requester's confirmation executes it."). The quorum is the exception path, reserved
-for evidence like this scenario's; see [the approval policy](../approval-policy.md).
+The ticket says: **"move the launch rehearsal to 2026-06-22."** To the requester it's just a date
+change — the 22nd is even **free on the calendar**, so the ticket's approver would wave it
+through on sight. The analysis-only trial reads what no single screen shows: the **GitHub**
+`Launch Rehearsal` milestone (and its dependent `Customer Go-Live`), the **Outlook** calendar,
+dependent **Planner** tasks, the **Teams** announcement, the **CRM** contract terms, and the
+published **SharePoint** change-freeze calendar. Cross-referencing three of them reveals a latent
+breach: the 22nd is **past the contractual launch-readiness SLA** (clause LR-3, 2026-06-21 —
+CRM), **inside the release-freeze window** (2026-06-19→24 — SharePoint), and it **compresses the
+`Customer Go-Live` buffer** (GitHub).
+
+The packet that lands on the ticket carries the counterfactual ("had this been approved it would
+have breached … first breach date 2026-06-22"), the risk factors with citations, a **safer
+alternative** — 2026-06-18, the latest date honoring every constraint — and the **would-be
+approvers** the evidence implicates: `eng_lead`, `comms`, `account_owner`. Nothing was executed;
+no approval round-trip started; the run cannot be resumed into execution.
+
+The same act shows the other pole: a routine request ("create action items from standup") comes
+back **low risk, zero would-be approvers** — the analysis says the requester's own confirmation
+would carry it. Routine work does not gain an extra approver; high-risk work gets the right ones.
+
+## Act 2 — escalation, when the evidence demands it
+
+If the team lets the court act on what it found, the same change resubmits into the court's own
+exception-based gate — and the same webhook keeps the ticket current: an `approval_requested`
+comment when the quorum convenes, a `decided` comment with the outcome. No plain "approve" is
+offered for an unsafe request; the informed approver adopts the safer alternative, the run
+resumes from its durable checkpoint, and execution follows the reviewed plan **step by step** —
+failures are recorded, verified, and auditable, never silently half-done. An append-only record
+keeps the evidence, approvers, verdict, before/after snapshots, and rollback hints.
 
 The same machinery handles the simpler cases the same way: **"move the rehearsal to 2026-06-16"**
-collides visibly with a **Board review** and is refused for the next free day (**2026-06-17**), while
-a clean **2026-06-17** request is approved as feasible.
-
-One more moment worth showing: appending **"and delete the repo"** is **blocked at intake** — no
-registered capability supports it, so it is never planned or executed. And an off-script request
-the rule packs don't govern is never waved through either: it lands on the ungoverned floor and
+collides visibly with a **Board review** and is refused for the next free day (**2026-06-17**),
+while a clean **2026-06-17** request is approved as feasible. Appending **"and delete the repo"**
+is **blocked at intake** — no registered capability supports it, so it is never planned or
+executed. And an off-script request the rule packs don't govern lands on the ungoverned floor and
 waits for a manager.
-
-Every step runs through the same surfaces: the **Change Court Adaptive Card** (the decision UI), the
-**read-only pipeline run page** on a second screen (signed links, CI-style stage rail), and the
-append-only audit at the end.
 
 ## Reproduce it (credential-free)
 
-Everything below is mocked, dry-run by default, and needs no Microsoft 365 tenant. Prerequisites:
-Python 3.11+ with [`uv`](https://docs.astral.sh/uv/), Node (for the Playground), and
-`cd backend && uv sync`.
+Everything below is mocked, dry-run by default, and needs no Microsoft 365 tenant. GitHub,
+Outlook, SharePoint, and Teams can run live when configured; CRM and Planner are controlled
+fixtures for reproducible evidence. Prerequisites: Python 3.11+ with
+[`uv`](https://docs.astral.sh/uv/), Node (for the Playground), and `cd backend && uv sync`.
 
 ```bash
-make demo     # runs the scenario end to end and prints each Change Court
-              # (evidence, safe alternative, approvers, verdict, audit id)
-make cards    # exports the Adaptive Card JSON to m365/adaptive-cards/generated/
+make demo-ticket   # both acts: the analyzed packets, then the escalation —
+                   # each packet printed exactly as the ticket comment it becomes
+make demo          # the court-side walk of the same scenario (evidence, safe
+                   # alternative, approvers, verdict, audit id)
+make cards         # exports the Adaptive Card JSON to m365/adaptive-cards/generated/
 ```
 
-To see the evidence packet land on an existing ticket, run the reference receiver and point the
-webhook at it (`make setup-demo-apply` creates the demo ticket and prints its `EVIDENCE_ISSUE`
-number; re-running it also clears the ticket's prior evidence comments between takes):
+To land the packets on a **real GitHub issue**, run the reference receiver and point the webhook
+at it (`make setup-demo-apply` creates the demo ticket and prints its `EVIDENCE_ISSUE` number;
+re-running it also clears the ticket's prior evidence comments between takes):
 
 ```bash
 GITHUB_TOKEN=<token> GITHUB_REPO=<owner/name> EVIDENCE_ISSUE=<number> \
     uv run uvicorn scripts.evidence_receiver:app --port 8088   # from backend/
-# backend env: EVIDENCE_WEBHOOK_URL=http://localhost:8088/evidence
+EVIDENCE_WEBHOOK_URL=http://localhost:8088/evidence make demo-ticket
 ```
+
+The issue gains four comments: two **"Impact analysis — nothing executed"** packets (the breach
+with its would-be approvers, the routine request with none), then **"Approval requested"** and
+**"Decision recorded"** from the escalation. Swap the receiver's one GitHub call for any ITSM API
+to land the same packets in another system of record.
 
 Open any exported card in the [Adaptive Cards Designer](https://adaptivecards.io/designer) for a
 pixel-faithful, tenant-free preview.
@@ -106,10 +123,10 @@ HTTPS with Entra ID OAuth2 and sideload the declarative agent in `m365/` (the co
 
 ## What else the same engine handles (not recorded — play with it yourself)
 
-Informed Approval is the one scenario this demo records. The same pipeline already handles four more
-capabilities, wired and tested but deliberately left as *capabilities the architecture supports* — no
-demo is built out for them. Run them with `make demo-all` (or `make cards-all` for their cards), or
-type the request into the Playground bot:
+The ticket flow above is the one scenario this demo records. The same pipeline already handles four
+more capabilities, wired and tested but deliberately left as *capabilities the architecture
+supports* — no demo is built out for them. Run them with `make demo-all` (or `make cards-all` for
+their cards), or type the request into the Playground bot:
 
 - **Meeting Actions** — standup follow-ups become owned, dated Planner tasks ("create action items
   from standup") — low risk, **no approver added**; the requester's confirmation executes it.
