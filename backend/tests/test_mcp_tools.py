@@ -1,4 +1,6 @@
-"""The MCP tools drive a full trial: submit → get_trial → cast_verdict, all via the server."""
+"""The MCP tools drive a full trial: submit → get_trial → send/decide or cast, all via the
+server. Every mutating tool keys off the authenticated principal — see the impersonation note
+below for how unit tests bind one."""
 
 from __future__ import annotations
 
@@ -25,12 +27,26 @@ from app.mcp.server import build_mcp_server
 from app.ports.knowledge import KnowledgePort
 from app.ports.registry import IntegrationRegistry
 from app.services.court_service import CourtService
+from tests.conftest import ALL_ROLE_DIRECTORY, APPROVER, REQUESTER
+
+# FastMCP.call_tool does not run the ASGI auth middleware, so the auth contextvar is never bound in
+# unit tests; the correct seam is the tools module's ``current_principal`` reader, monkeypatched to
+# impersonate each caller. The transport-level binding itself is covered in test_mcp_security.
+
+
+def _impersonate(monkeypatch: pytest.MonkeyPatch, principal: Principal | None) -> None:
+    monkeypatch.setattr(tools_module, "current_principal", lambda: principal)
 
 
 @pytest.fixture
 def mcp():  # type: ignore[no-untyped-def]
     service: CourtService = build_court_service(
-        Settings(force_all_mock=True, db_url="sqlite:///:memory:", dry_run_default=True)
+        Settings(
+            force_all_mock=True,
+            db_url="sqlite:///:memory:",
+            dry_run_default=True,
+            approver_directory=ALL_ROLE_DIRECTORY,
+        )
     )
     return build_mcp_server(service)
 
@@ -63,11 +79,12 @@ async def test_get_trial_unknown_surfaces_typed_error(mcp: Any) -> None:
     assert "not_found" in str(excinfo.value)
 
 
-async def test_submit_then_cast_via_tools(mcp: Any) -> None:
+async def test_submit_then_cast_via_tools(mcp: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    _impersonate(monkeypatch, REQUESTER)
     summary = await _call(
         mcp, "submit_change", {"raw_request": "promise Customer A SSO is GA by 2026-06-17"}
     )
-    assert summary["status"] == "awaiting_verdict"
+    assert summary["status"] == "awaiting_requester_review"
     assert summary["unsafe"] is True
     thread_id = summary["thread_id"]
 
@@ -77,6 +94,8 @@ async def test_submit_then_cast_via_tools(mcp: Any) -> None:
     nodes = {e["node"] for e in trial["deliberation"]["entries"]}
     assert {"intake", "impact", "options", "policy"} <= nodes
 
+    # An authorized approver (≠ the requester) casts the verdict and the run resumes.
+    _impersonate(monkeypatch, APPROVER)
     result = await _call(
         mcp,
         "cast_verdict",
@@ -91,14 +110,23 @@ async def test_submit_then_cast_via_tools(mcp: Any) -> None:
     assert result["audit_id"]
 
 
-# --- identity-aware approval tools ---------------------------------------------------------------
-#
-# FastMCP.call_tool does not run the ASGI auth middleware, so the auth contextvar is never bound in
-# unit tests; the correct seam is the tools module's ``current_principal`` reader, monkeypatched to
-# impersonate each caller. The transport-level binding itself is covered in test_mcp_security.
+async def test_unauthenticated_submit_and_cast_are_unauthorized(
+    mcp: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from mcp.server.fastmcp.exceptions import ToolError
 
-REQUESTER = Principal(oid="low-1", upn="lowpriv@agentleague.onmicrosoft.com")
-APPROVER = Principal(oid="joel-1", upn="joel@agentleague.onmicrosoft.com")
+    _impersonate(monkeypatch, None)
+    with pytest.raises(ToolError) as excinfo:
+        await _call(
+            mcp, "submit_change", {"raw_request": "promise Customer A SSO is GA by 2026-06-17"}
+        )
+    assert "unauthorized" in str(excinfo.value)
+    with pytest.raises(ToolError) as excinfo:
+        await _call(mcp, "cast_verdict", {"thread_id": "t", "verdict_type": "approve"})
+    assert "unauthorized" in str(excinfo.value)
+
+
+# --- identity-aware approval tools ---------------------------------------------------------------
 
 _PACK = RulePack(
     id="launch_slip",
@@ -129,16 +157,12 @@ def approval_mcp():  # type: ignore[no-untyped-def]
             force_all_mock=True,
             db_url="sqlite:///:memory:",
             dry_run_default=True,
-            approver_directory="eng_lead:joel@agentleague.onmicrosoft.com",
+            approver_directory=f"eng_lead:{APPROVER.upn}",
         ),
         gatherers={"launch": _gatherer},
         packs=[_PACK],
     )
     return build_mcp_server(service)
-
-
-def _impersonate(monkeypatch: pytest.MonkeyPatch, principal: Principal | None) -> None:
-    monkeypatch.setattr(tools_module, "current_principal", lambda: principal)
 
 
 async def test_two_identity_approval_flow_via_tools(
@@ -196,7 +220,11 @@ async def test_approval_tools_require_authentication(
         await _call(approval_mcp, "send_for_approval", {"thread_id": "t", "note": "n"})
     assert "unauthorized_approver" in str(excinfo.value)
 
-async def test_submit_change_analyze_returns_the_evidence_and_never_executes(mcp: Any) -> None:
+
+async def test_submit_change_analyze_returns_the_evidence_and_never_executes(
+    mcp: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _impersonate(monkeypatch, REQUESTER)
     summary = await _call(
         mcp,
         "submit_change",

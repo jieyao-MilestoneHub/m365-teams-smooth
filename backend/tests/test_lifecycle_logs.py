@@ -12,7 +12,9 @@ from app.adapters.parsers.deterministic import DeterministicRequestParser
 from app.adapters.parsers.llm_backed import LlmRequestParser
 from app.agent.nodes.execute import ExecuteNode
 from app.agent.policy_rules.models import (
+    ApproverRule,
     MatchRules,
+    QuorumRules,
     RiskBands,
     RiskFactorRule,
     RulePack,
@@ -22,6 +24,7 @@ from app.agent.state import CourtState, initial_state, serialize
 from app.config import Settings
 from app.container import build_court_service
 from app.domain import (
+    ApproverRole,
     CapabilityRef,
     Change,
     ExecutionPlan,
@@ -36,6 +39,7 @@ from app.ports.integration import IntegrationAdapter
 from app.ports.knowledge import KnowledgePort
 from app.ports.llm import LLMProvider
 from app.ports.registry import IntegrationRegistry
+from tests.conftest import ALL_ROLE_DIRECTORY, APPROVER, REQUESTER
 
 _PACK = RulePack(
     id="launch_slip",
@@ -44,6 +48,11 @@ _PACK = RulePack(
         RiskFactorRule(id="milestone_move", when_tag="schedule.milestone_move", weight=80)
     ],
     risk_bands=RiskBands(low=0, medium=30, high=60),
+    # A required role lets an authorized approver cast the verdict (and re-cast it for the
+    # duplicate path) — the log events under test.
+    quorum=QuorumRules(
+        approvers=[ApproverRule(role=ApproverRole.ENG_LEAD, when_tag="schedule.milestone_move")]
+    ),
     verdict_options=VerdictOptionRules(default=[VerdictType.APPROVE, VerdictType.REJECT]),
 )
 
@@ -55,7 +64,12 @@ def _gatherer(
 
 
 def _settings() -> Settings:
-    return Settings(force_all_mock=True, db_url="sqlite:///:memory:", dry_run_default=True)
+    return Settings(
+        force_all_mock=True,
+        db_url="sqlite:///:memory:",
+        dry_run_default=True,
+        approver_directory=ALL_ROLE_DIRECTORY,
+    )
 
 
 def _levels(caplog: pytest.LogCaptureFixture, message: str) -> list[str]:
@@ -74,9 +88,11 @@ def test_submit_and_verdict_events(caplog: pytest.LogCaptureFixture) -> None:
     service = build_court_service(_settings(), gatherers={"launch": _gatherer}, packs=[_PACK])
 
     with caplog.at_level(logging.INFO):
-        summary = service.submit_change("slip the launch from 2026-06-10 to 2026-06-17")
-        cast = service.cast_verdict(summary.thread_id, VerdictType.APPROVE)
-        service.cast_verdict(summary.thread_id, VerdictType.APPROVE)
+        summary = service.submit_change(
+            "slip the launch from 2026-06-10 to 2026-06-17", requester=REQUESTER
+        )
+        cast = service.cast_verdict(summary.thread_id, VerdictType.APPROVE, principal=APPROVER)
+        service.cast_verdict(summary.thread_id, VerdictType.APPROVE, principal=APPROVER)
 
     assert cast.audit_id is not None
     assert _levels(caplog, "trial.submitted") == ["INFO"]

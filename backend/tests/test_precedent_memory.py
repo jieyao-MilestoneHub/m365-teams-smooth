@@ -7,8 +7,8 @@ from app.adapters.persistence.repositories import SqlPrecedentStore
 from app.agent.agentic.precedents import render_precedents
 from app.config import Settings
 from app.container import build_court_service
-from app.domain import VerdictType
 from app.ports.memory import MemoryPort, PrecedentRecord
+from tests.conftest import ALL_ROLE_DIRECTORY, REQUESTER, drive_to_completion
 
 
 def _store() -> SqlPrecedentStore:
@@ -76,10 +76,17 @@ def test_render_precedents_is_bounded_and_safe() -> None:
 def test_completed_trial_is_recorded_as_precedent(tmp_path) -> None:  # type: ignore[no-untyped-def]
     db_url = f"sqlite:///{tmp_path.as_posix()}/court.db"
     service = build_court_service(
-        Settings(force_all_mock=True, db_url=db_url, dry_run_default=True)
+        Settings(
+            force_all_mock=True,
+            db_url=db_url,
+            dry_run_default=True,
+            approver_directory=ALL_ROLE_DIRECTORY,
+        )
     )
-    summary = service.submit_change("slip the launch from 2026-06-10 to 2026-06-17")
-    service.cast_verdict(summary.thread_id, VerdictType.APPROVE)
+    summary = service.submit_change(
+        "slip the launch from 2026-06-10 to 2026-06-17", requester=REQUESTER
+    )
+    drive_to_completion(service, summary)
 
     # The container wires the precedent store into the same database the trial ran against.
     engine = make_engine(db_url)

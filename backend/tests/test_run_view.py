@@ -6,13 +6,15 @@ import pytest
 
 from app.config import Settings
 from app.container import build_court_service
-from app.domain import ChangeStatus, PlanKind, Principal, VerdictType
+from app.domain import ChangeStatus, PlanKind, Principal
 from app.domain.errors import NotFoundError
 from app.domain.run_events import RunEventKind
 from app.services.court_service import CourtService
+from tests.conftest import ALL_ROLE_DIRECTORY, REQUESTER, drive_to_completion
 
 
 def _service(**overrides: object) -> CourtService:
+    overrides.setdefault("approver_directory", ALL_ROLE_DIRECTORY)
     return build_court_service(
         Settings(
             force_all_mock=True,
@@ -26,8 +28,10 @@ def _service(**overrides: object) -> CourtService:
 
 def test_run_view_covers_the_full_pipeline() -> None:
     service = _service()
-    summary = service.submit_change("slip the launch from 2026-06-10 to 2026-06-17")
-    service.cast_verdict(summary.thread_id, VerdictType.APPROVE)
+    summary = service.submit_change(
+        "slip the launch from 2026-06-10 to 2026-06-17", requester=REQUESTER
+    )
+    drive_to_completion(service, summary)
 
     view = service.get_run_view(summary.thread_id)
 
@@ -43,22 +47,26 @@ def test_run_view_covers_the_full_pipeline() -> None:
     assert view.last_seq == max(e.seq for e in view.events)
 
 
-def test_run_view_is_readable_at_the_verdict_gate() -> None:
+def test_run_view_is_readable_at_the_requester_review_gate() -> None:
     service = _service()
-    summary = service.submit_change("slip the launch from 2026-06-10 to 2026-06-17")
+    summary = service.submit_change(
+        "slip the launch from 2026-06-10 to 2026-06-17", requester=REQUESTER
+    )
 
     view = service.get_run_view(summary.thread_id)
 
     finished = [e.name for e in view.events if e.kind is RunEventKind.NODE_FINISHED]
     assert "policy" in finished
-    assert "execute" not in finished  # suspended at the verdict interrupt
-    assert view.summary.status == ChangeStatus.AWAITING_VERDICT.value
+    assert "execute" not in finished  # suspended at the gate before execute
+    assert view.summary.status == ChangeStatus.AWAITING_REQUESTER_REVIEW.value
     assert view.audit_id is None
 
 
 def test_run_view_polls_incrementally() -> None:
     service = _service()
-    summary = service.submit_change("slip the launch from 2026-06-10 to 2026-06-17")
+    summary = service.submit_change(
+        "slip the launch from 2026-06-10 to 2026-06-17", requester=REQUESTER
+    )
 
     first = service.get_run_view(summary.thread_id)
     assert first.events and first.last_seq > 0
@@ -67,7 +75,7 @@ def test_run_view_polls_incrementally() -> None:
     assert nothing_new.events == []
     assert nothing_new.last_seq == first.last_seq  # poller's cursor never regresses
 
-    service.cast_verdict(summary.thread_id, VerdictType.APPROVE)
+    drive_to_completion(service, summary)
     tail = service.get_run_view(summary.thread_id, after_seq=first.last_seq)
     assert tail.events
     assert all(e.seq > first.last_seq for e in tail.events)
@@ -94,7 +102,9 @@ def test_run_view_folds_in_the_approval_timeline() -> None:
 def test_run_view_carries_the_safe_alternative_contrast() -> None:
     """The fields the run page's comparison panel reads must reach the view."""
     service = _service()
-    summary = service.submit_change("promise Customer A that SSO is GA by 2026-06-17")
+    summary = service.submit_change(
+        "promise Customer A that SSO is GA by 2026-06-17", requester=REQUESTER
+    )
 
     view = service.get_run_view(summary.thread_id)
 

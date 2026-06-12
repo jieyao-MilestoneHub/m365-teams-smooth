@@ -2,8 +2,9 @@
 
 REST and MCP both delegate here — no business logic in the façades. Idempotency is enforced here so
 both surfaces behave identically: a verdict is claimed in the ledger *before* the runner is resumed,
-and a duplicate claim returns the recorded result instead of executing again. Low-risk changes that
-need no approval are auto-resumed so they complete without a human verdict.
+and a duplicate claim returns the recorded result instead of executing again. Every action is
+identity-bound: the requester submits and confirms; when no approver is required their confirmation
+executes the change, otherwise the quorum's authorized approvers decide.
 """
 
 from __future__ import annotations
@@ -131,17 +132,21 @@ class CourtService:
     ) -> TrialSummary:
         """Start a trial. It runs to the gate before execute.
 
-        With a ``requester`` (identity-aware flow) the trial waits at the requester self-review gate
-        (``AWAITING_REQUESTER_REVIEW``) — it is *not* auto-approved; the requester must
-        :meth:`send_for_approval` or :meth:`withdraw_change`. Without a requester (legacy/local
-        flow) a low-risk change is auto-approved so it completes without a human verdict.
+        Every trial is identity-bound: the authenticated ``requester`` is required, and the trial
+        waits at the requester self-review gate (``AWAITING_REQUESTER_REVIEW``). The requester then
+        :meth:`send_for_approval` or :meth:`withdraw_change` — when the change needs no approver,
+        sending executes it on the requester's own confirmation; otherwise the quorum's authorized
+        approvers :meth:`decide`.
 
         ``run_mode=ANALYZE`` is an impact check: the trial records its evidence, plan, risk, and
         would-be approvers, then ends ``ANALYZED`` — nothing executes regardless of risk level,
         no approval round-trip starts, and the run cannot later be resumed into execution.
         """
         # Boundary validation: a change request is a sentence or two; reject (never truncate)
-        # anything else so the court only ever deliberates on exactly what was asked.
+        # anything else so the court only ever deliberates on exactly what was asked. Identity is
+        # part of the boundary — an approval gate without a requester cannot separate duties.
+        if requester is None:
+            raise InvalidRequestError("an authenticated requester is required to submit a change")
         if not raw_request.strip():
             raise InvalidRequestError("a change request is required")
         if len(raw_request) > self._max_request_chars:
@@ -177,34 +182,23 @@ class CourtService:
         if mode is RunMode.ANALYZE:
             # Analysis-only: stamp the requester for the record, then drive the run through the
             # skipping execute node to audit — it ends ANALYZED with no resumable next step, so
-            # it never holds for review and the low-risk auto-approve below never engages.
-            if requester is not None:
-                change = _model(state, "change", Change)
-                if change is not None:
-                    change.requester = requester
-                    self._runner.update(thread_id, {"change": serialize(change)})
+            # it never holds for review.
+            change = _model(state, "change", Change)
+            if change is not None:
+                change.requester = requester
+                self._runner.update(thread_id, {"change": serialize(change)})
             state = self._runner.advance(thread_id)
             return self._summary(thread_id, state)
 
-        if requester is not None and self.approvals_configured():
-            # Identity-aware flow: stamp the requester onto the change and hold for self-review.
-            # Engages only when an approver directory exists — otherwise a held trial could never
-            # be decided, so an unconfigured deployment keeps the legacy flow below.
-            change = _model(state, "change", Change)
-            update: CourtState = {"status": ChangeStatus.AWAITING_REQUESTER_REVIEW.value}
-            if change is not None:
-                change.requester = requester
-                update["change"] = serialize(change)
-            state = self._runner.update(thread_id, dict(update))
-            return self._summary(thread_id, state)
-
-        risk = _model(state, "risk", RiskResult)
-        needs_approval = isinstance(risk, RiskResult) and risk.requires_approval
-        if self._runner.is_awaiting_verdict(thread_id) and not needs_approval:
-            # No approval required: auto-approve so the change proceeds to execution.
-            self.cast_verdict(thread_id, VerdictType.APPROVE, idempotency_key=f"auto:{thread_id}")
-            state = self._runner.state(thread_id)
-
+        # Stamp the requester onto the change and hold for self-review. Sending a no-approver
+        # change executes it (the requester's own authority); quorum-bearing changes then wait
+        # for their authorized approvers.
+        change = _model(state, "change", Change)
+        update: CourtState = {"status": ChangeStatus.AWAITING_REQUESTER_REVIEW.value}
+        if change is not None:
+            change.requester = requester
+            update["change"] = serialize(change)
+        state = self._runner.update(thread_id, dict(update))
         return self._summary(thread_id, state)
 
     def cast_verdict(
@@ -219,26 +213,28 @@ class CourtService:
     ) -> CastResult:
         """Claim and apply a verdict; a duplicate claim returns the recorded result.
 
-        With an authenticated ``principal`` and a configured approver directory, the caster must
-        pass the same authorization as :meth:`decide` — the legacy verdict path must not bypass
-        separation of duties. Without a principal (local, identity-free runs) the legacy
-        behaviour is unchanged.
+        Every caster is an authenticated ``principal`` passing the same authorization as
+        :meth:`decide` — there is no identity-free verdict path, so separation of duties holds on
+        every surface that can resume a trial.
         """
         self._reject_if_analysis_only(thread_id)
-        if principal is not None and self._directory is not None:
-            trial = self._trial_or_raise(thread_id)
-            requester = trial.change.requester
-            auth = authorize_caster(
-                principal,
-                requester,
-                self._required_roles(trial),
-                self._directory.roles_for(principal),
-            )
-            if not auth.allowed:
-                if requester is not None and principal.same_as(requester):
-                    raise SeparationOfDutiesError(auth.reason)
-                raise UnauthorizedApproverError(auth.reason)
-            actor = principal.upn or principal.key()
+        if principal is None:
+            raise UnauthorizedApproverError("authentication is required to cast a verdict")
+        if self._directory is None:
+            raise UnauthorizedApproverError("no approver directory is configured")
+        trial = self._trial_or_raise(thread_id)
+        requester = trial.change.requester
+        auth = authorize_caster(
+            principal,
+            requester,
+            self._required_roles(trial),
+            self._directory.roles_for(principal),
+        )
+        if not auth.allowed:
+            if requester is not None and principal.same_as(requester):
+                raise SeparationOfDutiesError(auth.reason)
+            raise UnauthorizedApproverError(auth.reason)
+        actor = principal.upn or principal.key()
         key = idempotency_key or f"{thread_id}:{verdict_type.value}:{selected_plan.value}"
         if not self._ledger.try_claim(thread_id, key):
             audit_id = self._ledger.result_for(thread_id, key)
@@ -444,14 +440,6 @@ class CourtService:
                 continue
             pending.append(self._summary(thread_id, state))
         return pending
-
-    def approvals_configured(self) -> bool:
-        """True when approval routing can be enforced (ledger present + a populated directory)."""
-        return (
-            self._approvals is not None
-            and self._directory is not None
-            and self._directory.configured()
-        )
 
     def requester_note(self, thread_id: str) -> str:
         """The note the requester attached when sending for approval (empty when not sent)."""

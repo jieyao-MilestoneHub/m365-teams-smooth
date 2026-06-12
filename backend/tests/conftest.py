@@ -178,3 +178,44 @@ def knowledge() -> LocalCorpusKnowledgeProvider:
 @pytest.fixture
 def llm() -> FakeLLMProvider:
     return FakeLLMProvider()
+
+
+# --- Identity-bound flow helpers -------------------------------------------------------------
+# Every trial is identity-bound: the requester submits and confirms, an authorized approver
+# decides. These two principals (and a directory granting the approver every role) let tests
+# drive the flow without each file inventing its own identities.
+
+from app.domain.principal import Principal  # noqa: E402
+from app.services.court_service import CourtService  # noqa: E402
+from app.services.dto import TrialSummary  # noqa: E402
+
+REQUESTER = Principal(
+    oid="test-requester", upn="requester@example.com", display_name="Robin Requester"
+)
+APPROVER = Principal(
+    oid="test-approver", upn="approver@example.com", display_name="Alex Approver"
+)
+ALL_ROLE_DIRECTORY = ",".join(
+    f"{role}:{APPROVER.upn}"
+    for role in ("eng_lead", "comms", "account_owner", "security_lead", "manager")
+)
+
+
+def drive_to_completion(
+    service: CourtService,
+    summary: TrialSummary,
+    *,
+    approve: bool = True,
+    note: str = "approved on the evidence",
+) -> TrialSummary:
+    """Send a freshly submitted trial through its gates: requester sends, the approver decides.
+
+    A no-approver trial executes on the send itself; a quorum trial is then decided by APPROVER
+    (the directory must grant the roles — use ``ALL_ROLE_DIRECTORY``).
+    """
+    sent = service.send_for_approval(
+        summary.thread_id, actor=REQUESTER, note="please review — the evidence is attached"
+    )
+    if sent.status != "awaiting_approval":
+        return sent
+    return service.decide(summary.thread_id, actor=APPROVER, approve=approve, note=note)

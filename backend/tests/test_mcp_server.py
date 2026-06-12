@@ -12,6 +12,7 @@ from app.config import Settings
 from app.container import build_court_service
 from app.mcp.server import build_mcp_server
 from app.services.court_service import CourtService
+from tests.conftest import REQUESTER
 
 
 @pytest.fixture
@@ -31,7 +32,9 @@ def test_get_status_tool_is_registered(service: CourtService) -> None:
 
 
 async def test_get_status_tool_reflects_the_service(service: CourtService) -> None:
-    summary = service.submit_change("slip the launch from 2026-06-10 to 2026-06-17")
+    summary = service.submit_change(
+        "slip the launch from 2026-06-10 to 2026-06-17", requester=REQUESTER
+    )
     mcp = build_mcp_server(service)
     # call_tool returns (content_blocks, structured_result); we assert on the structured dict.
     outcome = cast(

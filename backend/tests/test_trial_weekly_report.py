@@ -6,6 +6,7 @@ from app.config import Settings
 from app.container import build_court_service
 from app.domain import ChangeStatus, PlanKind, RiskLevel
 from app.services.court_service import CourtService
+from tests.conftest import REQUESTER
 
 _REQUEST = "post the Project X weekly report"
 
@@ -16,15 +17,18 @@ def _service() -> CourtService:
     )
 
 
-def test_weekly_report_aggregates_and_executes_low_risk() -> None:
+def test_weekly_report_aggregates_and_executes_on_requester_confirmation() -> None:
     service = _service()
-    summary = service.submit_change(_REQUEST)
+    summary = service.submit_change(_REQUEST, requester=REQUESTER)
 
-    # Low risk, no approver: auto-approved and executed in one pass.
-    assert summary.status == ChangeStatus.DONE.value
+    # Low risk, no approver: the requester's confirmation alone carries the authority.
+    assert summary.status == ChangeStatus.AWAITING_REQUESTER_REVIEW.value
     assert summary.risk_level == RiskLevel.LOW.value
     assert summary.requires_approval is False
     assert summary.plan_kind == PlanKind.FEASIBLE.value
+
+    sent = service.send_for_approval(summary.thread_id, actor=REQUESTER, note="posting it")
+    assert sent.status == ChangeStatus.DONE.value
 
     trial = service.get_trial(summary.thread_id)
     assert trial is not None and trial.impact is not None and trial.options is not None

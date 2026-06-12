@@ -11,15 +11,15 @@
     },
     {
       "type": "TextBlock",
-      "text": "move the rehearsal to 2026-06-17",
+      "text": "create action items from standup",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "Risk: HIGH",
+      "text": "Risk: LOW",
       "wrap": true,
       "weight": "Bolder",
-      "color": "Attention"
+      "color": "Good"
     },
     {
       "type": "TextBlock",
@@ -29,40 +29,40 @@
     },
     {
       "type": "TextBlock",
-      "text": "• [github] Milestone 'Launch Rehearsal' currently due 2026-06-10",
+      "text": "• [teams] 4 spoken follow-up(s) in the standup discussion",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "• [outlook] Calendar events near the new date",
+      "text": "• [outlook] Calendar events near the proposed review slot",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "• [planner] 2 planner task(s) must shift",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
-      "text": "• [teams] A pending announcement references the original date",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
-      "text": "grounded in 3 governance fact(s) — see the run page",
+      "text": "grounded in 6 governance fact(s) — see the run page",
       "wrap": true,
       "isSubtle": true,
       "spacing": "Small"
     },
     {
       "type": "TextBlock",
-      "text": "Proposed plan: Move the rehearsal to 2026-06-17; update calendar, schedule, and announcement.",
+      "text": "Proposed plan: Track each spoken follow-up as a task with its owner and due date; schedule the review that was proposed without one.",
       "wrap": true,
       "weight": "Bolder"
     },
     {
       "type": "TextBlock",
-      "text": "• github.update_milestone_due",
+      "text": "• planner.create_task",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "• planner.create_task",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "• planner.create_task",
       "wrap": true
     },
     {
@@ -72,18 +72,10 @@
     },
     {
       "type": "TextBlock",
-      "text": "• planner.shift_task_dates",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
-      "text": "• teams.update_announcement",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
-      "text": "Approvers required (any): eng_lead, comms",
-      "wrap": true
+      "text": "Approval required: none — the requester's confirmation executes it.",
+      "wrap": true,
+      "weight": "Bolder",
+      "color": "Good"
     },
     {
       "type": "Input.Text",
@@ -95,7 +87,7 @@
     },
     {
       "type": "TextBlock",
-      "text": "🧠 Prosecutor: Gathered 5 evidence item(s); tags: schedule.milestone_move, schedule.calendar_conflict, schedule.planner_shift, comms.pending_announcement. No high-severity findings.",
+      "text": "🧠 Prosecutor: Gathered 3 evidence item(s); tags: meeting.action_items_found. No high-severity findings.",
       "wrap": true,
       "isSubtle": true,
       "spacing": "Small"

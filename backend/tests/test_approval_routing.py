@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from app.agent.nodes.impact import Gatherer
 from app.agent.policy_rules.models import (
     ApproverRule,
     MatchRules,
@@ -17,7 +18,11 @@ from app.config import Settings
 from app.container import build_court_service
 from app.domain import Change, ChangeStatus, ImpactEvidence, VerdictType
 from app.domain.enums import ApproverRole
-from app.domain.errors import SeparationOfDutiesError, UnauthorizedApproverError
+from app.domain.errors import (
+    InvalidRequestError,
+    SeparationOfDutiesError,
+    UnauthorizedApproverError,
+)
 from app.domain.principal import Principal
 from app.ports.knowledge import KnowledgePort
 from app.ports.registry import IntegrationRegistry
@@ -46,6 +51,13 @@ def _gatherer(
     return ImpactEvidence(tags=["schedule.milestone_move"])
 
 
+def _no_tag_gatherer(
+    change: Change, registry: IntegrationRegistry, knowledge: KnowledgePort, errors: list[str]
+) -> ImpactEvidence:
+    """No impact tags → no risk factor fires → the quorum requires no approver."""
+    return ImpactEvidence(tags=[])
+
+
 def _service() -> CourtService:
     settings = Settings(
         force_all_mock=True,
@@ -69,14 +81,42 @@ def test_submit_with_requester_holds_for_self_review() -> None:
     assert trial.change.requester.same_as(REQUESTER)
 
 
-def test_requester_without_directory_keeps_the_legacy_flow() -> None:
-    # No approver directory configured: holding the trial would leave it undecidable, so a
-    # requester identity alone must not engage enforcement.
+def test_submit_without_requester_is_rejected() -> None:
+    # Identity is part of the boundary: there is no identity-free submission path.
+    service = _service()
+    with pytest.raises(InvalidRequestError):
+        service.submit_change(_REQ)
+
+
+def _no_directory_service(gatherer: Gatherer = _gatherer) -> CourtService:
     settings = Settings(force_all_mock=True, db_url="sqlite:///:memory:", dry_run_default=True)
-    service = build_court_service(settings, gatherers={"launch": _gatherer}, packs=[_PACK])
-    assert service.approvals_configured() is False
+    return build_court_service(settings, gatherers={"launch": gatherer}, packs=[_PACK])
+
+
+def test_requester_without_directory_still_holds_for_self_review() -> None:
+    # The requester gate engages even with no directory: identity is mandatory, and a
+    # quorum-bearing change simply cannot be decided until a directory is configured.
+    service = _no_directory_service()
     summary = service.submit_change(_REQ, requester=REQUESTER)
-    assert summary.status != ChangeStatus.AWAITING_REQUESTER_REVIEW.value
+    assert summary.status == ChangeStatus.AWAITING_REQUESTER_REVIEW.value
+
+
+def test_no_approver_change_executes_on_send_without_directory() -> None:
+    # An empty quorum means the requester's own confirmation carries the authority — no
+    # directory is needed for the routine path.
+    service = _no_directory_service(_no_tag_gatherer)
+    s = service.submit_change(_REQ, requester=REQUESTER)
+    sent = service.send_for_approval(s.thread_id, actor=REQUESTER, note="routine, no approver")
+    assert sent.status == ChangeStatus.DONE.value
+
+
+def test_quorum_decision_without_directory_fails_authorization() -> None:
+    # With approvers required but no directory, nobody can be authorized to decide.
+    service = _no_directory_service()
+    s = service.submit_change(_REQ, requester=REQUESTER)
+    service.send_for_approval(s.thread_id, actor=REQUESTER, note="ready")
+    with pytest.raises(UnauthorizedApproverError):
+        service.decide(s.thread_id, actor=APPROVER, approve=True)
 
 
 def test_requester_note_reads_back_the_send_note() -> None:
@@ -297,10 +337,17 @@ def test_directory_approver_can_cast_verdict_and_actor_is_the_identity() -> None
     assert trial.verdict.actor == APPROVER.upn
 
 
-def test_cast_verdict_without_principal_keeps_the_legacy_flow() -> None:
-    # Identity-free local runs (no OAuth) stay unchanged — no directory check engages.
-    settings = Settings(force_all_mock=True, db_url="sqlite:///:memory:", dry_run_default=True)
-    service = build_court_service(settings, gatherers={"launch": _gatherer}, packs=[_PACK])
-    s = service.submit_change(_REQ)
-    result = service.cast_verdict(s.thread_id, VerdictType.APPROVE)
-    assert result.execution_status == "done"
+def test_cast_verdict_without_principal_is_unauthorized() -> None:
+    # There is no identity-free verdict path: an unauthenticated cast never resumes the run.
+    service = _service()
+    s = service.submit_change(_REQ, requester=REQUESTER)
+    with pytest.raises(UnauthorizedApproverError):
+        service.cast_verdict(s.thread_id, VerdictType.APPROVE)
+
+
+def test_cast_verdict_without_directory_is_unauthorized() -> None:
+    # Authentication alone is not enough — without a directory nobody holds a required role.
+    service = _no_directory_service()
+    s = service.submit_change(_REQ, requester=REQUESTER)
+    with pytest.raises(UnauthorizedApproverError):
+        service.cast_verdict(s.thread_id, VerdictType.APPROVE, principal=APPROVER)

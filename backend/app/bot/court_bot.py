@@ -10,7 +10,7 @@ Turn routing:
     ``action.verb``/``action.data`` name the tool -> the matching service call; the response card
     replaces the one acted on **in place** (the buttons disappear, so a second click cannot
     double-act);
-  * an ``Action.Submit`` button (legacy/Playground) arrives as a message whose ``value`` carries
+  * an ``Action.Submit`` button (Playground) arrives as a message whose ``value`` carries
     the same ``{tool, thread_id, ...}`` payload -> identical routing through ``respond``;
   * the text command ``queue`` -> the caller's pending-approvals list;
   * any other text -> open a new trial, post the Change Court card.
@@ -35,7 +35,6 @@ from botbuilder.schema import (
     ChannelAccount,
 )
 
-from app.domain import PlanKind, VerdictType
 from app.domain.errors import ChangeCourtError
 from app.domain.principal import Principal
 from app.mcp.cards import build_change_court_card, build_verdict_result_card
@@ -118,8 +117,6 @@ class CourtBot(ActivityHandler):  # type: ignore[misc]  # SDK base is untyped (A
             return self._on_action(value, actor)
         if value and value.get("tool") == "open_trial":
             return self._on_open(value)
-        if value and "thread_id" in value:
-            return self._on_verdict(value)
         if text and text.strip().lower() in _QUEUE_COMMANDS:
             return self._on_queue(actor)
         if text and text.strip():
@@ -127,6 +124,8 @@ class CourtBot(ActivityHandler):  # type: ignore[misc]  # SDK base is untyped (A
         return _text_card(WELCOME)
 
     def _on_request(self, raw_request: str, actor: Principal | None) -> Card:
+        if actor is None:
+            return _text_card("Could not identify you from this channel; a change needs a sender.")
         # Honor the deployment's DRY_RUN_DEFAULT instead of forcing dry-run: passing run_mode=None
         # lets the service apply the configured default, so an operator can run the bot-card flow
         # live (real downstream execution) by setting DRY_RUN_DEFAULT=false.
@@ -214,25 +213,6 @@ class CourtBot(ActivityHandler):  # type: ignore[misc]  # SDK base is untyped (A
             "body": body,
             "actions": actions,
         }
-
-    def _on_verdict(self, value: Mapping[str, Any]) -> Card:
-        thread_id = str(value["thread_id"])
-        try:
-            verdict_type = VerdictType(value["verdict_type"])
-            selected_plan = PlanKind(value.get("selected_plan", PlanKind.FEASIBLE.value))
-        except (KeyError, ValueError):
-            return _text_card("That verdict is not recognized.")
-        result = self._service.cast_verdict(
-            thread_id, verdict_type, selected_plan=selected_plan, actor="playground"
-        )
-        trial = self._service.get_trial(thread_id)
-        if trial is None:
-            return _text_card(
-                f"Verdict recorded ({result.execution_status}), but the trial is unavailable."
-            )
-        return self._result_card(
-            trial, status=result.execution_status, audit_id=result.audit_id, thread_id=thread_id
-        )
 
     def _already_handled(self, activity_id: str | None) -> bool:
         """Record ``activity_id`` and report whether it was seen before (None never dedupes)."""

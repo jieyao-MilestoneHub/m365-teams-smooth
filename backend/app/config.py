@@ -115,8 +115,10 @@ class Settings(BaseSettings):
 
     # --- Approvals (separation of duties) ---
     # Map approver roles to identities (UPN or oid), comma-separated "role:identity" (a role may
-    # repeat). e.g. "security_lead:joel@x,account_owner:joel@x". Empty -> no authorized approvers,
-    # so identity-aware enforcement stays off and the legacy single-verdict path is used.
+    # repeat). e.g. "security_lead:joel@x,account_owner:joel@x". Required for any deployment whose
+    # changes convene approvers: every decision is cast by an authorized identity, so with no
+    # directory a quorum-bearing trial can be submitted and sent but never decided. No-approver
+    # changes execute on the requester's own confirmation either way.
     approver_directory: str = ""
 
     # --- Notifications (approval channel) ---

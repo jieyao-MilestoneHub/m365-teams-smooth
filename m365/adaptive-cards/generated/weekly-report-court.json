@@ -11,15 +11,15 @@
     },
     {
       "type": "TextBlock",
-      "text": "move the rehearsal to 2026-06-17",
+      "text": "post the Project X weekly report",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "Risk: HIGH",
+      "text": "Risk: LOW",
       "wrap": true,
       "weight": "Bolder",
-      "color": "Attention"
+      "color": "Good"
     },
     {
       "type": "TextBlock",
@@ -29,61 +29,43 @@
     },
     {
       "type": "TextBlock",
-      "text": "• [github] Milestone 'Launch Rehearsal' currently due 2026-06-10",
+      "text": "• [github] 4 issue(s) closed recently",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "• [outlook] Calendar events near the new date",
+      "text": "• [planner] 2 task(s) tracked this week",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "• [planner] 2 planner task(s) must shift",
+      "text": "• [outlook] 1 meeting(s) on the calendar",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "• [teams] A pending announcement references the original date",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
-      "text": "grounded in 3 governance fact(s) — see the run page",
+      "text": "grounded in 6 governance fact(s) — see the run page",
       "wrap": true,
       "isSubtle": true,
       "spacing": "Small"
     },
     {
       "type": "TextBlock",
-      "text": "Proposed plan: Move the rehearsal to 2026-06-17; update calendar, schedule, and announcement.",
+      "text": "Proposed plan: Aggregate the week's activity once and post it to the project channel.",
       "wrap": true,
       "weight": "Bolder"
     },
     {
       "type": "TextBlock",
-      "text": "• github.update_milestone_due",
+      "text": "• teams.post_message",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "• outlook.create_event",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
-      "text": "• planner.shift_task_dates",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
-      "text": "• teams.update_announcement",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
-      "text": "Approvers required (any): eng_lead, comms",
-      "wrap": true
+      "text": "Approval required: none — the requester's confirmation executes it.",
+      "wrap": true,
+      "weight": "Bolder",
+      "color": "Good"
     },
     {
       "type": "Input.Text",
@@ -95,7 +77,7 @@
     },
     {
       "type": "TextBlock",
-      "text": "🧠 Prosecutor: Gathered 5 evidence item(s); tags: schedule.milestone_move, schedule.calendar_conflict, schedule.planner_shift, comms.pending_announcement. No high-severity findings.",
+      "text": "🧠 Prosecutor: Gathered 4 evidence item(s); tags: report.activity_collected. No high-severity findings.",
       "wrap": true,
       "isSubtle": true,
       "spacing": "Small"

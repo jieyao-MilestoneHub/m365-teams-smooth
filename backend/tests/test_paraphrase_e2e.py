@@ -14,6 +14,7 @@ from app.config import Settings
 from app.container import build_court_service
 from app.domain import ChangeStatus, PlanKind
 from app.services.court_service import CourtService
+from tests.conftest import REQUESTER
 
 
 def _service() -> CourtService:
@@ -36,7 +37,7 @@ _FEASIBLE = PlanKind.FEASIBLE.value
     ],
 )
 def test_natural_phrasing_drives_the_right_trial(raw: str, unsafe: bool, plan_kind: str) -> None:
-    summary = _service().submit_change(raw)
-    assert summary.status == ChangeStatus.AWAITING_VERDICT.value
+    summary = _service().submit_change(raw, requester=REQUESTER)
+    assert summary.status == ChangeStatus.AWAITING_REQUESTER_REVIEW.value
     assert summary.unsafe is unsafe
     assert summary.plan_kind == plan_kind

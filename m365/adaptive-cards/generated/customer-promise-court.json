@@ -11,7 +11,7 @@
     },
     {
       "type": "TextBlock",
-      "text": "move the rehearsal to 2026-06-16",
+      "text": "promise Customer A that SSO is GA by 2026-06-17",
       "wrap": true
     },
     {
@@ -30,7 +30,7 @@
     },
     {
       "type": "TextBlock",
-      "text": "The requested 2026-06-16 collides with an existing commitment (Board review); propose 2026-06-17 instead, with the same calendar, schedule, and announcement ripple.",
+      "text": "Reject the GA promise: offer a private preview on 2026-06-17, with GA pending the security review on 2026-06-18.",
       "wrap": true,
       "color": "Attention"
     },
@@ -43,13 +43,13 @@
     },
     {
       "type": "TextBlock",
-      "text": "• [outlook] The requested date 2026-06-16 collides with 'Board review'",
+      "text": "• [outlook] Security review on 2026-06-18 is after the promised 2026-06-17",
       "wrap": true,
       "weight": "Bolder"
     },
     {
       "type": "TextBlock",
-      "text": "    ↳ Release & Change Management Policy — Schedule changes are controlled changes; Release & Change Management Policy — Coordinated downstream updates; Meeting & Event Scheduling Guidelines — Rescheduling a routine meeting",
+      "text": "    ↳ Customer Commitment & GA Readiness Policy — No commitment before security review sign-off; Customer Commitment & GA Readiness Policy — Approval and quorum; Customer Commitment & GA Readiness Policy — GA readiness gate",
       "wrap": true,
       "isSubtle": true,
       "spacing": "Small"
@@ -62,35 +62,30 @@
     },
     {
       "type": "TextBlock",
-      "text": "• [github] Milestone 'Launch Rehearsal' currently due 2026-06-10",
+      "text": "• [github] 2 open blocking issue(s)",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "• [outlook] Calendar events near the new date",
+      "text": "• [crm] Renewal value 250000 due 2026-09-30",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "• [planner] 2 planner task(s) must shift",
-      "wrap": true
-    },
-    {
-      "type": "TextBlock",
-      "text": "+1 more impact item(s) · grounded in 6 governance fact(s) — see the run page",
+      "text": "grounded in 6 governance fact(s) — see the run page",
       "wrap": true,
       "isSubtle": true,
       "spacing": "Small"
     },
     {
       "type": "TextBlock",
-      "text": "Safe alternative: The requested 2026-06-16 collides with an existing commitment (Board review); propose 2026-06-17 instead, with the same calendar, schedule, and announcement ripple.",
+      "text": "Safe alternative: Reject the GA promise: offer a private preview on 2026-06-17, with GA pending the security review on 2026-06-18.",
       "wrap": true,
       "weight": "Bolder"
     },
     {
       "type": "TextBlock",
-      "text": "• github.update_milestone_due",
+      "text": "• github.comment_issue",
       "wrap": true
     },
     {
@@ -100,17 +95,22 @@
     },
     {
       "type": "TextBlock",
-      "text": "• planner.shift_task_dates",
+      "text": "• crm.add_note",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "• teams.update_announcement",
+      "text": "• outlook.draft_email",
       "wrap": true
     },
     {
       "type": "TextBlock",
-      "text": "Approvers required (any): eng_lead, comms",
+      "text": "• teams.create_escalation_thread",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "Approvers required (all): security_lead, account_owner",
       "wrap": true
     },
     {
@@ -123,7 +123,7 @@
     },
     {
       "type": "TextBlock",
-      "text": "🧠 Prosecutor: Gathered 6 evidence item(s); tags: schedule.milestone_move, schedule.calendar_conflict, schedule.target_date_conflict, schedule.planner_shift, comms.pending_announcement. Decisive…",
+      "text": "🧠 Prosecutor: Gathered 4 evidence item(s); tags: github.blocking_issues_open, crm.renewal_at_risk, security.review_after_due_date. Decisive: Security review on 2026-06-18 is after the promised…",
       "wrap": true,
       "isSubtle": true,
       "spacing": "Small"
