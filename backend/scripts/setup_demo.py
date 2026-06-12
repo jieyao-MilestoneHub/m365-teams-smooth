@@ -5,7 +5,8 @@ credentials are in the environment. GitHub and Outlook ground the **Informed App
 SharePoint grounds the **Vendor Access** additional capability (skip it if you only run the
 headline):
 
-- **GitHub** — the ``Launch Rehearsal`` milestone (the date the request moves). *Headline.*
+- **GitHub** — the ``Launch Rehearsal`` milestone (the date the request moves) and the demo
+  change ticket the evidence receiver posts onto. *Headline.*
 - **Outlook** — the demo calendar, incl. the ``Board review`` conflict the request collides with.
   *Headline.*
 - **SharePoint** — the ``ProjectX`` document library and its folders. *Vendor Access capability.*
