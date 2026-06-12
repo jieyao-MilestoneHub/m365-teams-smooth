@@ -41,7 +41,8 @@ registered capability supports it, so it is never planned or executed.
 
 Every step runs through the same surfaces: the **Change Court Adaptive Card** (the decision UI), the
 **read-only pipeline run page** on a second screen (signed links, CI-style stage rail), and the
-append-only audit at the end.
+append-only audit at the end. Recording it? The screen-by-screen script with narration is in
+[script.md](script.md).
 
 ## Reproduce it (credential-free)
 
@@ -53,6 +54,15 @@ Python 3.11+ with [`uv`](https://docs.astral.sh/uv/), Node (for the Playground),
 make demo     # runs the scenario end to end and prints each Change Court
               # (evidence, safe alternative, approvers, verdict, audit id)
 make cards    # exports the Adaptive Card JSON to m365/adaptive-cards/generated/
+```
+
+To see the evidence packet land on an existing ticket, run the reference receiver and point the
+webhook at it:
+
+```bash
+GITHUB_TOKEN=<token> GITHUB_REPO=<owner/name> EVIDENCE_ISSUE=<number> \
+    uv run uvicorn scripts.evidence_receiver:app --port 8088   # from backend/
+# backend env: EVIDENCE_WEBHOOK_URL=http://localhost:8088/evidence
 ```
 
 Open any exported card in the [Adaptive Cards Designer](https://adaptivecards.io/designer) for a
