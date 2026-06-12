@@ -6,10 +6,13 @@ from enum import StrEnum
 
 
 class RunMode(StrEnum):
-    """Whether execution predicts effects (no side effects) or applies them."""
+    """Whether execution predicts effects (no side effects), applies them, or never happens."""
 
     DRY_RUN = "dry_run"
     LIVE = "live"
+    # Impact check only: the pipeline gathers evidence, plans, and scores risk, then stops —
+    # nothing executes regardless of risk level, and the run cannot be resumed into execution.
+    ANALYZE = "analyze"
 
 
 class RiskLevel(StrEnum):
@@ -30,6 +33,7 @@ class ChangeStatus(StrEnum):
     AWAITING_APPROVAL = "awaiting_approval"  # sent on; an authorized approver must decide
     EXECUTING = "executing"
     DONE = "done"
+    ANALYZED = "analyzed"  # analysis-only run: evidence/plan/risk recorded, nothing executed
     REJECTED = "rejected"  # an approver rejected (with a note)
     WITHDRAWN = "withdrawn"  # the requester gave up before approval
     BLOCKED = "blocked"

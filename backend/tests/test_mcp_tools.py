@@ -195,3 +195,14 @@ async def test_approval_tools_require_authentication(
     with pytest.raises(ToolError) as excinfo:
         await _call(approval_mcp, "send_for_approval", {"thread_id": "t", "note": "n"})
     assert "unauthorized_approver" in str(excinfo.value)
+
+async def test_submit_change_analyze_returns_the_evidence_and_never_executes(mcp: Any) -> None:
+    summary = await _call(
+        mcp,
+        "submit_change",
+        {"raw_request": "promise Customer A SSO is GA by 2026-06-17", "run_mode": "analyze"},
+    )
+    assert summary["status"] == "analyzed"
+    trial = await _call(mcp, "get_trial", {"thread_id": summary["thread_id"]})
+    assert trial["results"] == []
+    assert trial["quorum"] is not None  # the would-be approvers travel with the record
