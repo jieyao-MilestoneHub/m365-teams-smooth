@@ -92,11 +92,38 @@ def test_garbage_response_falls_back_to_deterministic(mock_registry: Any) -> Non
     assert change.due_by == "2026-06-17"
 
 
-def test_unknown_subject_falls_back(mock_registry: Any) -> None:
-    parser = LlmRequestParser(_StubLLM('{"subject": "weather", "actions": []}'), mock_registry,
-                              DeterministicRequestParser())
-    change = parser.parse("give the vendor access to Project X", change_id="c1")
-    assert change.subject == "project-access"  # deterministic fallback
+def test_novel_subject_is_kept_with_its_actions(mock_registry: Any) -> None:
+    # A subject outside the known five is a classification, not a failure: the LLM's parse —
+    # including its actions — is kept, and the policy floor governs what no pack matches.
+    reply = (
+        '{"subject": "channel-archival", "actions": '
+        '[{"system": "teams", "capability_name": "teams.post_message", "params": "{}"}]}'
+    )
+    parser = LlmRequestParser(_StubLLM(reply), mock_registry, DeterministicRequestParser())
+    change = parser.parse("archive the old project channels", change_id="c1")
+    assert change.subject == "channel-archival"
+    assert [a.capability_name for a in change.requested_actions] == ["teams.post_message"]
+
+
+def test_malformed_subject_normalizes_to_kebab_case(mock_registry: Any) -> None:
+    parser = LlmRequestParser(
+        _StubLLM('{"subject": "Database Migration!!", "actions": []}'),
+        mock_registry,
+        DeterministicRequestParser(),
+    )
+    change = parser.parse("migrate the reporting database", change_id="c1")
+    assert change.subject == "database-migration"
+
+
+def test_unusable_subject_degrades_to_unclassified_keeping_the_parse(mock_registry: Any) -> None:
+    reply = (
+        '{"subject": "???", "actions": '
+        '[{"system": "teams", "capability_name": "teams.post_message", "params": "{}"}]}'
+    )
+    parser = LlmRequestParser(_StubLLM(reply), mock_registry, DeterministicRequestParser())
+    change = parser.parse("do the thing", change_id="c1")
+    assert change.subject is None  # unclassified, NOT deterministic-fallback
+    assert [a.capability_name for a in change.requested_actions] == ["teams.post_message"]
 
 
 def test_llm_blocks_when_intake_finds_no_supported_action(mock_registry: Any) -> None:

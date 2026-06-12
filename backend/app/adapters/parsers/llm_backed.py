@@ -9,6 +9,7 @@ never raises and the trials stay reproducible).
 from __future__ import annotations
 
 import logging
+import re
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -23,13 +24,18 @@ from app.ports.request_parser import RequestParser
 
 logger = logging.getLogger(__name__)
 
-_SUBJECTS = {
+# Subjects with specialized handling (scenario gatherers/planners/grounding). They are prompt
+# hints, not a gate: the LLM may coin a new kebab-case subject for anything else, and that parse
+# is kept — the policy floor governs whatever no pack matches.
+_KNOWN_SUBJECTS = {
     "launch": "moving or slipping a launch / milestone / release date",
     "sso-ga": "promising a customer that a feature is generally available by a date",
     "project-access": "granting an external vendor / contractor / agency access to a folder",
     "meeting-actions": "turning meeting or standup discussion into tracked follow-up tasks",
     "weekly-report": "aggregating recent project activity into a status report for the channel",
 }
+
+_SUBJECT_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
 
 class _LlmAction(BaseModel):
@@ -48,6 +54,16 @@ class _LlmParse(BaseModel):
     subject: str | None = None
     due_by: str | None = None
     actions: list[_LlmAction] = Field(default_factory=list)
+
+    # A malformed subject degrades to unclassified (the parse — and its actions — is kept);
+    # only a parse failure or a guardrail block falls back to the deterministic parser.
+    @field_validator("subject", mode="before")
+    @classmethod
+    def _normalize_subject(cls, value: object) -> object:
+        if not isinstance(value, str):
+            return None
+        slug = re.sub(r"[^a-z0-9]+", "-", value.strip().lower()).strip("-")[:64]
+        return slug if _SUBJECT_RE.fullmatch(slug) else None
 
 
 _PARSE_SCHEMA = schema_of(_LlmParse)
@@ -99,11 +115,6 @@ class LlmRequestParser(RequestParser):
             metrics.increment("parser.llm_fallback")
             return self._fallback.parse(raw, change_id=change_id)
 
-        if result.subject not in _SUBJECTS:
-            logger.warning("parser.llm_fallback", extra={"reason": "unknown_subject"})
-            metrics.increment("parser.llm_fallback")
-            return self._fallback.parse(raw, change_id=change_id)
-
         return Change(
             change_id=change_id,
             raw_request=raw,
@@ -120,7 +131,7 @@ class LlmRequestParser(RequestParser):
     def _prompt(self) -> str:
         """The stable instruction block (catalog, subjects, shape) — a cacheable prefix."""
         caps = ", ".join(sorted({c.name for c in self._registry.capabilities()}))
-        subjects = "; ".join(f"{key} = {meaning}" for key, meaning in _SUBJECTS.items())
+        subjects = "; ".join(f"{key} = {meaning}" for key, meaning in _KNOWN_SUBJECTS.items())
         shape = (
             '{"subject": <one subject or null>, "due_by": <ISO date YYYY-MM-DD or null>, '
             '"actions": [{"system": str, "capability_name": str, '
@@ -129,7 +140,10 @@ class LlmRequestParser(RequestParser):
         return (
             "You classify an enterprise change request.\n"
             f"{HARDENING}\n"
-            f"Choose exactly one subject from: {subjects}.\n"
+            "Classify the request with a subject. Prefer one of these known subjects when the "
+            f"request clearly fits: {subjects}. Otherwise coin a short, specific kebab-case "
+            'subject (e.g. "database-migration"); use null only when no subject is '
+            "identifiable.\n"
             "Set due_by to an ISO date (YYYY-MM-DD), resolving relative dates against today's "
             "date (stated separately); use null when there is no date.\n"
             f"Use ONLY these capability names for actions: {caps}.\n"

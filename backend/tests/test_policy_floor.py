@@ -73,3 +73,39 @@ def test_off_script_change_waits_for_the_manager_end_to_end() -> None:
 
     decided = service.decide(summary.thread_id, actor=MANAGER, approve=True, note="reviewed")
     assert decided.status == ChangeStatus.DONE.value
+
+
+def test_novel_llm_subject_lands_on_the_floor_end_to_end() -> None:
+    # G1 x G2 integration contract: a novel-subject parse (kept, with its actions) flows
+    # intake -> impact -> options -> policy and waits for the manager — never a free pass.
+    from app.adapters.parsers.deterministic import DeterministicRequestParser
+    from app.adapters.parsers.llm_backed import LlmRequestParser
+    from app.ports.llm import LLMProvider
+
+    class _StubLLM(LLMProvider):
+        def complete(self, prompt: str, *, system: str | None = None) -> str:
+            return (
+                '{"subject": "channel-archival", "actions": '
+                '[{"system": "teams", "capability_name": "teams.post_message", '
+                '"params": "{}"}]}'
+            )
+
+    settings = Settings(
+        force_all_mock=True,
+        db_url="sqlite:///:memory:",
+        dry_run_default=True,
+        approver_directory=f"manager:{MANAGER.upn}",
+    )
+    from app.adapters.integrations.mock_teams import MockTeamsAdapter
+    from app.adapters.integrations.registry import build_registry  # composition mirrors container
+
+    registry = build_registry(settings, {"teams": {"mock": MockTeamsAdapter()}})
+    parser = LlmRequestParser(_StubLLM(), registry, DeterministicRequestParser())
+    service = build_court_service(settings, request_parser=parser, registry=registry)
+
+    summary = service.submit_change("archive the old project channels", requester=REQUESTER)
+    assert summary.requires_approval is True
+    sent = service.send_for_approval(summary.thread_id, actor=REQUESTER, note="cleanup")
+    assert sent.status == ChangeStatus.AWAITING_APPROVAL.value
+    trial = service.get_trial(summary.thread_id)
+    assert trial is not None and trial.change.subject == "channel-archival"
