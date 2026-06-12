@@ -9,14 +9,16 @@ through the checkpoint keyed by ``thread_id``, so a fresh runner can resume a ru
 from __future__ import annotations
 
 import concurrent.futures
+from collections.abc import Mapping
 from typing import Any, cast
 
 from app.agent.state import CourtState, initial_state, serialize
 from app.domain import Principal, RunMode, Verdict
 from app.domain.errors import GraphTimeoutError
+from app.ports.runner import CourtRunnerPort
 
 
-class CourtRunner:
+class CourtRunner(CourtRunnerPort):
     """Drives the court graph across the durable verdict interrupt."""
 
     def __init__(self, graph: Any, *, timeout_seconds: float | None = None) -> None:
@@ -106,13 +108,13 @@ class CourtRunner:
         finally:
             pool.shutdown(wait=False)
 
-    def update(self, thread_id: str, values: dict[str, Any]) -> CourtState:
+    def update(self, thread_id: str, values: Mapping[str, object]) -> CourtState:
         """Persist a partial state update on the suspended checkpoint without resuming.
 
         Used by the requester-review gate (record the requester / their note / the new status) while
         the run waits at the verdict interrupt — the graph is not advanced.
         """
-        self._graph.update_state(self._config(thread_id), values)
+        self._graph.update_state(self._config(thread_id), dict(values))
         return self.state(thread_id)
 
     def state(self, thread_id: str) -> CourtState:

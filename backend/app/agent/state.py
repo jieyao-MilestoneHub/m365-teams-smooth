@@ -8,37 +8,10 @@ updates (LangGraph merges them); ``serialize`` builds those payloads from domain
 
 from __future__ import annotations
 
-from typing import TypedDict
-
 from pydantic import BaseModel
 
 from app.domain import ChangeStatus, EvidenceItem, Principal, RunMode
-
-
-class CourtState(TypedDict, total=False):
-    """Serializable state threaded through the court nodes."""
-
-    thread_id: str
-    change_id: str
-    raw_request: str
-    source: str
-    requester: dict[str, object]  # Principal (the authenticated opener)
-    run_mode: str  # RunMode value
-
-    change: dict[str, object]  # Change
-    impact: dict[str, object]  # ImpactEvidence
-    options: dict[str, object]  # ExecutionPlan
-    risk: dict[str, object]  # RiskResult
-    quorum: dict[str, object]  # Quorum
-    verdict: dict[str, object]  # Verdict
-    selected_plan: str  # PlanKind value
-
-    results: list[dict[str, object]]  # StepResult dumps
-    verifications: list[dict[str, object]]  # EffectVerification dumps (live runs only)
-    deliberations: list[dict[str, object]]  # DeliberationEntry dumps (append-only reasoning trace)
-    audit_id: str
-    status: str  # ChangeStatus value
-    errors: list[str]
+from app.ports.runner import CourtState as CourtState
 
 
 def serialize(model: BaseModel) -> dict[str, object]:
