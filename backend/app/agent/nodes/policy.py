@@ -27,6 +27,12 @@ from app.domain import (
 )
 
 
+def _grounding_citations(impact: ImpactEvidence, *, cap: int = 5) -> list[str]:
+    """The trial's governance citations, deduped in evidence order and capped."""
+    citations = (fact.citation for item in impact.items for fact in item.grounded if fact.citation)
+    return list(dict.fromkeys(citations))[:cap]
+
+
 def evaluate_risk(pack: RulePack, tags: list[str]) -> tuple[RiskResult, bool]:
     """Score the fired factors into a RiskResult; also report whether the change is unsafe."""
     score = 0
@@ -153,10 +159,14 @@ class PolicyNode:
             if unsafe:
                 change.unsafe = True
             quorum = self._resolver.resolve(pack, tags, unsafe=unsafe, level=risk.level)
+            # Attach the trial's governance citations to every fired factor — advisory context
+            # only; scoring, banding, and quorum above are already final.
+            citations = _grounding_citations(impact)
+            if citations:
+                for factor in risk.factors:
+                    factor.grounded_citations = citations
 
-        status = (
-            ChangeStatus.AWAITING_VERDICT if risk.requires_approval else ChangeStatus.EXECUTING
-        )
+        status = ChangeStatus.AWAITING_VERDICT if risk.requires_approval else ChangeStatus.EXECUTING
 
         approvers = ", ".join(a.role.value for a in quorum.required_approvers) or "none"
         factors = ", ".join(f"{f.label} (+{f.weight})" for f in risk.factors) or "none"
