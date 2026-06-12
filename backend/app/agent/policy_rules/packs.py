@@ -8,6 +8,7 @@ policy node.
 from __future__ import annotations
 
 from app.agent.policy_rules.models import (
+    UNGOVERNED_TAG,
     ApproverRule,
     MatchRules,
     QuorumRules,
@@ -184,6 +185,25 @@ WEEKLY_REPORT = RulePack(
     risk_bands=_STANDARD_BANDS,
     # Posting an internal status summary is the requester's own authority: low risk, no approver.
     quorum=QuorumRules(approvers=[]),
+    verdict_options=VerdictOptionRules(
+        default=[VerdictType.APPROVE, VerdictType.REQUEST_REVISION, VerdictType.REJECT],
+    ),
+)
+
+
+# The policy floor: engaged only as the injected fallback when NO pack governs a change. The
+# sentinel tag fires its factor (30 -> MEDIUM, approval required) and convenes the manager —
+# "unknown" means "ask a human", never "free pass". It never matches by itself.
+UNGOVERNED = RulePack(
+    id="ungoverned",
+    match=MatchRules(),
+    risk_factors=[
+        RiskFactorRule(id="ungoverned_change", when_tag=UNGOVERNED_TAG, weight=30),
+    ],
+    risk_bands=_STANDARD_BANDS,
+    quorum=QuorumRules(
+        approvers=[ApproverRule(role=ApproverRole.MANAGER, when_tag=UNGOVERNED_TAG)],
+    ),
     verdict_options=VerdictOptionRules(
         default=[VerdictType.APPROVE, VerdictType.REQUEST_REVISION, VerdictType.REJECT],
     ),

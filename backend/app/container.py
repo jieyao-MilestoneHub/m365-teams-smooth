@@ -65,7 +65,7 @@ from app.agent.nodes.policy import PolicyNode, RulePackQuorumResolver
 from app.agent.nodes.verify import VerifyNode
 from app.agent.planners import PLANNERS
 from app.agent.policy_rules.models import RulePack
-from app.agent.policy_rules.packs import default_packs
+from app.agent.policy_rules.packs import UNGOVERNED, default_packs
 from app.agent.runner import CourtRunner
 from app.config import Settings
 from app.domain.run_events import RunEventKind
@@ -143,6 +143,7 @@ def build_court_service(
     gatherers: dict[str, Gatherer] | None = None,
     planners: dict[str, Planner] | None = None,
     packs: list[RulePack] | None = None,
+    fallback_pack: RulePack | None = UNGOVERNED,
     registry: IntegrationRegistry | None = None,
     request_parser: RequestParser | None = None,
     notifier: ApprovalNotifier | None = None,
@@ -150,8 +151,10 @@ def build_court_service(
     """Wire the registry, providers, persistence, graph, and runner into a CourtService.
 
     Gatherers, planners, and packs default to the three-trial configuration; pass explicit values
-    (including empty collections) to override — e.g. ``packs=[]`` for an approval-free court. A
-    ``registry`` override allows tests to inject adapters (e.g. with a failure injected).
+    (including empty collections) to override. ``fallback_pack`` is the policy floor for changes
+    no pack governs (defaults to ``UNGOVERNED`` — manager approval); pass ``fallback_pack=None``
+    together with ``packs=[]`` for a deliberately approval-free court. A ``registry`` override
+    allows tests to inject adapters (e.g. with a failure injected).
     """
     gatherers = gatherers if gatherers is not None else GATHERERS
     planners = planners if planners is not None else PLANNERS
@@ -350,7 +353,9 @@ def build_court_service(
         intake=IntakeNode(parser, registry, deliberator),
         impact=ImpactNode(registry, knowledge, gatherers, deliberator),
         options=OptionsNode(planners, deliberator),
-        policy=PolicyNode(packs, RulePackQuorumResolver(), deliberator),
+        policy=PolicyNode(
+            packs, RulePackQuorumResolver(), deliberator, fallback_pack=fallback_pack
+        ),
         execute=ExecuteNode(registry, sink=run_events),
         verify=VerifyNode(deliberator),
         audit=AuditNode(audit_repo, memory=memory),
