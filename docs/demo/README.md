@@ -26,6 +26,12 @@ it on sight. The court refuses it, because it reads what no single screen shows,
 3. **Audit after action.** An append-only record of evidence, approvers, verdict, before/after
    snapshots, and rollback hints.
 
+**And the beat by omission: no redundant approval.** The same gate that convenes a three-role
+quorum here adds **zero approvers** to routine work — meeting action items and the weekly report
+run on the requester's own confirmation, and the card states it plainly ("Approval required:
+none — the requester's confirmation executes it."). The quorum is the exception path, reserved
+for evidence like this scenario's; see [the approval policy](../approval-policy.md).
+
 The same machinery handles the simpler cases the same way: **"move the rehearsal to 2026-06-16"**
 collides visibly with a **Board review** and is refused for the next free day (**2026-06-17**), while
 a clean **2026-06-17** request is approved as feasible.
@@ -93,9 +99,9 @@ demo is built out for them. Run them with `make demo-all` (or `make cards-all` f
 type the request into the Playground bot:
 
 - **Meeting Actions** — standup follow-ups become owned, dated Planner tasks ("create action items
-  from standup").
+  from standup") — low risk, **no approver added**; the requester's confirmation executes it.
 - **Weekly Report** — cross-system activity aggregated into one channel post ("post the Project X
-  weekly report").
+  weekly report") — the requester's own authority; **no approver added**.
 - **Customer Promise** — an unsafe "it's GA by <date>" promise is refused; a private preview with
   gated GA is proposed instead ("promise Customer A that SSO is GA by 2026-06-17").
 - **Vendor Access** — an over-broad, undated access request is narrowed to least-privilege,
