@@ -22,7 +22,11 @@ from app.bot.court_bot import CourtBot
 from app.bot.endpoint import build_bot_adapter, build_bot_router
 from app.bot.proactive import ProactiveJob, ProactiveSender
 from app.config import Settings
-from app.container import build_conversation_store, build_teams_notifier
+from app.container import (
+    build_conversation_store,
+    build_evidence_webhook_notifier,
+    build_teams_notifier,
+)
 from app.main import create_app
 from app.mcp.cards import build_change_court_card, build_verdict_result_card
 from app.mcp.security import (
@@ -121,6 +125,11 @@ def create_full_app(service: CourtService | None = None) -> FastAPI:
             result_card=result_card,
         )
     )
+    webhook_notifier = build_evidence_webhook_notifier(
+        settings, trial_reader=court.get_trial, run_link=court.run_link
+    )
+    if webhook_notifier is not None:
+        channels.append(webhook_notifier)
     court.attach_notifier(CompositeNotifier(channels))
 
     @asynccontextmanager

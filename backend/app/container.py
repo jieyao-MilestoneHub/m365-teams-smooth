@@ -31,6 +31,12 @@ from app.adapters.llm.azure_openai import AzureOpenAILLMProvider
 from app.adapters.llm.fake_llm import FakeLLMProvider
 from app.adapters.llm.tiered import ModelTierLLMProvider
 from app.adapters.llm.usage_recording import UsageRecordingLLMProvider
+from app.adapters.notifiers.composite_notifier import CompositeNotifier
+from app.adapters.notifiers.evidence_webhook import (
+    EvidenceWebhookNotifier,
+    RunLink,
+    TrialReader,
+)
 from app.adapters.notifiers.teams_activity import TeamsActivityNotifier
 from app.adapters.parsers.deterministic import DeterministicRequestParser
 from app.adapters.parsers.llm_backed import LlmRequestParser
@@ -95,6 +101,21 @@ def build_teams_notifier(settings: Settings) -> ApprovalNotifier | None:
             teams_app_id=settings.notify_teams_app_id,
         )
     return None
+
+
+def build_evidence_webhook_notifier(
+    settings: Settings, *, trial_reader: TrialReader, run_link: RunLink
+) -> ApprovalNotifier | None:
+    """The evidence webhook channel, when a URL is configured; else ``None``."""
+    if not settings.evidence_webhook_url:
+        return None
+    return EvidenceWebhookNotifier(
+        url=settings.evidence_webhook_url,
+        trial_reader=trial_reader,
+        run_link=run_link,
+        token=settings.evidence_webhook_token,
+        timeout=settings.http_timeout_seconds,
+    )
 
 
 def _run_event_emitter(sink: RunEventSink) -> RunEventEmitter:
@@ -336,7 +357,7 @@ def build_court_service(
         checkpointer=store.saver(),
     )
     runner = CourtRunner(graph, timeout_seconds=settings.graph_timeout_seconds)
-    return CourtService(
+    service = CourtService(
         runner,
         audit_repo,
         ledger,
@@ -350,6 +371,17 @@ def build_court_service(
         dry_run_default=settings.dry_run_default,
         max_request_chars=settings.max_request_chars,
     )
+    # The webhook channel reads trials through the service it notifies for, so it composes after
+    # construction. The ASGI entrypoint re-attaches its own composite (adding the bot-chat card
+    # channel) and includes the webhook again via the same factory.
+    webhook = build_evidence_webhook_notifier(
+        settings, trial_reader=service.get_trial, run_link=service.run_link
+    )
+    if webhook is not None:
+        service.attach_notifier(
+            CompositeNotifier([n for n in (notifier, webhook) if n is not None])
+        )
+    return service
 
 
 def build_maintenance_service(settings: Settings) -> MaintenanceService:
