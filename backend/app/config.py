@@ -134,6 +134,12 @@ class Settings(BaseSettings):
     # reschedule announcement) send a real Graph activity notification to this UPN. Reuses GRAPH_*
     # + the admin-consented TeamsActivity.Send; empty -> teams falls back to the in-memory mock.
     teams_notify_recipient: str = ""
+    # POST each approval event (request / decision / acknowledgement) with the trial's evidence
+    # packet to this URL, so an external ticket or change-management workflow can attach the
+    # analysis. Independent of NOTIFY_MODE; empty -> the channel is off.
+    evidence_webhook_url: str = ""
+    # Optional bearer token sent in the Authorization header of each webhook POST.
+    evidence_webhook_token: str = ""
 
     # --- Bot surface (POST /api/messages) ---
     # The Azure Bot's app registration. Empty bot_app_id -> anonymous Bot Framework auth, which is
