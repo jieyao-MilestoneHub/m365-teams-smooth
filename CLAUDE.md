@@ -155,8 +155,8 @@ Env-driven via `config.py` (pydantic-settings) — see `.env.example`. Architect
   (`OUTLOOK_CALENDAR_UPN`, `SHAREPOINT_SITE_ID`, `TEAMS_NOTIFY_RECIPIENT`) — enable the real
   Microsoft Graph adapters.
 - `RUN_LINK_SECRET` — HMAC secret for run-page deep links; empty disables the run page (404).
-- `APPROVER_DIRECTORY` — role→identity map for identity-aware approvals; empty keeps the legacy
-  single-verdict path.
+- `APPROVER_DIRECTORY` — role→identity map for approvals; required for any deployment whose
+  changes convene approvers (every decision is cast by an authorized identity — ADR-0014).
 - `AZURE_OPENAI_ENDPOINT` / `AZURE_OPENAI_DEPLOYMENT` — set both to enable the real LLM provider
   (keyless `DefaultAzureCredential` unless `LLM_API_KEY` is set); leave empty for the offline fake
   LLM provider (the default for local development and fully-mocked runs). `LLM_TIMEOUT_SECONDS` /
