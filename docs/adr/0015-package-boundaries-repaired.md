@@ -24,7 +24,7 @@ single business layer, and composition-root discipline all passed. Three edges d
 1. **Court-runner port.** `app/ports/runner.py` defines `CourtRunnerPort`
    (`start/resume/advance/update/state`) and owns the `CourtState` TypedDict (zero runtime
    dependencies; re-exported from `app.agent.state` for the nodes). `start()` absorbs initial-state
-   construction, so callers describe the submission and the agent owns its state shape. The service
+   construction, so callers describe the submitted change and the agent owns its state shape. The service
    depends on the port; the composition root still constructs the concrete `CourtRunner`.
 2. **`app/llm/`** — provider-agnostic LLM wire utilities (`structured.py`: strict JSON-Schema
    rendering and reply parsing; `untrusted.py`: third-party content fencing), shared by the agent
