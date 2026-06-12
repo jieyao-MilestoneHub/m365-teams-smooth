@@ -103,6 +103,48 @@ def test_missing_configuration_fails_fast(monkeypatch: pytest.MonkeyPatch) -> No
         importlib.import_module("scripts.evidence_receiver")
 
 
+def test_renderer_imports_without_receiver_configuration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The renderer is pure presentation: tooling previews a ticket comment with no credentials,
+    # while the receiver itself keeps failing fast on missing configuration.
+    for name in ("GITHUB_TOKEN", "GITHUB_REPO", "EVIDENCE_ISSUE"):
+        monkeypatch.delenv(name, raising=False)
+    sys.modules.pop("scripts.evidence_markdown", None)
+    module = importlib.import_module("scripts.evidence_markdown")
+    assert callable(module.render_markdown)
+
+
+def test_analyzed_packet_renders_conditional_language(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # An analysis-only conclusion: the gate and quorum are reported as what *would* happen, and
+    # there is no decision to record.
+    module = _load_app(monkeypatch)
+    markdown = module.render_markdown({**_PACKET, "event": "analyzed"})
+    assert "Change Court — Impact analysis — nothing executed" in markdown
+    assert "HIGH (would require approval)" in markdown
+    assert "**Would-be approvers (any):** eng_lead" in markdown
+    assert "Approvers required" not in markdown
+    assert "**Decision:**" not in markdown
+    assert "milestone move (+80) — GOV-1" in markdown
+    assert "Safer alternative" in markdown
+
+
+def test_analyzed_low_risk_renders_the_no_approver_conditional(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _load_app(monkeypatch)
+    markdown = module.render_markdown(
+        {
+            "event": "analyzed",
+            "change": {"raw_request": "create action items from standup"},
+            "risk": {"level": "low", "requires_approval": False, "factors": []},
+        }
+    )
+    assert "would need no approver — the requester's confirmation would execute it" in markdown
+
+
 def test_decided_packet_renders_the_decision(monkeypatch: pytest.MonkeyPatch) -> None:
     module = _load_app(monkeypatch)
     markdown = module.render_markdown(
