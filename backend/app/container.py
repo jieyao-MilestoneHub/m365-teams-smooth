@@ -30,6 +30,7 @@ from app.adapters.knowledge.local_corpus import LocalCorpusKnowledgeProvider
 from app.adapters.llm.azure_openai import AzureOpenAILLMProvider
 from app.adapters.llm.fake_llm import FakeLLMProvider
 from app.adapters.llm.tiered import ModelTierLLMProvider
+from app.adapters.llm.usage_recording import UsageRecordingLLMProvider
 from app.adapters.notifiers.teams_activity import TeamsActivityNotifier
 from app.adapters.parsers.deterministic import DeterministicRequestParser
 from app.adapters.parsers.llm_backed import LlmRequestParser
@@ -249,6 +250,9 @@ def build_court_service(
             max_tokens=settings.llm_max_tokens,
             max_retries=settings.llm_max_retries,
         )
+        # Inside any tier wrapper, so a per-request model set by the tier attributes the usage
+        # to the deployment that actually served the call.
+        llm = UsageRecordingLLMProvider(llm, default_model=settings.azure_openai_deployment)
 
     # Call-site model tiering: the lightweight sites (parser, deliberation trace) run on the
     # optional fast deployment; the reasoning-heavy roles (Prosecutor, Defender) keep the default.

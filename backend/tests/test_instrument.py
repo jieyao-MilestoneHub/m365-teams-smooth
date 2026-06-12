@@ -117,6 +117,51 @@ def test_set_run_event_emitter_routes_node_events() -> None:
     assert isinstance(finished["duration_seconds"], float)
 
 
+def test_finished_payload_carries_llm_usage_when_node_made_calls() -> None:
+    from app.observability import llm_usage
+
+    calls: list[tuple[str, str, str, dict[str, object]]] = []
+    set_run_event_emitter(
+        lambda thread_id, phase, name, payload: calls.append((thread_id, phase, name, payload))
+    )
+
+    def node(state: CourtState) -> CourtState:
+        llm_usage.record("gpt-x", input_tokens=50, output_tokens=10, cached_tokens=8)
+        return state
+
+    try:
+        instrument(node, "options")(_state())
+    finally:
+        set_run_event_emitter(_noop_run_emitter)
+
+    finished = calls[1][3]
+    assert finished["llm_usage"] == {
+        "calls": 1,
+        "input_tokens": 50,
+        "output_tokens": 10,
+        "cached_tokens": 8,
+        "deployments": ["gpt-x"],
+    }
+
+
+def test_finished_payload_omits_llm_usage_without_calls_and_clears_stale_slots() -> None:
+    from app.observability import llm_usage
+
+    # A reused worker thread may carry a stale slot from a previous request.
+    llm_usage.record("stale", input_tokens=999, output_tokens=999, cached_tokens=0)
+
+    calls: list[tuple[str, str, str, dict[str, object]]] = []
+    set_run_event_emitter(
+        lambda thread_id, phase, name, payload: calls.append((thread_id, phase, name, payload))
+    )
+    try:
+        instrument(lambda state: state, "policy")(_state())
+    finally:
+        set_run_event_emitter(_noop_run_emitter)
+
+    assert "llm_usage" not in calls[1][3]  # stale usage neither leaks nor misattributes
+
+
 def test_run_emitter_emits_finished_even_when_node_raises() -> None:
     calls: list[str] = []
     set_run_event_emitter(lambda thread_id, phase, name, payload: calls.append(phase))
