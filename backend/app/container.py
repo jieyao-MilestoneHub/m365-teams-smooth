@@ -66,7 +66,11 @@ from app.agent.nodes.verify import VerifyNode
 from app.agent.planners import PLANNERS, generic_planner
 from app.agent.policy_rules.models import RulePack
 from app.agent.policy_rules.packs import UNGOVERNED, default_packs
-from app.agent.policy_rules.vocabulary import marks_unsafe_tags, tag_vocabulary
+from app.agent.policy_rules.vocabulary import (
+    grounding_queries,
+    marks_unsafe_tags,
+    tag_vocabulary,
+)
 from app.agent.runner import CourtRunner
 from app.config import Settings
 from app.domain.run_events import RunEventKind
@@ -381,7 +385,12 @@ def build_court_service(
     graph = build_court_graph(
         intake=IntakeNode(parser, registry, deliberator),
         impact=ImpactNode(
-            registry, knowledge, gatherers, deliberator, default_gatherer=default_gatherer
+            registry,
+            knowledge,
+            gatherers,
+            deliberator,
+            default_gatherer=default_gatherer,
+            grounding=grounding_queries(packs),
         ),
         options=OptionsNode(planners, deliberator, default_planner=default_planner),
         policy=PolicyNode(

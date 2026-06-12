@@ -1,4 +1,4 @@
-"""Tag sets derived from the rule packs — the single source policy reacts to.
+"""Derivations from the rule packs — the single source policy reacts to.
 
 Both functions read the same pack data the policy node interprets, so the agentic layer and the
 generic planner can never drift from governance: a tag the packs don't know is a tag the system
@@ -24,3 +24,17 @@ def tag_vocabulary(packs: list[RulePack]) -> frozenset[str]:
         + [approver.when_tag for pack in packs for approver in pack.quorum.approvers]
         + [tag for pack in packs for tag in pack.match.any_tag]
     )
+
+
+def grounding_queries(packs: list[RulePack]) -> dict[str, str]:
+    """Subject → targeted grounding phrase, from each pack's scenario identity.
+
+    The first pack claiming a subject wins, mirroring the policy node's first-match pack
+    selection (and the loader's append semantics inherit that precedence).
+    """
+    queries: dict[str, str] = {}
+    for pack in packs:
+        if pack.grounding_query:
+            for subject in pack.subjects:
+                queries.setdefault(subject, pack.grounding_query)
+    return queries
