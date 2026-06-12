@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     # --- Agent behavior ---
     dry_run_default: bool = True
 
+    # --- Policy rule packs ---
+    # Path to a YAML rule-pack file (see docs/extending.md and assets/policy-packs/example.yaml).
+    # Empty -> the built-in default packs. File packs append to the built-ins unless the file
+    # sets include_defaults: false; a broken file fails fast at composition time.
+    policy_packs_path: str = ""
+
     # --- Integrations ---
     # Per-system selection of real vs mock adapters, comma-separated "system:mode".
     integration_mode: str = "github:real"
