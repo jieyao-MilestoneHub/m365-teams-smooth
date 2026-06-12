@@ -6,11 +6,17 @@ from app.config import Settings
 from app.container import build_court_service
 from app.domain import ApproverRole, ChangeStatus, PlanKind, VerdictType
 from app.services.court_service import CourtService
+from tests.conftest import ALL_ROLE_DIRECTORY, APPROVER, REQUESTER
 
 
 def _service() -> CourtService:
     return build_court_service(
-        Settings(force_all_mock=True, db_url="sqlite:///:memory:", dry_run_default=True)
+        Settings(
+            force_all_mock=True,
+            db_url="sqlite:///:memory:",
+            dry_run_default=True,
+            approver_directory=ALL_ROLE_DIRECTORY,
+        )
     )
 
 
@@ -19,9 +25,9 @@ _REQUEST = "give the vendor access to Project X until the campaign is done"
 
 def test_overbroad_request_becomes_least_privilege_and_time_boxed() -> None:
     service = _service()
-    summary = service.submit_change(_REQUEST)
+    summary = service.submit_change(_REQUEST, requester=REQUESTER)
 
-    assert summary.status == ChangeStatus.AWAITING_VERDICT.value
+    assert summary.status == ChangeStatus.AWAITING_REQUESTER_REVIEW.value
     assert summary.unsafe is True
     assert summary.plan_kind == PlanKind.SAFE_ALTERNATIVE.value
     assert "accept_alternative" in summary.verdict_options
@@ -48,9 +54,12 @@ def test_overbroad_request_becomes_least_privilege_and_time_boxed() -> None:
 
 def test_accepting_grants_scoped_access_and_schedules_revoke() -> None:
     service = _service()
-    summary = service.submit_change(_REQUEST)
+    summary = service.submit_change(_REQUEST, requester=REQUESTER)
     cast = service.cast_verdict(
-        summary.thread_id, VerdictType.ACCEPT_ALTERNATIVE, selected_plan=PlanKind.SAFE_ALTERNATIVE
+        summary.thread_id,
+        VerdictType.ACCEPT_ALTERNATIVE,
+        selected_plan=PlanKind.SAFE_ALTERNATIVE,
+        principal=APPROVER,
     )
     assert cast.execution_status == ChangeStatus.DONE.value
 

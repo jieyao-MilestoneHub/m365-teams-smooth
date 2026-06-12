@@ -1,7 +1,8 @@
 """Golden fixtures: the expected court output for each of the three trials, in one table.
 
 A single parametrized regression over the fully-wired court. If a trial's risk, safety, plan,
-verdict options, or quorum drifts from these golden values, this fails.
+verdict options, or quorum drifts from these golden values, this fails. A companion regression
+then drives every trial through its identity gates and asserts it executes to completion.
 """
 
 from __future__ import annotations
@@ -11,18 +12,24 @@ import pytest
 from app.config import Settings
 from app.container import build_court_service
 from app.services.court_service import CourtService
+from tests.conftest import ALL_ROLE_DIRECTORY, REQUESTER, drive_to_completion
 
 
 def _service() -> CourtService:
     return build_court_service(
-        Settings(force_all_mock=True, db_url="sqlite:///:memory:", dry_run_default=True)
+        Settings(
+            force_all_mock=True,
+            db_url="sqlite:///:memory:",
+            dry_run_default=True,
+            approver_directory=ALL_ROLE_DIRECTORY,
+        )
     )
 
 
 GOLDEN: dict[str, dict[str, object]] = {
     "launch_slip": {
         "request": "slip the launch from 2026-06-10 to 2026-06-17",
-        "status": "awaiting_verdict",
+        "status": "awaiting_requester_review",
         "risk_level": "high",
         "unsafe": False,
         "plan_kind": "feasible",
@@ -40,7 +47,7 @@ GOLDEN: dict[str, dict[str, object]] = {
         # (release freeze), and GitHub (go-live buffer) reveals a latent breach no single system
         # shows. Refused as posed; the latest date honoring every constraint (2026-06-18) proposed.
         "request": "move the launch rehearsal to 2026-06-22",
-        "status": "awaiting_verdict",
+        "status": "awaiting_requester_review",
         "risk_level": "high",
         "unsafe": True,
         "plan_kind": "safe_alternative",
@@ -55,7 +62,7 @@ GOLDEN: dict[str, dict[str, object]] = {
     },
     "customer_promise": {
         "request": "promise Customer A that SSO is GA by 2026-06-17",
-        "status": "awaiting_verdict",
+        "status": "awaiting_requester_review",
         "risk_level": "high",
         "unsafe": True,
         "plan_kind": "safe_alternative",
@@ -73,7 +80,7 @@ GOLDEN: dict[str, dict[str, object]] = {
         # The requested day collides with the seeded board review: refused as posed, the next
         # free day proposed instead — the safe-alternative path inside the everyday reschedule.
         "request": "move the rehearsal to 2026-06-16",
-        "status": "awaiting_verdict",
+        "status": "awaiting_requester_review",
         "risk_level": "high",
         "unsafe": True,
         "plan_kind": "safe_alternative",
@@ -88,7 +95,8 @@ GOLDEN: dict[str, dict[str, object]] = {
     },
     "meeting_actions": {
         "request": "create action items from standup",
-        "status": "done",  # low risk, no approver: auto-approved and executed in one pass
+        # Low risk, no approver: executes on the requester's own confirmation, not on submission.
+        "status": "awaiting_requester_review",
         "risk_level": "low",
         "unsafe": False,
         "plan_kind": "feasible",
@@ -98,7 +106,8 @@ GOLDEN: dict[str, dict[str, object]] = {
     },
     "weekly_report": {
         "request": "post the Project X weekly report",
-        "status": "done",  # low risk, no approver: auto-approved and executed in one pass
+        # Low risk, no approver: executes on the requester's own confirmation, not on submission.
+        "status": "awaiting_requester_review",
         "risk_level": "low",
         "unsafe": False,
         "plan_kind": "feasible",
@@ -108,7 +117,7 @@ GOLDEN: dict[str, dict[str, object]] = {
     },
     "vendor_access": {
         "request": "give the vendor access to Project X until the campaign is done",
-        "status": "awaiting_verdict",
+        "status": "awaiting_requester_review",
         "risk_level": "high",
         "unsafe": True,
         "plan_kind": "safe_alternative",
@@ -127,7 +136,7 @@ GOLDEN: dict[str, dict[str, object]] = {
 def test_trial_matches_golden(trial: str) -> None:
     golden = GOLDEN[trial]
     service = _service()
-    summary = service.submit_change(str(golden["request"]))
+    summary = service.submit_change(str(golden["request"]), requester=REQUESTER)
 
     assert summary.status == golden["status"]
     assert summary.risk_level == golden["risk_level"]
@@ -139,3 +148,15 @@ def test_trial_matches_golden(trial: str) -> None:
     assert court is not None and court.options is not None and court.quorum is not None
     assert {s.capability.name for s in court.options.steps} == golden["plan_capabilities"]
     assert {a.role.value for a in court.quorum.required_approvers} == golden["approvers"]
+
+
+@pytest.mark.parametrize("trial", list(GOLDEN))
+def test_trial_drives_to_done_through_the_identity_gates(trial: str) -> None:
+    # Execution coverage: the requester sends, the approver (when a quorum exists) approves,
+    # and every golden trial — feasible or safe-alternative — reaches a terminal "done".
+    golden = GOLDEN[trial]
+    service = _service()
+    summary = service.submit_change(str(golden["request"]), requester=REQUESTER)
+
+    final = drive_to_completion(service, summary)
+    assert final.status == "done"

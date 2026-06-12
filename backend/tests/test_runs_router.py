@@ -12,6 +12,7 @@ from app.config import Settings
 from app.container import build_court_service
 from app.main import create_app
 from app.services.court_service import CourtService
+from tests.conftest import REQUESTER
 
 
 def _service(secret: str = "test-secret") -> CourtService:
@@ -37,7 +38,9 @@ def client_and_service() -> Iterator[tuple[TestClient, CourtService]]:
 
 
 def _submitted(service: CourtService) -> str:
-    return service.submit_change("slip the launch from 2026-06-10 to 2026-06-17").thread_id
+    return service.submit_change(
+        "slip the launch from 2026-06-10 to 2026-06-17", requester=REQUESTER
+    ).thread_id
 
 
 def test_missing_token_is_unauthorized(client_and_service: tuple[TestClient, CourtService]) -> None:

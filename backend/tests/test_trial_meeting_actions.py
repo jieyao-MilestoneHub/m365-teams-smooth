@@ -6,6 +6,7 @@ from app.config import Settings
 from app.container import build_court_service
 from app.domain import ChangeStatus, PlanKind, Principal, RiskLevel
 from app.services.court_service import CourtService
+from tests.conftest import REQUESTER
 
 _REQUEST = "create action items from standup"
 
@@ -23,14 +24,17 @@ def _service(**overrides: object) -> CourtService:
 
 def test_action_items_become_tracked_tasks_and_execute_low_risk() -> None:
     service = _service()
-    summary = service.submit_change(_REQUEST)
+    summary = service.submit_change(_REQUEST, requester=REQUESTER)
 
-    # Low risk, no approver: the court auto-approves and the plan executes in one pass.
-    assert summary.status == ChangeStatus.DONE.value
+    # Low risk, no approver: the requester's own confirmation executes the plan.
+    assert summary.status == ChangeStatus.AWAITING_REQUESTER_REVIEW.value
     assert summary.risk_level == RiskLevel.LOW.value
     assert summary.requires_approval is False
     assert summary.unsafe is False
     assert summary.plan_kind == PlanKind.FEASIBLE.value
+
+    sent = service.send_for_approval(summary.thread_id, actor=REQUESTER, note="tracking these")
+    assert sent.status == ChangeStatus.DONE.value
 
     trial = service.get_trial(summary.thread_id)
     assert trial is not None and trial.impact is not None and trial.options is not None

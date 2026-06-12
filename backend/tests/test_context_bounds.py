@@ -15,6 +15,7 @@ from app.domain import GroundedFact
 from app.domain.errors import InvalidRequestError
 from app.ports.knowledge import KnowledgePort
 from app.services.court_service import CourtService
+from tests.conftest import REQUESTER
 
 
 def _service(**overrides: object) -> CourtService:
@@ -26,20 +27,28 @@ def _service(**overrides: object) -> CourtService:
 
 def test_blank_request_is_rejected() -> None:
     with pytest.raises(InvalidRequestError):
-        _service().submit_change("   ")
+        _service().submit_change("   ", requester=REQUESTER)
+
+
+def test_unauthenticated_request_is_rejected() -> None:
+    with pytest.raises(InvalidRequestError):
+        _service().submit_change("slip the launch from 2026-06-10 to 2026-06-17")
 
 
 def test_oversized_request_is_rejected_not_truncated() -> None:
     service = _service()
     with pytest.raises(InvalidRequestError) as excinfo:
-        service.submit_change("slip the launch " * 100)  # ~1600 chars > the 1000 default
+        # ~1600 chars > the 1000 default
+        service.submit_change("slip the launch " * 100, requester=REQUESTER)
     assert "1000" in str(excinfo.value)
 
 
 def test_demo_requests_fit_within_the_bound() -> None:
     service = _service()
-    summary = service.submit_change("promise Customer A that SSO is GA by 2026-06-17")
-    assert summary.status == "awaiting_verdict"
+    summary = service.submit_change(
+        "promise Customer A that SSO is GA by 2026-06-17", requester=REQUESTER
+    )
+    assert summary.status == "awaiting_requester_review"
 
 
 def test_bound_errors_caps_with_a_truncation_marker() -> None:

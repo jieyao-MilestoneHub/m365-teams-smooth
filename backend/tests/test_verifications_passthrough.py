@@ -9,20 +9,28 @@ from app.container import build_court_service
 from app.domain import RunMode, VerdictType
 from app.mcp.cards import build_verdict_result_card
 from app.services.court_service import CourtService
+from tests.conftest import ALL_ROLE_DIRECTORY, APPROVER, REQUESTER
 
 
-def _live_service() -> CourtService:
+def _service(*, dry_run_default: bool) -> CourtService:
     return build_court_service(
-        Settings(force_all_mock=True, db_url="sqlite:///:memory:", dry_run_default=False)
+        Settings(
+            force_all_mock=True,
+            db_url="sqlite:///:memory:",
+            dry_run_default=dry_run_default,
+            approver_directory=ALL_ROLE_DIRECTORY,
+        )
     )
 
 
 def test_live_trial_verifications_reach_get_trial_and_card() -> None:
-    service = _live_service()
+    service = _service(dry_run_default=False)
     summary = service.submit_change(
-        "slip the launch from 2026-06-10 to 2026-06-17", run_mode=RunMode.LIVE
+        "slip the launch from 2026-06-10 to 2026-06-17",
+        run_mode=RunMode.LIVE,
+        requester=REQUESTER,
     )
-    cast = service.cast_verdict(summary.thread_id, VerdictType.APPROVE)
+    cast = service.cast_verdict(summary.thread_id, VerdictType.APPROVE, principal=APPROVER)
     assert cast.execution_status == "done"
 
     trial = service.get_trial(summary.thread_id)
@@ -45,11 +53,11 @@ def test_live_trial_verifications_reach_get_trial_and_card() -> None:
 
 
 def test_dry_run_trial_has_no_verifications() -> None:
-    service = build_court_service(
-        Settings(force_all_mock=True, db_url="sqlite:///:memory:", dry_run_default=True)
+    service = _service(dry_run_default=True)
+    summary = service.submit_change(
+        "slip the launch from 2026-06-10 to 2026-06-17", requester=REQUESTER
     )
-    summary = service.submit_change("slip the launch from 2026-06-10 to 2026-06-17")
-    service.cast_verdict(summary.thread_id, VerdictType.APPROVE)
+    service.cast_verdict(summary.thread_id, VerdictType.APPROVE, principal=APPROVER)
     trial = service.get_trial(summary.thread_id)
     assert trial is not None
     assert trial.verifications == []

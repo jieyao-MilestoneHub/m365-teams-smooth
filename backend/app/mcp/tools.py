@@ -83,7 +83,7 @@ def register_tools(mcp: FastMCP, service: CourtService) -> None:
             raw_request,
             source=source,
             run_mode=RunMode(run_mode),
-            requester=current_principal(),
+            requester=_require_principal(),
         )
         return summary.model_dump(mode="json")
 
@@ -124,14 +124,14 @@ def register_tools(mcp: FastMCP, service: CourtService) -> None:
         as a failed approval, and do not ask the caller to cast again.
         """
         # Authorization keys off the authenticated caller, never the spoofable `actor` label —
-        # the service enforces separation of duties whenever approval routing is configured.
+        # the service enforces the same separation of duties as decide on every verdict.
         result = service.cast_verdict(
             thread_id,
             VerdictType(verdict_type),
             selected_plan=PlanKind(selected_plan),
             idempotency_key=idempotency_key,
             actor=actor,
-            principal=current_principal(),
+            principal=_require_principal(),
         )
         return result.model_dump(mode="json")
 

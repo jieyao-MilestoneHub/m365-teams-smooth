@@ -85,22 +85,22 @@ def test_withdrawn_trial_audit_records_withdrawn(service: CourtService, db_path:
     assert audit.status is ChangeStatus.WITHDRAWN
 
 
-def test_legacy_cast_verdict_clears_the_pending_index(service: CourtService) -> None:
+def test_cast_verdict_clears_the_pending_index(service: CourtService) -> None:
     s = service.submit_change(_REQ, requester=REQUESTER)
     service.send_for_approval(s.thread_id, actor=REQUESTER, note="ready")
     ledger = _ledger(service)
     assert s.thread_id in ledger.pending_thread_ids()
 
-    # The legacy verdict path bypasses decide(); it must still clean the queue.
-    result = service.cast_verdict(s.thread_id, VerdictType.APPROVE)
+    # An authorized cast bypasses decide(); it must still clean the queue.
+    result = service.cast_verdict(s.thread_id, VerdictType.APPROVE, principal=APPROVER)
     assert result.execution_status == ChangeStatus.DONE.value
     assert s.thread_id not in ledger.pending_thread_ids()
 
 
 def test_purge_clears_a_leaked_pending_row(service: CourtService, db_path: str) -> None:
     # Finish a trial, then simulate a leaked queue row for it (the pre-fix cast_verdict bug).
-    s = service.submit_change(_REQ)
-    service.cast_verdict(s.thread_id, VerdictType.APPROVE)
+    s = service.submit_change(_REQ, requester=REQUESTER)
+    service.cast_verdict(s.thread_id, VerdictType.APPROVE, principal=APPROVER)
     ledger = _ledger(service)
     ledger.mark_pending(s.thread_id, "2026-06-04T00:00:00+00:00")
     assert s.thread_id in ledger.pending_thread_ids()

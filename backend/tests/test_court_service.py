@@ -1,11 +1,13 @@
-"""The service orchestrates submit/cast with ledger-backed idempotency and auto-resume."""
+"""The service orchestrates submit/cast with ledger-backed idempotency under identity gates."""
 
 from __future__ import annotations
 
 import pytest
 
 from app.agent.policy_rules.models import (
+    ApproverRule,
     MatchRules,
+    QuorumRules,
     RiskBands,
     RiskFactorRule,
     RulePack,
@@ -13,13 +15,17 @@ from app.agent.policy_rules.models import (
 )
 from app.config import Settings
 from app.container import build_court_service
-from app.domain import Change, ChangeStatus, ImpactEvidence, RunMode, VerdictType
-from app.domain.errors import InvalidRequestError
+from app.domain import ApproverRole, Change, ChangeStatus, ImpactEvidence, RunMode, VerdictType
+from app.domain.errors import InvalidRequestError, UnauthorizedApproverError
 from app.domain.principal import Principal
 from app.ports.knowledge import KnowledgePort
 from app.ports.registry import IntegrationRegistry
 from app.services.court_service import CourtService
+from tests.conftest import ALL_ROLE_DIRECTORY, APPROVER, REQUESTER
 
+# The quorum rule makes the pack derive a required approver, so cast_verdict (which authorizes
+# the caster against the trial's required roles) is exercisable; a no-approver trial routes
+# through send_for_approval instead.
 _PACK = RulePack(
     id="launch_slip",
     match=MatchRules(any_action_capability=["github.update_milestone_due"]),
@@ -27,6 +33,9 @@ _PACK = RulePack(
         RiskFactorRule(id="milestone_move", when_tag="schedule.milestone_move", weight=80)
     ],
     risk_bands=RiskBands(low=0, medium=30, high=60),
+    quorum=QuorumRules(
+        approvers=[ApproverRule(role=ApproverRole.ENG_LEAD, when_tag="schedule.milestone_move")]
+    ),
     verdict_options=VerdictOptionRules(default=[VerdictType.APPROVE, VerdictType.REJECT]),
 )
 
@@ -41,39 +50,79 @@ def _gatherer(
 
 
 def _settings() -> Settings:
-    return Settings(force_all_mock=True, db_url="sqlite:///:memory:", dry_run_default=True)
+    return Settings(
+        force_all_mock=True,
+        db_url="sqlite:///:memory:",
+        dry_run_default=True,
+        approver_directory=ALL_ROLE_DIRECTORY,
+    )
 
 
-def test_submit_pauses_for_verdict_then_cast_completes_idempotently() -> None:
+_REQ = "slip the launch from 2026-06-10 to 2026-06-17"
+
+
+def test_submit_holds_for_review_then_cast_completes_idempotently() -> None:
     service = build_court_service(
         _settings(), gatherers={"launch": _gatherer}, packs=[_PACK]
     )
 
-    summary = service.submit_change("slip the launch from 2026-06-10 to 2026-06-17")
-    assert summary.status == ChangeStatus.AWAITING_VERDICT.value
+    summary = service.submit_change(_REQ, requester=REQUESTER)
+    assert summary.status == ChangeStatus.AWAITING_REQUESTER_REVIEW.value
     assert summary.requires_approval is True
     assert "approve" in summary.verdict_options
 
-    cast = service.cast_verdict(summary.thread_id, VerdictType.APPROVE)
+    cast = service.cast_verdict(summary.thread_id, VerdictType.APPROVE, principal=APPROVER)
     assert cast.verdict_recorded is True
     assert cast.execution_status == ChangeStatus.DONE.value
     assert cast.audit_id is not None
 
     # Casting the same verdict again is a no-op (same default idempotency key).
-    again = service.cast_verdict(summary.thread_id, VerdictType.APPROVE)
+    again = service.cast_verdict(summary.thread_id, VerdictType.APPROVE, principal=APPROVER)
     assert again.idempotent is True
     assert again.audit_id == cast.audit_id
 
 
-def test_low_risk_change_auto_completes() -> None:
-    # No rule packs -> no governing pack -> no approval required -> auto-resumed to DONE.
+def test_low_risk_change_executes_on_requester_send() -> None:
+    # No rule packs -> no governing pack -> no approver: the requester's own confirmation
+    # carries the authority, so sending executes without an approval round-trip.
     service = build_court_service(_settings(), packs=[])
-    summary = service.submit_change("slip the launch from 2026-06-10 to 2026-06-17")
-    assert summary.status == ChangeStatus.DONE.value
+    summary = service.submit_change(_REQ, requester=REQUESTER)
+    assert summary.status == ChangeStatus.AWAITING_REQUESTER_REVIEW.value
+
+    sent = service.send_for_approval(summary.thread_id, actor=REQUESTER, note="confirming")
+    assert sent.status == ChangeStatus.DONE.value
 
     trial = service.get_trial(summary.thread_id)
     assert trial is not None
     assert trial.change.change_id == summary.change_id
+
+
+def test_submit_without_a_requester_is_rejected() -> None:
+    # Identity is part of the boundary: an approval gate without a requester cannot separate
+    # duties, so the identity-free submit path no longer exists.
+    service = build_court_service(_settings(), packs=[])
+    with pytest.raises(InvalidRequestError, match="authenticated requester"):
+        service.submit_change(_REQ)
+
+
+def test_cast_verdict_without_a_principal_is_unauthorized() -> None:
+    service = build_court_service(_settings(), gatherers={"launch": _gatherer}, packs=[_PACK])
+    summary = service.submit_change(_REQ, requester=REQUESTER)
+    with pytest.raises(UnauthorizedApproverError, match="authentication is required"):
+        service.cast_verdict(summary.thread_id, VerdictType.APPROVE)
+
+
+def test_cast_verdict_with_an_unconfigured_directory_is_unauthorized() -> None:
+    # With no APPROVER_DIRECTORY configured the wired directory resolves no roles, so no
+    # principal can be authorized — a quorum-bearing trial cannot be resumed by anyone.
+    service = build_court_service(
+        Settings(force_all_mock=True, db_url="sqlite:///:memory:", dry_run_default=True),
+        gatherers={"launch": _gatherer},
+        packs=[_PACK],
+    )
+    summary = service.submit_change(_REQ, requester=REQUESTER)
+    with pytest.raises(UnauthorizedApproverError, match="not an authorized approver"):
+        service.cast_verdict(summary.thread_id, VerdictType.APPROVE, principal=APPROVER)
 
 
 def test_run_url_surfaced_in_summary_and_cast_when_run_page_enabled() -> None:
@@ -86,23 +135,24 @@ def test_run_url_surfaced_in_summary_and_cast_when_run_page_enabled() -> None:
             dry_run_default=True,
             run_link_secret="test-secret",
             public_base_url="https://court.example.com",
+            approver_directory=ALL_ROLE_DIRECTORY,
         )
     )
-    summary = service.submit_change("slip the launch from 2026-06-10 to 2026-06-17")
+    summary = service.submit_change(_REQ, requester=REQUESTER)
     assert summary.run_url is not None
     assert f"/runs/{summary.thread_id}" in summary.run_url
 
-    cast = service.cast_verdict(summary.thread_id, VerdictType.APPROVE)
+    cast = service.cast_verdict(summary.thread_id, VerdictType.APPROVE, principal=APPROVER)
     assert cast.run_url is not None
     assert f"/runs/{summary.thread_id}" in cast.run_url
 
 
 def test_run_url_is_none_when_run_page_disabled() -> None:
     service = build_court_service(_settings())  # no run_link_secret
-    summary = service.submit_change("slip the launch from 2026-06-10 to 2026-06-17")
+    summary = service.submit_change(_REQ, requester=REQUESTER)
     assert summary.run_url is None
 
-    cast = service.cast_verdict(summary.thread_id, VerdictType.APPROVE)
+    cast = service.cast_verdict(summary.thread_id, VerdictType.APPROVE, principal=APPROVER)
     assert cast.run_url is None
 
 # --- analysis-only mode: the impact check that never executes ---
@@ -112,12 +162,9 @@ def _analyze_service() -> CourtService:
     return build_court_service(_settings(), gatherers={"launch": _gatherer}, packs=[_PACK])
 
 
-_REQ = "slip the launch from 2026-06-10 to 2026-06-17"
-
-
 def test_analysis_only_terminates_analyzed_even_when_high_risk() -> None:
     service = _analyze_service()
-    summary = service.submit_change(_REQ, run_mode=RunMode.ANALYZE)
+    summary = service.submit_change(_REQ, run_mode=RunMode.ANALYZE, requester=REQUESTER)
     assert summary.status == ChangeStatus.ANALYZED.value
     assert summary.requires_approval is True  # the would-be gate, reported but never engaged
 
@@ -128,10 +175,10 @@ def test_analysis_only_terminates_analyzed_even_when_high_risk() -> None:
     assert trial.verdict is None  # neither cast nor auto-approved
 
 
-def test_analysis_only_low_risk_does_not_auto_approve() -> None:
-    # Without the analyze guard the no-pack path would auto-approve straight to DONE.
+def test_analysis_only_low_risk_does_not_execute() -> None:
+    # Without the analyze guard the no-pack path would execute on the requester's send.
     service = build_court_service(_settings(), packs=[])
-    summary = service.submit_change(_REQ, run_mode=RunMode.ANALYZE)
+    summary = service.submit_change(_REQ, run_mode=RunMode.ANALYZE, requester=REQUESTER)
     assert summary.status == ChangeStatus.ANALYZED.value
     trial = service.get_trial(summary.thread_id)
     assert trial is not None
@@ -141,7 +188,7 @@ def test_analysis_only_low_risk_does_not_auto_approve() -> None:
 
 def test_analysis_only_writes_the_audit_record() -> None:
     service = _analyze_service()
-    summary = service.submit_change(_REQ, run_mode=RunMode.ANALYZE)
+    summary = service.submit_change(_REQ, run_mode=RunMode.ANALYZE, requester=REQUESTER)
     audit_id = str(service._runner.state(summary.thread_id).get("audit_id") or "")
     record = service.get_audit(audit_id)
     assert record is not None
@@ -151,9 +198,9 @@ def test_analysis_only_writes_the_audit_record() -> None:
 
 def test_analysis_only_rejects_a_verdict() -> None:
     service = _analyze_service()
-    summary = service.submit_change(_REQ, run_mode=RunMode.ANALYZE)
+    summary = service.submit_change(_REQ, run_mode=RunMode.ANALYZE, requester=REQUESTER)
     with pytest.raises(InvalidRequestError):
-        service.cast_verdict(summary.thread_id, VerdictType.APPROVE)
+        service.cast_verdict(summary.thread_id, VerdictType.APPROVE, principal=APPROVER)
     trial = service.get_trial(summary.thread_id)
     assert trial is not None and trial.results == []
 

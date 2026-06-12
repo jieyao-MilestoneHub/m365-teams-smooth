@@ -5,17 +5,23 @@ from __future__ import annotations
 from app.config import Settings
 from app.container import build_court_service
 from app.domain import ChangeStatus, RunMode, StepStatus, VerdictType
-from tests.conftest import build_mock_registry
+from tests.conftest import ALL_ROLE_DIRECTORY, APPROVER, REQUESTER, build_mock_registry
 
 
 def _settings() -> Settings:
-    return Settings(force_all_mock=True, db_url="sqlite:///:memory:", dry_run_default=True)
+    return Settings(
+        force_all_mock=True,
+        db_url="sqlite:///:memory:",
+        dry_run_default=True,
+        approver_directory=ALL_ROLE_DIRECTORY,
+    )
 
 
 def test_hallucination_guard_rejects_delete_repo() -> None:
     service = build_court_service(_settings())
     summary = service.submit_change(
-        "slip the launch from 2026-06-10 to 2026-06-17, also delete the old launch repo"
+        "slip the launch from 2026-06-10 to 2026-06-17, also delete the old launch repo",
+        requester=REQUESTER,
     )
 
     # The unsupported action is rejected and recorded, not planned or executed.
@@ -23,8 +29,8 @@ def test_hallucination_guard_rejects_delete_repo() -> None:
     trial = service.get_trial(summary.thread_id)
     assert trial is not None and trial.options is not None
     assert all("delete" not in s.capability.name for s in trial.options.steps)
-    # the supported part of the request still proceeds
-    assert summary.status == ChangeStatus.AWAITING_VERDICT.value
+    # the supported part of the request still proceeds to the requester-review gate
+    assert summary.status == ChangeStatus.AWAITING_REQUESTER_REVIEW.value
 
 
 def test_partial_failure_is_contained_with_rollback() -> None:
@@ -32,9 +38,12 @@ def test_partial_failure_is_contained_with_rollback() -> None:
     service = build_court_service(_settings(), registry=failing)
 
     summary = service.submit_change(
-        "slip the launch from 2026-06-10 to 2026-06-17", run_mode=RunMode.LIVE
+        "slip the launch from 2026-06-10 to 2026-06-17",
+        run_mode=RunMode.LIVE,
+        requester=REQUESTER,
     )
-    cast = service.cast_verdict(summary.thread_id, VerdictType.APPROVE)  # must not crash
+    # must not crash
+    cast = service.cast_verdict(summary.thread_id, VerdictType.APPROVE, principal=APPROVER)
 
     # The verdict itself is persisted; only the execution failed — the two outcomes stay separate
     # so a partial failure is never read as a failed approval.

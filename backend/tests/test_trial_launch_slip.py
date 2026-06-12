@@ -6,11 +6,17 @@ from app.config import Settings
 from app.container import build_court_service
 from app.domain import ApproverRole, ChangeStatus, PlanKind, RiskLevel, VerdictType
 from app.services.court_service import CourtService
+from tests.conftest import ALL_ROLE_DIRECTORY, APPROVER, REQUESTER
 
 
 def _service() -> CourtService:
     return build_court_service(
-        Settings(force_all_mock=True, db_url="sqlite:///:memory:", dry_run_default=True)
+        Settings(
+            force_all_mock=True,
+            db_url="sqlite:///:memory:",
+            dry_run_default=True,
+            approver_directory=ALL_ROLE_DIRECTORY,
+        )
     )
 
 
@@ -22,7 +28,7 @@ def test_target_date_conflict_yields_a_safe_alternative_date() -> None:
     # 2026-06-16 collides with the seeded board review: the court refuses the date as posed
     # and the Defender proposes the next free day with the same four-system ripple.
     service = _service()
-    summary = service.submit_change(_CONFLICT_REQUEST)
+    summary = service.submit_change(_CONFLICT_REQUEST, requester=REQUESTER)
 
     assert summary.unsafe is True
     assert summary.plan_kind == PlanKind.SAFE_ALTERNATIVE.value
@@ -41,18 +47,21 @@ def test_target_date_conflict_yields_a_safe_alternative_date() -> None:
 
 def test_accepting_the_alternative_date_executes() -> None:
     service = _service()
-    summary = service.submit_change(_CONFLICT_REQUEST)
+    summary = service.submit_change(_CONFLICT_REQUEST, requester=REQUESTER)
     cast = service.cast_verdict(
-        summary.thread_id, VerdictType.ACCEPT_ALTERNATIVE, selected_plan=PlanKind.SAFE_ALTERNATIVE
+        summary.thread_id,
+        VerdictType.ACCEPT_ALTERNATIVE,
+        selected_plan=PlanKind.SAFE_ALTERNATIVE,
+        principal=APPROVER,
     )
     assert cast.execution_status == ChangeStatus.DONE.value
 
 
-def test_launch_slip_produces_high_risk_court_awaiting_verdict() -> None:
+def test_launch_slip_produces_high_risk_court_held_for_review() -> None:
     service = _service()
-    summary = service.submit_change(_REQUEST)
+    summary = service.submit_change(_REQUEST, requester=REQUESTER)
 
-    assert summary.status == ChangeStatus.AWAITING_VERDICT.value
+    assert summary.status == ChangeStatus.AWAITING_REQUESTER_REVIEW.value
     assert summary.risk_level == RiskLevel.HIGH.value
     assert summary.requires_approval is True
     assert summary.unsafe is False  # feasible, not unsafe
@@ -78,7 +87,7 @@ def test_launch_slip_produces_high_risk_court_awaiting_verdict() -> None:
 
 def test_every_plan_step_references_a_registered_capability() -> None:
     service = _service()
-    summary = service.submit_change(_REQUEST)
+    summary = service.submit_change(_REQUEST, requester=REQUESTER)
     trial = service.get_trial(summary.thread_id)
     assert trial is not None and trial.options is not None
     expected = {
@@ -92,9 +101,9 @@ def test_every_plan_step_references_a_registered_capability() -> None:
 
 def test_dry_run_then_approve_completes_and_audits_dry_run() -> None:
     service = _service()
-    summary = service.submit_change(_REQUEST)
+    summary = service.submit_change(_REQUEST, requester=REQUESTER)
 
-    cast = service.cast_verdict(summary.thread_id, VerdictType.APPROVE)
+    cast = service.cast_verdict(summary.thread_id, VerdictType.APPROVE, principal=APPROVER)
     assert cast.execution_status == ChangeStatus.DONE.value
     assert cast.audit_id is not None
 
@@ -104,6 +113,6 @@ def test_dry_run_then_approve_completes_and_audits_dry_run() -> None:
     assert all(r.status.value == "dry_run" for r in trial.results)
 
     # casting the same verdict again is a no-op
-    again = service.cast_verdict(summary.thread_id, VerdictType.APPROVE)
+    again = service.cast_verdict(summary.thread_id, VerdictType.APPROVE, principal=APPROVER)
     assert again.idempotent is True
     assert again.audit_id == cast.audit_id

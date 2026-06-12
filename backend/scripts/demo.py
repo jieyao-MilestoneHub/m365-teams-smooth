@@ -15,42 +15,27 @@ import sys
 
 from app.config import Settings
 from app.container import build_court_service
-from app.domain import ChangeStatus, PlanKind, TrialRecord, VerdictType
+from app.domain import ChangeStatus, TrialRecord
 from app.services.court_service import CourtService
 from app.services.dto import TrialSummary
+from scripts.demo_identities import APPROVER, DIRECTORY, REQUESTER
 
 # The headline leads with the refusal — the agent saying "no" is the killer moment — then shows the
 # same machinery cleanly approving a safe date. The first trial is the deepest: a date that is free
 # on the calendar yet breaches a contract SLA, a release freeze, and a go-live buffer at once — a
 # latent conflict no single system reveals, which the court catches by cross-referencing three.
 _HEADLINE = [
-    (
-        "Reschedule — hidden contractual breach",
-        "move the launch rehearsal to 2026-06-22",
-        VerdictType.ACCEPT_ALTERNATIVE,
-    ),
-    (
-        "Reschedule — conflicting date",
-        "move the rehearsal to 2026-06-16",
-        VerdictType.ACCEPT_ALTERNATIVE,
-    ),
-    ("Reschedule — feasible", "move the rehearsal to 2026-06-17", VerdictType.APPROVE),
+    ("Reschedule — hidden contractual breach", "move the launch rehearsal to 2026-06-22"),
+    ("Reschedule — conflicting date", "move the rehearsal to 2026-06-16"),
+    ("Reschedule — feasible", "move the rehearsal to 2026-06-17"),
 ]
 
 # Additional capabilities the same engine handles — runnable with --all, not part of the recording.
 _ADDITIONAL = [
-    ("Meeting Actions", "create action items from standup", VerdictType.APPROVE),
-    ("Weekly Report", "post the Project X weekly report", VerdictType.APPROVE),
-    (
-        "Customer Promise",
-        "promise Customer A that SSO is GA by 2026-06-17",
-        VerdictType.ACCEPT_ALTERNATIVE,
-    ),
-    (
-        "Vendor Access",
-        "give the vendor access to Project X until the campaign is done",
-        VerdictType.ACCEPT_ALTERNATIVE,
-    ),
+    ("Meeting Actions", "create action items from standup"),
+    ("Weekly Report", "post the Project X weekly report"),
+    ("Customer Promise", "promise Customer A that SSO is GA by 2026-06-17"),
+    ("Vendor Access", "give the vendor access to Project X until the campaign is done"),
 ]
 
 
@@ -87,29 +72,34 @@ def run(*, include_additional: bool = False) -> None:
 
     trials = _HEADLINE + _ADDITIONAL if include_additional else _HEADLINE
     service: CourtService = build_court_service(
-        Settings(force_all_mock=True, db_url="sqlite:///:memory:", dry_run_default=True)
+        Settings(
+            force_all_mock=True,
+            db_url="sqlite:///:memory:",
+            dry_run_default=True,
+            approver_directory=DIRECTORY,
+        )
     )
-    for name, request, verdict_type in trials:
+    for name, request in trials:
         print(f"\n=== {name} ===\n  > {request}")
-        summary = service.submit_change(request)
+        summary = service.submit_change(request, requester=REQUESTER)
         trial = service.get_trial(summary.thread_id)
         assert trial is not None
         _print_court(summary, trial)
 
-        if summary.status != ChangeStatus.AWAITING_VERDICT.value:
-            # Low risk, no approver: the court auto-approved and executed on submission.
-            print(f"  -> executed on the requester's authority: status={summary.status}")
+        # The requester reviews their own proposal and sends it on; a no-approver change
+        # executes right here, on their confirmation.
+        summary = service.send_for_approval(
+            summary.thread_id, actor=REQUESTER, note="please review — the evidence is attached"
+        )
+        if summary.status != ChangeStatus.AWAITING_APPROVAL.value:
+            print(f"  -> executed on the requester's confirmation: status={summary.status}")
             continue
-        selected = (
-            PlanKind.SAFE_ALTERNATIVE
-            if summary.plan_kind == PlanKind.SAFE_ALTERNATIVE.value
-            else PlanKind.FEASIBLE
+        # The quorum's authorized approver decides on the evidence; for an unsafe request the
+        # approval adopts the safe alternative the court proposed.
+        decided = service.decide(
+            summary.thread_id, actor=APPROVER, approve=True, note="approved on the evidence"
         )
-        cast = service.cast_verdict(summary.thread_id, verdict_type, selected_plan=selected)
-        print(
-            f"  -> verdict {verdict_type.value}: status={cast.execution_status}"
-            f"  audit={cast.audit_id}"
-        )
+        print(f"  -> decided by {APPROVER.display_name}: status={decided.status}")
 
 
 if __name__ == "__main__":

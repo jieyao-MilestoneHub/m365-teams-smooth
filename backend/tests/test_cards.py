@@ -9,12 +9,23 @@ from app.container import build_court_service
 from app.domain import PlanKind, VerdictType
 from app.mcp.cards import build_change_court_card, build_verdict_result_card
 from app.services.court_service import CourtService
+from app.services.dto import TrialSummary
+from tests.conftest import ALL_ROLE_DIRECTORY, APPROVER, REQUESTER
 
 
 def _service() -> CourtService:
     return build_court_service(
-        Settings(force_all_mock=True, db_url="sqlite:///:memory:", dry_run_default=True)
+        Settings(
+            force_all_mock=True,
+            db_url="sqlite:///:memory:",
+            dry_run_default=True,
+            approver_directory=ALL_ROLE_DIRECTORY,
+        )
     )
+
+
+def _submit(service: CourtService, raw: str) -> TrialSummary:
+    return service.submit_change(raw, requester=REQUESTER)
 
 
 def _texts(card: dict[str, object]) -> str:
@@ -23,11 +34,11 @@ def _texts(card: dict[str, object]) -> str:
 
 def test_unsafe_card_leads_with_refusal_and_decisive_evidence() -> None:
     service = _service()
-    summary = service.submit_change("promise Customer A that SSO is GA by 2026-06-17")
+    summary = _submit(service, "promise Customer A that SSO is GA by 2026-06-17")
     trial = service.get_trial(summary.thread_id)
     assert trial is not None
 
-    card = build_change_court_card(summary.thread_id, trial)
+    card = build_change_court_card(summary.thread_id, trial, status=summary.status)
     assert card["type"] == "AdaptiveCard"
     blob = _texts(card)
     assert "Risk: HIGH" in blob
@@ -38,17 +49,24 @@ def test_unsafe_card_leads_with_refusal_and_decisive_evidence() -> None:
     assert "GA Readiness Policy" in blob
     assert "Safe alternative" in blob
 
+    # The trial holds at the requester self-review gate: send / give up, never a verdict button.
+    assert summary.status == "awaiting_requester_review"
     actions = card["actions"]
     assert isinstance(actions, list)
-    verdicts = {a["data"]["verdict_type"] for a in actions}
-    assert "accept_alternative" in verdicts
-    assert all(a["data"]["tool"] == "cast_verdict" for a in actions)
-    assert all(a["data"]["selected_plan"] == "safe_alternative" for a in actions)
+    assert [a["data"]["tool"] for a in actions] == ["send_for_approval", "withdraw_change"]
+
+    # Once sent, the approval-phase card offers the decide buttons to the quorum.
+    sent = service.send_for_approval(summary.thread_id, actor=REQUESTER, note="please review")
+    assert sent.status == "awaiting_approval"
+    sent_card = build_change_court_card(summary.thread_id, trial, status=sent.status)
+    sent_actions = sent_card["actions"]
+    assert isinstance(sent_actions, list)
+    assert [a["data"]["tool"] for a in sent_actions] == ["decide", "decide"]
 
 
 def test_card_shows_a_reasoning_teaser() -> None:
     service = _service()
-    summary = service.submit_change("promise Customer A that SSO is GA by 2026-06-17")
+    summary = _submit(service, "promise Customer A that SSO is GA by 2026-06-17")
     trial = service.get_trial(summary.thread_id)
     assert trial is not None
     blob = _texts(build_change_court_card(summary.thread_id, trial))
@@ -57,7 +75,7 @@ def test_card_shows_a_reasoning_teaser() -> None:
 
 def test_feasible_card_has_no_decisive_block_but_shows_impact() -> None:
     service = _service()
-    summary = service.submit_change("slip the launch from 2026-06-10 to 2026-06-17")
+    summary = _submit(service, "slip the launch from 2026-06-10 to 2026-06-17")
     trial = service.get_trial(summary.thread_id)
     assert trial is not None
 
@@ -69,9 +87,12 @@ def test_feasible_card_has_no_decisive_block_but_shows_impact() -> None:
 
 def test_verdict_result_card_for_accepted_alternative_reads_as_refusal() -> None:
     service = _service()
-    summary = service.submit_change("promise Customer A that SSO is GA by 2026-06-17")
+    summary = _submit(service, "promise Customer A that SSO is GA by 2026-06-17")
     cast = service.cast_verdict(
-        summary.thread_id, VerdictType.ACCEPT_ALTERNATIVE, selected_plan=PlanKind.SAFE_ALTERNATIVE
+        summary.thread_id,
+        VerdictType.ACCEPT_ALTERNATIVE,
+        selected_plan=PlanKind.SAFE_ALTERNATIVE,
+        principal=APPROVER,
     )
     trial = service.get_trial(summary.thread_id)
     assert trial is not None
@@ -85,8 +106,8 @@ def test_verdict_result_card_for_accepted_alternative_reads_as_refusal() -> None
 
 def test_verdict_result_card_is_a_one_line_outcome() -> None:
     service = _service()
-    summary = service.submit_change("slip the launch from 2026-06-10 to 2026-06-17")
-    cast = service.cast_verdict(summary.thread_id, VerdictType.APPROVE)
+    summary = _submit(service, "slip the launch from 2026-06-10 to 2026-06-17")
+    cast = service.cast_verdict(summary.thread_id, VerdictType.APPROVE, principal=APPROVER)
     trial = service.get_trial(summary.thread_id)
     assert trial is not None
 
@@ -102,7 +123,7 @@ def test_verdict_result_card_is_a_one_line_outcome() -> None:
 
 
 def _trial(service: CourtService, raw: str):  # type: ignore[no-untyped-def]
-    summary = service.submit_change(raw)
+    summary = _submit(service, raw)
     trial = service.get_trial(summary.thread_id)
     assert trial is not None
     return summary.thread_id, trial
@@ -142,20 +163,20 @@ def test_approval_card_offers_decide_and_shows_requester_note() -> None:
     assert inputs and "isRequired" not in inputs[0]
 
 
-def test_legacy_statuses_keep_cast_verdict_actions() -> None:
+def test_non_gate_statuses_render_no_actions() -> None:
+    # Only the two identity gates are actionable; every other phase is read-only — the legacy
+    # cast_verdict buttons are gone.
     thread_id, trial = _trial(_service(), "slip the launch from 2026-06-10 to 2026-06-17")
-    for status in ("", "awaiting_verdict"):
+    for status in ("", "awaiting_verdict", "blocked", "done", "failed", "withdrawn", "rejected"):
         card = build_change_court_card(thread_id, trial, status=status)
-        actions = card["actions"]
-        assert isinstance(actions, list) and actions
-        assert all(a["data"]["tool"] == "cast_verdict" for a in actions)
+        assert card["actions"] == [], status
 
 
 def test_actions_are_universal_execute_with_matching_verb() -> None:
-    """Every phase emits Action.Execute whose verb mirrors data.tool, so the bot's invoke
-    handler and legacy Action.Submit value routing resolve to the same service gate."""
+    """Every actionable phase emits Action.Execute whose verb mirrors data.tool, so the bot's
+    invoke handler and legacy Action.Submit value routing resolve to the same service gate."""
     thread_id, trial = _trial(_service(), "slip the launch from 2026-06-10 to 2026-06-17")
-    for status in ("awaiting_requester_review", "awaiting_approval", "awaiting_verdict"):
+    for status in ("awaiting_requester_review", "awaiting_approval"):
         card = build_change_court_card(thread_id, trial, status=status)
         actions = card["actions"]
         assert isinstance(actions, list) and actions
@@ -201,8 +222,8 @@ def test_no_run_link_renders_no_link() -> None:
 
 def test_result_card_carries_run_link_when_thread_known() -> None:
     service = _service()
-    summary = service.submit_change("slip the launch from 2026-06-10 to 2026-06-17")
-    cast = service.cast_verdict(summary.thread_id, VerdictType.APPROVE)
+    summary = _submit(service, "slip the launch from 2026-06-10 to 2026-06-17")
+    cast = service.cast_verdict(summary.thread_id, VerdictType.APPROVE, principal=APPROVER)
     trial = service.get_trial(summary.thread_id)
     assert trial is not None
 
@@ -243,7 +264,7 @@ def test_blocked_card_states_the_refusal() -> None:
 def test_no_approver_card_states_the_approval_requirement_explicitly() -> None:
     # The routine path: an empty quorum renders the explicit no-approval line.
     service = _service()
-    summary = service.submit_change("post the Project X weekly report")
+    summary = _submit(service, "post the Project X weekly report")
     trial = service.get_trial(summary.thread_id)
     assert trial is not None
     assert trial.quorum is not None and not trial.quorum.required_approvers
@@ -255,7 +276,7 @@ def test_no_approver_card_states_the_approval_requirement_explicitly() -> None:
 
 def test_quorum_card_keeps_the_approvers_line_only() -> None:
     service = _service()
-    summary = service.submit_change("promise Customer A that SSO is GA by 2026-06-17")
+    summary = _submit(service, "promise Customer A that SSO is GA by 2026-06-17")
     trial = service.get_trial(summary.thread_id)
     assert trial is not None
     assert trial.quorum is not None and trial.quorum.required_approvers

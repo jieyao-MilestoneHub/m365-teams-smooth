@@ -15,6 +15,7 @@ from app.container import build_court_service
 from app.domain import VerdictType
 from app.services.court_service import CourtService
 from app.services.maintenance import MaintenanceService
+from tests.conftest import ALL_ROLE_DIRECTORY, APPROVER, REQUESTER
 
 _REQ = "slip the launch from 2026-06-10 to 2026-06-17"
 
@@ -27,8 +28,24 @@ def db_path(tmp_path: Path) -> str:
 @pytest.fixture
 def service(db_path: str) -> CourtService:
     return build_court_service(
-        Settings(force_all_mock=True, db_url=f"sqlite:///{db_path}", dry_run_default=True)
+        Settings(
+            force_all_mock=True,
+            db_url=f"sqlite:///{db_path}",
+            dry_run_default=True,
+            approver_directory=ALL_ROLE_DIRECTORY,
+        )
     )
+
+
+def _complete_trial(service: CourtService) -> str:
+    """Run one trial through the verdict ledger to completion; returns its thread id.
+
+    Casting through ``cast_verdict`` (rather than the send/decide pair) keeps the verdict-claims
+    table populated, so the purge of that working storage stays covered.
+    """
+    summary = service.submit_change(_REQ, requester=REQUESTER)
+    service.cast_verdict(summary.thread_id, VerdictType.APPROVE, principal=APPROVER)
+    return summary.thread_id
 
 
 def _maintenance(db_path: str) -> MaintenanceService:
@@ -55,8 +72,7 @@ def test_purge_clears_finished_trials_but_never_audit(
     service: CourtService, db_path: str
 ) -> None:
     for _ in range(3):
-        summary = service.submit_change(_REQ)
-        service.cast_verdict(summary.thread_id, VerdictType.APPROVE)
+        _complete_trial(service)
     checkpoints, claims, audits = _counts(db_path)
     assert checkpoints > 0 and claims > 0 and audits == 3
 
@@ -71,9 +87,9 @@ def test_purge_clears_finished_trials_but_never_audit(
 
 
 def test_purge_keeps_unfinished_and_recent_trials(service: CourtService, db_path: str) -> None:
-    finished = service.submit_change(_REQ)
-    service.cast_verdict(finished.thread_id, VerdictType.APPROVE)
-    open_trial = service.submit_change(_REQ)  # awaiting verdict — no audit record yet
+    _complete_trial(service)
+    # Awaiting the requester's review — no audit record yet.
+    open_trial = service.submit_change(_REQ, requester=REQUESTER)
 
     # A generous window: even the finished trial is too recent to purge.
     recent = _maintenance(db_path).purge_finished_trials(30)
@@ -89,8 +105,7 @@ def test_purge_keeps_unfinished_and_recent_trials(service: CourtService, db_path
 def test_purge_is_idempotent_and_resumable_state_unaffected(
     service: CourtService, db_path: str
 ) -> None:
-    summary = service.submit_change(_REQ)
-    service.cast_verdict(summary.thread_id, VerdictType.APPROVE)
+    _complete_trial(service)
     maintenance = _maintenance(db_path)
     assert maintenance.purge_finished_trials(0).threads_purged == 1
     # Re-run finds nothing live to purge: the candidate set is the live checkpoint threads.

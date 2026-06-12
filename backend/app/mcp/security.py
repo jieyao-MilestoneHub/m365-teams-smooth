@@ -123,8 +123,8 @@ def principal_from_claims(claims: Mapping[str, object]) -> Principal:
 def current_principal() -> Principal | None:
     """The authenticated caller of the current MCP request, or ``None`` when unauthenticated.
 
-    Reads the access token the auth middleware bound for this request; tools use ``None`` to select
-    the legacy (identity-free) flow, so unauthenticated local runs keep working unchanged.
+    Reads the access token the auth middleware bound for this request. Identity-bearing tools
+    require it (via ``_require_principal``); read-only tools tolerate ``None``.
     """
     token = get_access_token()
     if token is None or not token.claims:

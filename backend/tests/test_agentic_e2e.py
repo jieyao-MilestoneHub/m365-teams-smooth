@@ -26,7 +26,7 @@ from app.container import build_court_service
 from app.domain import VerdictType
 from app.ports.llm import LLMProvider
 from app.services.court_service import CourtService
-from tests.conftest import build_mock_registry
+from tests.conftest import ALL_ROLE_DIRECTORY, APPROVER, REQUESTER, build_mock_registry
 
 _REQ = "slip the launch from 2026-06-10 to 2026-06-17"
 
@@ -85,7 +85,12 @@ def _agentic_service(db_path: str, llm: _ScriptedLLM) -> CourtService:
         for subject, p in PLANNERS.items()
     }
     return build_court_service(
-        Settings(force_all_mock=True, db_url=db_url, dry_run_default=True),
+        Settings(
+            force_all_mock=True,
+            db_url=db_url,
+            dry_run_default=True,
+            approver_directory=ALL_ROLE_DIRECTORY,
+        ),
         gatherers=gatherers,
         planners=planners,
         registry=registry,
@@ -102,7 +107,7 @@ def test_full_agentic_chain_and_precedent_citation(db_path: str) -> None:
     service = _agentic_service(db_path, llm)
 
     # Trial 1: the agentic evidence and the drafted plan flow into the trial and the audit.
-    first = service.submit_change(_REQ)
+    first = service.submit_change(_REQ, requester=REQUESTER)
     trial = service.get_trial(first.thread_id)
     assert trial is not None and trial.impact is not None
     kinds = {(i.system, i.kind) for i in trial.impact.items}
@@ -112,7 +117,7 @@ def test_full_agentic_chain_and_precedent_citation(db_path: str) -> None:
     assert trial.options is not None
     assert trial.options.rationale == "drafted by the defender"
 
-    cast = service.cast_verdict(first.thread_id, VerdictType.APPROVE)
+    cast = service.cast_verdict(first.thread_id, VerdictType.APPROVE, principal=APPROVER)
     assert cast.execution_status == "done" and cast.audit_id is not None
     audit = service.get_audit(cast.audit_id)
     assert audit is not None
@@ -120,7 +125,7 @@ def test_full_agentic_chain_and_precedent_citation(db_path: str) -> None:
     assert audit.trial.options.rationale == "drafted by the defender"
 
     # Trial 2: both agentic prompts cite the first ruling as precedent.
-    service.submit_change(_REQ)
+    service.submit_change(_REQ, requester=REQUESTER)
     gather_prompt, _ = llm.prompts[2]
     plan_prompt, _ = llm.prompts[3]
     assert "Past rulings" in gather_prompt
@@ -132,7 +137,7 @@ def test_hallucinated_selections_are_contained_mid_chain(db_path: str) -> None:
     llm = _ScriptedLLM([_GATHER_HALLUCINATED, _PLAN_HALLUCINATED])
     service = _agentic_service(db_path, llm)
 
-    summary = service.submit_change(_REQ)
+    summary = service.submit_change(_REQ, requester=REQUESTER)
     trial = service.get_trial(summary.thread_id)
     assert trial is not None and trial.impact is not None
 
@@ -145,5 +150,5 @@ def test_hallucinated_selections_are_contained_mid_chain(db_path: str) -> None:
         s.capability.name == "github.update_milestone_due" for s in trial.options.steps
     )
 
-    cast = service.cast_verdict(summary.thread_id, VerdictType.APPROVE)
+    cast = service.cast_verdict(summary.thread_id, VerdictType.APPROVE, principal=APPROVER)
     assert cast.execution_status == "done"  # governance completed despite the hostile LLM output

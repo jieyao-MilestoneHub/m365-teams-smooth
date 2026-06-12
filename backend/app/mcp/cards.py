@@ -4,8 +4,7 @@ A pure presentation mapper: it turns a ``TrialRecord`` into an Adaptive Card dic
 No business logic — it renders what the service made.
 Actions are phase-aware ``Action.Execute`` buttons (universal actions, so a bot can refresh the
 card in place): the requester-review phase routes to ``send_for_approval`` / ``withdraw_change``,
-the approval phase to ``decide``, and the legacy verdict phase carries
-``{thread_id, verdict_type, selected_plan}`` for the ``cast_verdict`` tool. Each action's ``data``
+and the approval phase to ``decide``; every other phase renders read-only. Each action's ``data``
 keeps the ``tool`` key so ``Action.Submit``-style value routing resolves identically.
 """
 
@@ -269,31 +268,15 @@ def build_change_court_card(
     if requester_note:
         body.append(_text(f"Requester's note: {requester_note}"))
 
-    # Phase-aware actions: the identity-aware statuses get their gate's buttons; every other
-    # status keeps the legacy verdict buttons so the identity-free flow renders unchanged.
-    actions: list[dict[str, object]]
+    # Phase-aware actions: only the two identity gates are actionable — the requester's
+    # self-review and the authorized approver's decision. Every other phase renders read-only.
+    actions: list[dict[str, object]] = []
     if status == ChangeStatus.AWAITING_REQUESTER_REVIEW.value:
         actions, note_input = _requester_review_actions(thread_id)
         body.append(note_input)
     elif status == ChangeStatus.AWAITING_APPROVAL.value:
         actions, note_input = _approval_actions(thread_id)
         body.append(note_input)
-    else:
-        selected_plan = options.kind.value if options is not None else "feasible"
-        actions = []
-        if quorum is not None:
-            for option in quorum.verdict_options:
-                actions.append(
-                    _execute(
-                        option.label or option.type.value,
-                        "cast_verdict",
-                        {
-                            "thread_id": thread_id,
-                            "verdict_type": option.type.value,
-                            "selected_plan": selected_plan,
-                        },
-                    )
-                )
 
     body.extend(_deliberation_row(trial))
     body.extend(_run_link_row(run_link, thread_id))

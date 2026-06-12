@@ -17,36 +17,25 @@ from pathlib import Path
 
 from app.config import Settings
 from app.container import build_court_service
-from app.domain import PlanKind, VerdictType
+from app.domain import ChangeStatus
 from app.mcp.cards import build_change_court_card, build_verdict_result_card
+from scripts.demo_identities import APPROVER, DIRECTORY, REQUESTER
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _OUT_DIR = _REPO_ROOT / "m365" / "adaptive-cards" / "generated"
 
-# Same trials and verdicts as the demo driver, so the exported cards match what runs.
+# Same trials as the demo driver, so the exported cards match what runs.
 _HEADLINE = [
-    (
-        "reschedule-conflict",
-        "move the rehearsal to 2026-06-16",
-        VerdictType.ACCEPT_ALTERNATIVE,
-    ),
-    ("reschedule", "move the rehearsal to 2026-06-17", VerdictType.APPROVE),
+    ("reschedule-conflict", "move the rehearsal to 2026-06-16"),
+    ("reschedule", "move the rehearsal to 2026-06-17"),
 ]
 
 # Additional capabilities the same engine handles — exported with --all, not the recorded headline.
 _ADDITIONAL = [
-    ("meeting-actions", "create action items from standup", VerdictType.APPROVE),
-    ("weekly-report", "post the Project X weekly report", VerdictType.APPROVE),
-    (
-        "customer-promise",
-        "promise Customer A that SSO is GA by 2026-06-17",
-        VerdictType.ACCEPT_ALTERNATIVE,
-    ),
-    (
-        "vendor-access",
-        "give the vendor access to Project X until the campaign is done",
-        VerdictType.ACCEPT_ALTERNATIVE,
-    ),
+    ("meeting-actions", "create action items from standup"),
+    ("weekly-report", "post the Project X weekly report"),
+    ("customer-promise", "promise Customer A that SSO is GA by 2026-06-17"),
+    ("vendor-access", "give the vendor access to Project X until the campaign is done"),
 ]
 
 
@@ -71,11 +60,18 @@ def _write(path: Path, card: dict[str, object]) -> None:
 def run(*, include_additional: bool = False) -> None:
     _OUT_DIR.mkdir(parents=True, exist_ok=True)
     service = build_court_service(
-        Settings(force_all_mock=True, db_url="sqlite:///:memory:", dry_run_default=True)
+        Settings(
+            force_all_mock=True,
+            db_url="sqlite:///:memory:",
+            dry_run_default=True,
+            approver_directory=DIRECTORY,
+        )
     )
     trials = _HEADLINE + _ADDITIONAL if include_additional else _HEADLINE
-    for slug, request, verdict_type in trials:
-        summary = service.submit_change(request)
+    for slug, request in trials:
+        # The court card is exported at the requester-review gate — the first decision surface a
+        # user sees (send / withdraw, and the explicit approval requirement).
+        summary = service.submit_change(request, requester=REQUESTER)
         trial = service.get_trial(summary.thread_id)
         assert trial is not None
         _write(
@@ -83,22 +79,19 @@ def run(*, include_additional: bool = False) -> None:
             build_change_court_card(summary.thread_id, trial, status=summary.status),
         )
 
-        if summary.status == "awaiting_verdict":
-            selected = (
-                PlanKind.SAFE_ALTERNATIVE
-                if summary.plan_kind == PlanKind.SAFE_ALTERNATIVE.value
-                else PlanKind.FEASIBLE
+        summary = service.send_for_approval(
+            summary.thread_id, actor=REQUESTER, note="please review — the evidence is attached"
+        )
+        if summary.status == ChangeStatus.AWAITING_APPROVAL.value:
+            summary = service.decide(
+                summary.thread_id, actor=APPROVER, approve=True, note="approved on the evidence"
             )
-            cast = service.cast_verdict(summary.thread_id, verdict_type, selected_plan=selected)
-            status = cast.execution_status
-        else:
-            status = summary.status  # low risk: already executed on submission
         trial = service.get_trial(summary.thread_id)
         assert trial is not None
         # A placeholder audit id keeps the exported file reproducible (the real id is per-run).
         _write(
             _OUT_DIR / f"{slug}-result.json",
-            build_verdict_result_card(trial, status=status, audit_id="<audit-id>"),
+            build_verdict_result_card(trial, status=summary.status, audit_id="<audit-id>"),
         )
 
 
