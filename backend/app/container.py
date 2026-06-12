@@ -64,6 +64,7 @@ from app.agent.nodes.options import OptionsNode, Planner
 from app.agent.nodes.policy import PolicyNode, RulePackQuorumResolver
 from app.agent.nodes.verify import VerifyNode
 from app.agent.planners import PLANNERS, generic_planner
+from app.agent.policy_rules.loader import load_packs
 from app.agent.policy_rules.models import RulePack
 from app.agent.policy_rules.packs import UNGOVERNED, default_packs
 from app.agent.policy_rules.vocabulary import (
@@ -163,7 +164,12 @@ def build_court_service(
     """
     gatherers = gatherers if gatherers is not None else GATHERERS
     planners = planners if planners is not None else PLANNERS
-    packs = packs if packs is not None else default_packs()
+    if packs is None:
+        packs = (
+            load_packs(settings.policy_packs_path)
+            if settings.policy_packs_path
+            else default_packs()
+        )
 
     # Config-driven retry policy for the real-I/O adapters (mocks keep the disabled default).
     retry = RetryPolicy.from_settings(settings)
