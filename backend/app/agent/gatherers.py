@@ -421,6 +421,20 @@ def gather_weekly_report(
     return ImpactEvidence(items=items, tags=tags)
 
 
+def gather_nothing(
+    change: Change,
+    registry: IntegrationRegistry,
+    knowledge: KnowledgePort,
+    errors: list[str],
+) -> ImpactEvidence:
+    """The empty deterministic core for subjects with no registered gatherer.
+
+    The generic agentic gatherer wraps this: the LLM selects every read, and the impact node's
+    knowledge grounding still applies. Offline it contributes nothing, by design.
+    """
+    return ImpactEvidence()
+
+
 GATHERERS: dict[str, Gatherer] = {
     "launch": gather_launch,
     "sso-ga": gather_sso_ga,

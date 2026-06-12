@@ -49,18 +49,21 @@ class ImpactNode:
         knowledge: KnowledgePort,
         gatherers: dict[str, Gatherer],
         deliberator: Deliberator | None = None,
+        *,
+        default_gatherer: Gatherer | None = None,
     ) -> None:
         self._registry = registry
         self._knowledge = knowledge
         self._gatherers = gatherers
         self._deliberator = deliberator or OfflineDeliberator()
+        self._default_gatherer = default_gatherer
 
     def __call__(self, state: CourtState) -> CourtState:
         change = Change.model_validate(state["change"])
         evidence = ImpactEvidence()
         errors = list(state.get("errors", []))
 
-        gatherer = self._gatherers.get(change.subject or "")
+        gatherer = self._gatherers.get(change.subject or "") or self._default_gatherer
         if gatherer is not None:
             _merge(evidence, gatherer(change, self._registry, self._knowledge, errors))
 
