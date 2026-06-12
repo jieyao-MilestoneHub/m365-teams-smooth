@@ -11,7 +11,7 @@ from __future__ import annotations
 import re
 from datetime import date, timedelta
 
-from app.agent.nodes.options import feasible_from_actions
+from app.agent.nodes.options import Planner, feasible_from_actions
 from app.domain import (
     CapabilityRef,
     Change,
@@ -337,6 +337,31 @@ def plan_weekly_report(change: Change, impact: ImpactEvidence) -> ExecutionPlan:
         ],
         rationale="Aggregate the week's activity once and post it to the project channel.",
     )
+
+
+def generic_planner(unsafe_tags: frozenset[str]) -> Planner:
+    """The subject-agnostic baseline: refuse when a safety-critical tag fired, else the 1:1 plan.
+
+    Refusal authority stays deterministic and data-driven — the unsafe-tag set comes from the
+    same rule packs the policy node interprets. The LLM planner wrapping this baseline drafts the
+    content (a richer plan, or the alternative's steps); it can never flip the kind back.
+    """
+
+    def plan(change: Change, impact: ImpactEvidence) -> ExecutionPlan:
+        fired = sorted(unsafe_tags.intersection(impact.tags))
+        if fired:
+            return ExecutionPlan(
+                kind=PlanKind.SAFE_ALTERNATIVE,
+                steps=[],
+                rationale=(
+                    "Refused as posed: the evidence fired safety-critical tag(s) "
+                    f"{', '.join(fired)} and no specialized alternative exists for this "
+                    "subject; revise the request."
+                ),
+            )
+        return feasible_from_actions(change)
+
+    return plan
 
 
 PLANNERS = {

@@ -53,7 +53,7 @@ from app.adapters.persistence.repositories import (
 from app.agent.agentic.gatherer import LlmEvidenceGatherer
 from app.agent.agentic.planner import LlmPlanner
 from app.agent.deliberate import Deliberator, LlmDeliberator, OfflineDeliberator
-from app.agent.gatherers import GATHERERS
+from app.agent.gatherers import GATHERERS, gather_nothing
 from app.agent.graph import build_court_graph
 from app.agent.instrument import RunEventEmitter, set_run_event_emitter
 from app.agent.nodes.audit import AuditNode
@@ -63,9 +63,10 @@ from app.agent.nodes.intake import IntakeNode
 from app.agent.nodes.options import OptionsNode, Planner
 from app.agent.nodes.policy import PolicyNode, RulePackQuorumResolver
 from app.agent.nodes.verify import VerifyNode
-from app.agent.planners import PLANNERS
+from app.agent.planners import PLANNERS, generic_planner
 from app.agent.policy_rules.models import RulePack
 from app.agent.policy_rules.packs import UNGOVERNED, default_packs
+from app.agent.policy_rules.vocabulary import marks_unsafe_tags
 from app.agent.runner import CourtRunner
 from app.config import Settings
 from app.domain.run_events import RunEventKind
@@ -339,6 +340,31 @@ def build_court_service(
             for subject, planner in planners.items()
         }
 
+    # The generic path: subjects with no registered scenario get the same agentic treatment —
+    # the Prosecutor selects every read over an empty deterministic core, and the Defender drafts
+    # within the generic baseline, whose refusal decision is deterministic (marks_unsafe tags
+    # from the same packs policy interprets). Offline, the generic baseline is behavior-identical
+    # to the bare 1:1 plan (no gatherer -> no tags), so nothing changes for the scripted suites.
+    default_planner: Planner = generic_planner(marks_unsafe_tags(packs))
+    default_gatherer: Gatherer | None = None
+    if llm_is_real:
+        default_gatherer = LlmEvidenceGatherer(
+            llm,
+            fallback=gather_nothing,
+            max_reads=settings.max_agentic_reads,
+            memory=memory,
+            guardrail=guardrail,
+            guardrail_blocking=block,
+        )
+        default_planner = LlmPlanner(
+            llm,
+            registry,
+            fallback=default_planner,
+            memory=memory,
+            guardrail=guardrail,
+            guardrail_blocking=block,
+        )
+
     # Deliberation cadence: the explanatory trace reuses upstream role prose for free; under the
     # default "reuse" mode it makes no dedicated LLM calls (absent prose it records a factual stub).
     # "always" restores a call per node; "off" (and offline runs) record stubs only.
@@ -351,8 +377,10 @@ def build_court_service(
 
     graph = build_court_graph(
         intake=IntakeNode(parser, registry, deliberator),
-        impact=ImpactNode(registry, knowledge, gatherers, deliberator),
-        options=OptionsNode(planners, deliberator),
+        impact=ImpactNode(
+            registry, knowledge, gatherers, deliberator, default_gatherer=default_gatherer
+        ),
+        options=OptionsNode(planners, deliberator, default_planner=default_planner),
         policy=PolicyNode(
             packs, RulePackQuorumResolver(), deliberator, fallback_pack=fallback_pack
         ),
