@@ -255,6 +255,16 @@ def build_change_court_card(
     if quorum is not None and quorum.required_approvers:
         roles = ", ".join(a.role.value for a in quorum.required_approvers)
         body.append(_text(f"Approvers required ({quorum.policy}): {roles}"))
+    elif quorum is not None:
+        # The exception-based gate's routine path, stated where the requester sees it: this
+        # change adds no approval layer — their own confirmation is what executes it.
+        body.append(
+            _text(
+                "Approval required: none — the requester's confirmation executes it.",
+                weight="Bolder",
+                color="Good",
+            )
+        )
 
     if requester_note:
         body.append(_text(f"Requester's note: {requester_note}"))
