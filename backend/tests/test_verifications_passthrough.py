@@ -7,7 +7,7 @@ import json
 from app.config import Settings
 from app.container import build_court_service
 from app.domain import RunMode, VerdictType
-from app.mcp.cards import build_verdict_result_card
+from app.presentation.cards import build_verdict_result_card
 from app.services.court_service import CourtService
 from tests.conftest import ALL_ROLE_DIRECTORY, APPROVER, REQUESTER
 

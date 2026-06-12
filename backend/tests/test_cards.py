@@ -7,7 +7,7 @@ import json
 from app.config import Settings
 from app.container import build_court_service
 from app.domain import PlanKind, VerdictType
-from app.mcp.cards import build_change_court_card, build_verdict_result_card
+from app.presentation.cards import build_change_court_card, build_verdict_result_card
 from app.services.court_service import CourtService
 from app.services.dto import TrialSummary
 from tests.conftest import ALL_ROLE_DIRECTORY, APPROVER, REQUESTER

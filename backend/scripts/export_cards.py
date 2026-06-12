@@ -18,7 +18,7 @@ from pathlib import Path
 from app.config import Settings
 from app.container import build_court_service
 from app.domain import ChangeStatus
-from app.mcp.cards import build_change_court_card, build_verdict_result_card
+from app.presentation.cards import build_change_court_card, build_verdict_result_card
 from scripts.demo_identities import APPROVER, DIRECTORY, REQUESTER
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]

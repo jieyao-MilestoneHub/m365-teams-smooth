@@ -28,7 +28,6 @@ from app.container import (
     build_teams_notifier,
 )
 from app.main import create_app
-from app.mcp.cards import build_change_court_card, build_verdict_result_card
 from app.mcp.security import (
     build_auth_settings,
     build_token_verifier,
@@ -38,6 +37,7 @@ from app.mcp.security import (
 from app.mcp.server import MCP_PATH, build_mcp_server
 from app.observability import configure_logging, configure_metrics
 from app.ports.notifier import ApprovalNotifier
+from app.presentation.cards import build_change_court_card, build_verdict_result_card
 from app.services.court_service import CourtService
 
 

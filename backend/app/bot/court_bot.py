@@ -37,8 +37,8 @@ from botbuilder.schema import (
 
 from app.domain.errors import ChangeCourtError
 from app.domain.principal import Principal
-from app.mcp.cards import build_change_court_card, build_verdict_result_card
 from app.ports.conversation_store import ConversationStore
+from app.presentation.cards import build_change_court_card, build_verdict_result_card
 from app.services.court_service import CourtService
 
 Card = dict[str, object]

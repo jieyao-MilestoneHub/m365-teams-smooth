@@ -18,9 +18,9 @@ import logging
 from collections.abc import Callable
 
 from app.domain import ChangeStatus, TrialRecord
-from app.mcp.cards import build_change_court_card, build_verdict_result_card
 from app.ports.conversation_store import ConversationStore
 from app.ports.notifier import ApprovalNotifier
+from app.presentation.cards import build_change_court_card, build_verdict_result_card
 
 logger = logging.getLogger(__name__)
 
