@@ -27,7 +27,8 @@ always deterministic — the same tags always produce the same score, level, and
 Each change subject is governed by a **rule pack**
 ([`backend/app/agent/policy_rules/packs.py`](../backend/app/agent/policy_rules/packs.py)) — a
 validated data literal mapping evidence tags to risk weights and approver roles. The engine
-interprets the packs; changing policy means changing data.
+interprets the packs; changing policy means changing data — including your own packs loaded from
+a `POLICY_PACKS_PATH` file (append or replace; see [extending.md](extending.md)).
 
 | Pack | Fires on | Approvers | Routine path |
 | --- | --- | --- | --- |
