@@ -7,7 +7,7 @@ from app.agent.policy_rules.packs import UNGOVERNED
 from app.agent.state import CourtState, initial_state, serialize
 from app.config import Settings
 from app.container import build_court_service
-from app.domain import Change, ChangeStatus, RiskLevel, RunMode
+from app.domain import Change, ChangeStatus, Quorum, RiskLevel, RiskResult, RunMode
 from app.domain.enums import ApproverRole
 from app.domain.principal import Principal
 from tests.conftest import REQUESTER
@@ -35,13 +35,13 @@ def test_ungoverned_fallback_convenes_the_manager_quorum() -> None:
     node = PolicyNode([], RulePackQuorumResolver(), fallback_pack=UNGOVERNED)
     result = node(_floor_state(Change(change_id="c1", raw_request=_REQ)))
     assert result["status"] == ChangeStatus.AWAITING_VERDICT.value
-    risk = result["risk"]
-    assert risk["level"] == RiskLevel.MEDIUM.value
-    assert risk["score"] == 30
-    assert risk["requires_approval"] is True
-    assert [f["id"] for f in risk["factors"]] == ["ungoverned_change"]
-    roles = [a["role"] for a in result["quorum"]["required_approvers"]]
-    assert roles == [ApproverRole.MANAGER.value]
+    risk = RiskResult.model_validate(result["risk"])
+    assert risk.level is RiskLevel.MEDIUM
+    assert risk.score == 30
+    assert risk.requires_approval is True
+    assert [f.id for f in risk.factors] == ["ungoverned_change"]
+    quorum = Quorum.model_validate(result["quorum"])
+    assert [a.role for a in quorum.required_approvers] == [ApproverRole.MANAGER]
 
 
 def test_no_fallback_keeps_the_approval_free_court() -> None:
@@ -50,7 +50,7 @@ def test_no_fallback_keeps_the_approval_free_court() -> None:
     node = PolicyNode([], RulePackQuorumResolver(), fallback_pack=None)
     result = node(_floor_state(Change(change_id="c1", raw_request=_REQ)))
     assert result["status"] == ChangeStatus.EXECUTING.value
-    assert result["risk"]["requires_approval"] is False
+    assert RiskResult.model_validate(result["risk"]).requires_approval is False
 
 
 def test_off_script_change_waits_for_the_manager_end_to_end() -> None:
