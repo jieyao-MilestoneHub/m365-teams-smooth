@@ -41,8 +41,7 @@ registered capability supports it, so it is never planned or executed.
 
 Every step runs through the same surfaces: the **Change Court Adaptive Card** (the decision UI), the
 **read-only pipeline run page** on a second screen (signed links, CI-style stage rail), and the
-append-only audit at the end. Recording it? The screen-by-screen script with narration is in
-[script.md](script.md).
+append-only audit at the end.
 
 ## Reproduce it (credential-free)
 
