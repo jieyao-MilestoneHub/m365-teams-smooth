@@ -59,11 +59,13 @@ def _read(
     try:
         return adapter.read(ReadQuery(capability=capability, params=params)).data
     except IntegrationError as exc:
-        # A failing read must not abort the impact node: log, record, and skip this source
-        # so the remaining evidence still gathers.
+        # A configured real evidence source that FAILS must not silently under-inform the decision —
+        # a dropped read can withhold a risk tag (no milestone read → no milestone_move → lower
+        # risk). Log and re-raise so the trial fails loudly rather than producing a quietly
+        # under-risked result. Mocks never raise, so offline/CI runs are unaffected; the LLM's
+        # additive enrichment reads keep degrading gracefully in the agentic gatherer.
         logger.warning("impact read failed on %s.%s: %s", system, capability, exc)
-        errors.append(f"impact read failed on {system}.{capability}: {exc}")
-        return {}
+        raise
 
 
 def gather_launch(

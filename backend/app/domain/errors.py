@@ -31,6 +31,10 @@ class IntegrationError(ChangeCourtError):
     """An adapter failed; wraps the underlying SDK error at the adapter boundary."""
 
 
+class ConfigurationError(ChangeCourtError):
+    """A configured real capability cannot be served — fail fast, never serve a substitute."""
+
+
 class VerdictConflictError(ChangeCourtError):
     """A verdict conflicts with a previously recorded one for the same trial."""
 

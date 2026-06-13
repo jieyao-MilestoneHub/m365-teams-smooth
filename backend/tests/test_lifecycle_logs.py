@@ -35,6 +35,7 @@ from app.domain import (
     Verdict,
     VerdictType,
 )
+from app.domain.errors import ConfigurationError
 from app.ports.integration import IntegrationAdapter
 from app.ports.knowledge import KnowledgePort
 from app.ports.llm import LLMProvider
@@ -142,8 +143,8 @@ def test_step_ok_logged_as_info(caplog: pytest.LogCaptureFixture) -> None:
     assert _levels(caplog, "step.ok") == ["INFO"]
 
 
-def test_adapter_selection_and_fallback(caplog: pytest.LogCaptureFixture) -> None:
-    # Request github:real, but only a mock candidate exists -> fall back with a warning.
+def test_adapter_selection_raises_when_requested_real_is_absent() -> None:
+    # Request github:real but only a mock candidate exists -> fail fast, never serve mock as real.
     settings = Settings(
         _env_file=None,  # type: ignore[call-arg]
         force_all_mock=False,
@@ -154,10 +155,24 @@ def test_adapter_selection_and_fallback(caplog: pytest.LogCaptureFixture) -> Non
         "github": {"mock": MockGitHubAdapter()}
     }
 
+    with pytest.raises(ConfigurationError):
+        select_adapters(settings, candidates)
+
+
+def test_adapter_selection_logs_the_selected_mode(caplog: pytest.LogCaptureFixture) -> None:
+    # A present requested mode (FORCE_ALL_MOCK -> mock) is selected and logged at INFO.
+    settings = Settings(
+        _env_file=None,  # type: ignore[call-arg]
+        force_all_mock=True,
+        db_url="sqlite:///:memory:",
+    )
+    candidates: dict[str, dict[str, IntegrationAdapter]] = {
+        "github": {"mock": MockGitHubAdapter()}
+    }
+
     with caplog.at_level(logging.INFO):
         select_adapters(settings, candidates)
 
-    assert _levels(caplog, "adapter.fallback") == ["WARNING"]
     assert _levels(caplog, "adapter.selected") == ["INFO"]
 
 
