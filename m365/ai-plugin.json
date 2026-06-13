@@ -3,7 +3,7 @@
   "schema_version": "v2.4",
   "name_for_human": "AI Change Court",
   "description_for_human": "Cross-system impact evidence for a change; approvers only when evidence shows risk; full audit.",
-  "description_for_model": "Use to open and review an impact-analysis trial for a cross-system change (routine low-risk changes need no approver; risky ones resolve required approver roles). submit_change opens a trial and returns the impact, risk, plan (or safe alternative), and required approvers (run_mode=\"analyze\" makes it an impact check that never executes and reports the would-be approvers); get_trial returns the full record; cast_verdict records a decision (use accept_alternative for the safe alternative); send_for_approval/withdraw_change/decide drive the separation-of-duties approval flow; list_pending_approvals is the approver's queue; acknowledge_outcome lets the requester confirm a concluded trial's outcome; get_status returns the lifecycle state.",
+  "description_for_model": "Use to open and review an impact-analysis trial for a cross-system change (routine low-risk changes need no approver; risky ones resolve required approver roles). submit_change opens a trial and returns the impact, risk, plan (or safe alternative), and required approvers (run_mode=\"analyze\" makes it an impact check that never executes and reports the would-be approvers); get_trial returns the full record; cast_verdict records a decision (use accept_alternative for the safe alternative); send_for_approval/withdraw_change/decide drive the separation-of-duties approval flow; list_pending_approvals is the approver's queue; acknowledge_outcome lets the requester confirm a concluded trial's outcome; get_status returns the lifecycle state. An analysis-only trial (run_mode=analyze) is terminal — to act on it you must submit a fresh submit_change without run_mode=analyze, then drive the approval flow on that new trial.",
   "namespace": "changecourt",
   "functions": [
     {
@@ -24,15 +24,15 @@
     },
     {
       "name": "send_for_approval",
-      "description": "Requester sends the trial to its approvers with a mandatory note."
+      "description": "Requester sends the trial to its approvers with a mandatory note. Only valid on an actionable trial; an analysis-only trial (run_mode=analyze) cannot be sent for approval — submit a fresh change first."
     },
     {
       "name": "withdraw_change",
-      "description": "Requester gives up the change instead of sending it for approval."
+      "description": "Requester gives up the change instead of sending it for approval. Not valid on an analysis-only trial."
     },
     {
       "name": "decide",
-      "description": "An authorized approver approves, or rejects with a note; the requester cannot self-approve."
+      "description": "An authorized approver approves, or rejects with a note; the requester cannot self-approve. Not valid on an analysis-only trial."
     },
     {
       "name": "list_pending_approvals",
@@ -81,7 +81,7 @@
                   },
                   "run_mode": {
                     "type": "string",
-                    "description": "dry_run (predict effects) or live; defaults to dry_run."
+                    "description": "analyze (impact check only — never executes, terminal), dry_run (predict effects), or live; defaults to dry_run."
                   }
                 },
                 "required": ["raw_request"]
@@ -147,7 +147,7 @@
             },
             {
               "name": "send_for_approval",
-              "description": "Requester sends the trial to its approvers with a mandatory note.",
+              "description": "Requester sends the trial to its approvers with a mandatory note. Only valid on an actionable trial; an analysis-only trial (run_mode=analyze) cannot be sent for approval — submit a fresh change first.",
               "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -165,7 +165,7 @@
             },
             {
               "name": "withdraw_change",
-              "description": "Requester gives up the change instead of sending it for approval.",
+              "description": "Requester gives up the change instead of sending it for approval. Not valid on an analysis-only trial.",
               "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -179,7 +179,7 @@
             },
             {
               "name": "decide",
-              "description": "An authorized approver approves, or rejects with a note; the requester cannot self-approve.",
+              "description": "An authorized approver approves, or rejects with a note; the requester cannot self-approve. Not valid on an analysis-only trial.",
               "inputSchema": {
                 "type": "object",
                 "properties": {
