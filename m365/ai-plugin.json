@@ -81,7 +81,7 @@
                   },
                   "run_mode": {
                     "type": "string",
-                    "description": "analyze (impact check only — never executes, terminal), dry_run (predict effects), or live; defaults to dry_run."
+                    "description": "analyze = impact check only (never executes, terminal); dry_run = predict effects; live = apply real writes. Omit it to act — the deployment default applies (a live backend writes for real). Do not pass dry_run when the user wants to proceed/act."
                   }
                 },
                 "required": ["raw_request"]
