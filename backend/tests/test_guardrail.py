@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import httpx
 import pytest
+import respx
 
+from app.adapters.guardrail.azure_content_safety import AzurePromptShieldsGuardrail
 from app.adapters.guardrail.heuristic import HeuristicGuardrail
 from app.domain import SOURCE_HEURISTIC
+from app.domain.errors import GuardrailError
 from app.llm.untrusted import HARDENING, fence
 
 _INJECTIONS = [
@@ -21,6 +25,20 @@ _BENIGN = [
     "The security review is scheduled for 2026-06-18.",
     "Customer A renewal value is 250000 USD.",
 ]
+
+
+@respx.mock
+def test_configured_shield_raises_when_it_cannot_screen() -> None:
+    # A configured real shield that fails must not return "unflagged" (assume-safe → unscreened
+    # LLM); it raises so the caller never proceeds as if the input were screened.
+    shield = AzurePromptShieldsGuardrail(
+        endpoint="https://cs.example.com", token_provider=lambda: "t"
+    )
+    respx.post("https://cs.example.com/contentsafety/text:shieldPrompt").mock(
+        return_value=httpx.Response(500)
+    )
+    with pytest.raises(GuardrailError):
+        shield.screen_input(user_text="move the rehearsal to 2026-06-16")
 
 
 @pytest.mark.parametrize("text", _INJECTIONS)
