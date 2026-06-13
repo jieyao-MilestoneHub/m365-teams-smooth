@@ -21,6 +21,7 @@ class TrialSummary(BaseModel):
     errors: list[str] = Field(default_factory=list)
     acknowledged: bool = False  # requester confirmed the concluded outcome
     run_url: str | None = None  # signed read-only run-page link; None when the run page is disabled
+    ticket_url: str | None = None  # the change ticket / system of record; None when not configured
 
 
 class ApprovalTimelineEntry(BaseModel):
@@ -65,3 +66,4 @@ class CastResult(BaseModel):
     audit_id: str | None = None
     idempotent: bool = False
     run_url: str | None = None  # signed read-only run-page link; None when the run page is disabled
+    ticket_url: str | None = None  # the change ticket / system of record; None when not configured

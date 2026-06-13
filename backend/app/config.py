@@ -148,6 +148,10 @@ class Settings(BaseSettings):
     evidence_webhook_url: str = ""
     # Optional bearer token sent in the Authorization header of each webhook POST.
     evidence_webhook_token: str = ""
+    # The change ticket / system of record the evidence packet is posted to (e.g. the GitHub
+    # issue or ITSM record). Surfaced on each trial summary as ``ticket_url`` so a surface can
+    # link straight to it; empty -> no ticket link.
+    evidence_ticket_url: str = ""
 
     # --- Bot surface (POST /api/messages) ---
     # The Azure Bot's app registration. Empty bot_app_id -> anonymous Bot Framework auth, which is
