@@ -24,8 +24,16 @@ router = APIRouter(tags=["runs"])
 
 _STATIC_DIR = Path(__file__).parent / "static"
 
-# The token travels in the URL; keep it out of referrers and crawlers.
-_PAGE_HEADERS = {"Referrer-Policy": "no-referrer", "X-Robots-Tag": "noindex"}
+# The token travels in the URL; keep it out of referrers and crawlers. The run page is a
+# full-tab surface, never an embed: refuse framing so a chat client (e.g. Copilot/Teams) cannot
+# load it as a live inline preview — that embed reloads on every message re-render and flickers
+# the chat — and as defense-in-depth against clickjacking.
+_PAGE_HEADERS = {
+    "Referrer-Policy": "no-referrer",
+    "X-Robots-Tag": "noindex",
+    "X-Frame-Options": "DENY",
+    "Content-Security-Policy": "frame-ancestors 'none'",
+}
 
 
 def _authorize(service: CourtService, thread_id: str, token: str) -> None:

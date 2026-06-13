@@ -77,6 +77,10 @@ def test_valid_token_serves_page_and_events(
     assert page.headers["content-type"].startswith("text/html")
     assert page.headers["referrer-policy"] == "no-referrer"
     assert page.headers["x-robots-tag"] == "noindex"
+    # Full-tab surface, never an embed: refuse framing so a chat client cannot inline it as a
+    # reloading live preview (the flicker), and as anti-clickjacking.
+    assert page.headers["x-frame-options"] == "DENY"
+    assert page.headers["content-security-policy"] == "frame-ancestors 'none'"
 
     poll = client.get(f"/api/runs/{thread_id}/events?t={token}")
     assert poll.status_code == 200
