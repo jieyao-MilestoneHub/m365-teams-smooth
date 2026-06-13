@@ -35,6 +35,10 @@ class ConfigurationError(ChangeCourtError):
     """A configured real capability cannot be served — fail fast, never serve a substitute."""
 
 
+class GuardrailError(ChangeCourtError):
+    """A configured real input shield could not screen — fail loud, never assume input is safe."""
+
+
 class VerdictConflictError(ChangeCourtError):
     """A verdict conflicts with a previously recorded one for the same trial."""
 

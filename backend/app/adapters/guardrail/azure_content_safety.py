@@ -2,8 +2,9 @@
 
 Screens the user prompt and any retrieved documents for prompt-injection / jailbreak attempts via
 the ``text:shieldPrompt`` endpoint. Keyless auth (``DefaultAzureCredential``), matching the other
-Azure adapters. Screening degrades gracefully: any transport, auth, or timeout failure returns an
-unflagged verdict marked unavailable, so a slow or down shield never fails the trial.
+Azure adapters. This is a *configured real* shield: if it cannot screen (transport, auth, or
+timeout failure) it **raises** rather than returning an unflagged verdict — never assume unscreened
+input is safe. (The offline heuristic shield, used when no endpoint is configured, never raises.)
 """
 
 from __future__ import annotations
@@ -15,7 +16,8 @@ from typing import Any
 import httpx
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 
-from app.domain import SOURCE_AZURE_PROMPT_SHIELDS, SOURCE_UNAVAILABLE, ShieldVerdict
+from app.domain import SOURCE_AZURE_PROMPT_SHIELDS, ShieldVerdict
+from app.domain.errors import GuardrailError
 from app.ports.guardrail import GuardrailPort
 
 logger = logging.getLogger(__name__)
@@ -53,9 +55,9 @@ class AzurePromptShieldsGuardrail(GuardrailPort):
             )
             response.raise_for_status()
             data = response.json()
-        except Exception as exc:  # noqa: BLE001 — screening is advisory; never fail the trial
+        except Exception as exc:  # noqa: BLE001 — a configured shield that cannot screen fails loud
             logger.warning("guardrail.shield_unavailable", extra={"error": str(exc)})
-            return ShieldVerdict(source=SOURCE_UNAVAILABLE)
+            raise GuardrailError(f"prompt shield unavailable: {exc}") from exc
 
         return _verdict_from(data)
 

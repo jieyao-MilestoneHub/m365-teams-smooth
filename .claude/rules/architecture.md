@@ -145,7 +145,9 @@ rewrite (see below).
 - Port `GuardrailPort` screens untrusted input (the raw request, gathered evidence) **before** any
   LLM reasons over it — Azure Prompt Shields when `CONTENT_SAFETY_ENDPOINT` is set, an offline
   heuristic otherwise; flagged input falls back to the deterministic path. Third-party content is
-  fenced in `<untrusted_data>` blocks (`app/llm/untrusted.py`). Screening never raises.
+  fenced in `<untrusted_data>` blocks (`app/llm/untrusted.py`). The offline heuristic never raises;
+  a configured real shield that cannot screen **raises** (fail loud — unscreened input is never
+  assumed safe).
 - Portability seams for a second platform adapter (credential providers rather than static keys,
   logical-model → platform-ID mapping, normalized throttling, capability flags) and the
   deliberately deferred hardening (circuit breaker, streaming, batch APIs) are recorded in

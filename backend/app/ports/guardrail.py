@@ -2,9 +2,9 @@
 
 This is the input-shield seam. A heuristic implementation backs it credential-free during local
 development; a managed shield (Azure AI Content Safety Prompt Shields) plugs in behind the same
-interface with no change to the agentic nodes. Like the knowledge port, screening degrades
-gracefully — it never raises — so a slow or unavailable shield costs the trial its screening, never
-the trial itself.
+interface with no change to the agentic nodes. The offline heuristic never raises. A *configured
+real* shield that cannot screen (transport, auth, timeout) **raises** instead of returning an
+unflagged verdict — unscreened input is never assumed safe (fail loud, per the quality policy).
 """
 
 from __future__ import annotations
@@ -24,6 +24,7 @@ class GuardrailPort(ABC):
     ) -> ShieldVerdict:
         """Return a verdict on ``user_text`` (and any retrieved ``documents``).
 
-        Implementations must not raise — on provider failure, return an unflagged verdict whose
-        ``source`` marks the screening unavailable, so the caller can log it and proceed.
+        The offline heuristic never raises. A configured real shield that cannot screen raises a
+        ``GuardrailError`` rather than returning an unflagged verdict — the caller must not proceed
+        as if unscreened input were safe.
         """
