@@ -25,7 +25,9 @@ def test_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_integration_modes_parses_pairs() -> None:
-    settings = Settings(integration_mode="github:real, outlook:mock")
+    # Pin force_all_mock so the parse is asserted independent of an ambient FORCE_ALL_MOCK (the
+    # credential-free CI mode sets it); the override itself is covered by the next test.
+    settings = Settings(integration_mode="github:real, outlook:mock", force_all_mock=False)
     assert settings.integration_modes() == {"github": "real", "outlook": "mock"}
 
 
