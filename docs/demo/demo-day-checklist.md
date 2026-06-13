@@ -60,7 +60,9 @@ signs in as a different, low-privilege account.
 
 ## Recording
 
-- Record the headline scenario only (see [the demo script](./README.md)); keep it under five
+- Follow the scene-by-scene narration and the Copilot bring-up checks in
+  [recording-script.md](./recording-script.md) — Microsoft 365 Copilot Chat is the primary surface.
+- Record the headline scenario only (see also [the demo script](./README.md)); keep it under five
   minutes: the ticket and its missing evidence → the analysis-only packet lands as a comment
   (would-be approvers; nothing executed) → escalation: refusal + safe alternative → informed
   verdict → step-by-step execution → audit, with the decision comments arriving on the same
