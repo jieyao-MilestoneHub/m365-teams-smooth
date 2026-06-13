@@ -15,6 +15,30 @@ from app.ports.integration import IntegrationAdapter, ReadQuery, ReadResult
 from tests.conftest import build_mock_registry
 
 
+class _ExplodingKnowledge:
+    """A knowledge provider that fails every grounding call (e.g. an unreachable IQ endpoint)."""
+
+    def ground(self, query: str, *, top_k: int = 3) -> list[object]:
+        raise RuntimeError("knowledge base unreachable")
+
+
+def test_gatherer_survives_an_unreachable_knowledge_provider() -> None:
+    # Grounding is best-effort: a provider outage must cost the citations, not abort the trial.
+    registry = build_mock_registry()
+    errors: list[str] = []
+    evidence = gather_launch(
+        Change(change_id="c1", raw_request="move launch", subject="launch", due_by="2026-06-22"),
+        registry,
+        _ExplodingKnowledge(),  # type: ignore[arg-type]
+        errors,
+    )
+    # The deterministic breach detection still stands; only its citations are absent.
+    assert "schedule.contractual_breach_risk" in evidence.tags
+    cf = next(i for i in evidence.items if i.kind == "counterfactual")
+    assert cf.grounded == []
+    assert any("knowledge grounding unavailable" in e for e in errors)
+
+
 def test_launch_gatherer_tags_all_ripple_effects() -> None:
     registry = build_mock_registry()
     evidence = gather_launch(
