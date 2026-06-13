@@ -442,7 +442,7 @@ function stageBody(id) {
   if (!t) return "";
   if (id === "intake" && t.change) {
     const acts = (t.change.requested_actions || []).map(a =>
-      `<div class="row"><span class="sys">${esc(a.capability || a.name || "")}</span> ${esc(JSON.stringify(a.params || {}))}</div>`).join("");
+      `<div class="row"><span class="sys">${esc(a.capability_name || a.capability || a.name || "")}</span> ${esc(JSON.stringify(a.params || {}))}</div>`).join("");
     return `<div class="row">“${esc(t.change.raw_request)}”${t.change.requester && t.change.requester.display_name ? ` — <span class="sys">${esc(t.change.requester.display_name)}</span>` : ""}</div>${acts}`;
   }
   if (id === "impact" && t.impact && t.impact.items) {

@@ -45,6 +45,31 @@ def test_llm_json_maps_to_a_change(mock_registry: Any) -> None:
     assert change.due_by == "2026-06-17"
 
 
+def test_actions_with_missing_params_fall_back_to_deterministic(mock_registry: Any) -> None:
+    # The bug seen live: the LLM names the right capability but omits its required params, so
+    # intake's guard would reject every action and BLOCK a valid reschedule. The parser falls back
+    # to the deterministic parse, which fills the params — the change is never spuriously blocked.
+    reply = json.dumps(
+        {
+            "subject": "launch",
+            "due_by": "2026-06-17",
+            "actions": [
+                {
+                    "system": "github",
+                    "capability_name": "github.update_milestone_due",
+                    "params": "{}",
+                }
+            ],
+        }
+    )
+    parser = LlmRequestParser(_StubLLM(reply), mock_registry, DeterministicRequestParser())
+    change = parser.parse("slip the launch to 2026-06-17", change_id="c1")
+    assert change.subject == "launch"
+    assert change.requested_actions, "the parse must not be left with zero (all-rejected) actions"
+    params = change.requested_actions[0].params
+    assert params.get("milestone") and params.get("due_on")  # deterministic filled them
+
+
 def test_flagged_request_falls_back_to_deterministic(mock_registry: Any) -> None:
     from app.adapters.guardrail.heuristic import HeuristicGuardrail
 
