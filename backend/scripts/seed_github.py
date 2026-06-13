@@ -51,11 +51,14 @@ _MILESTONES: tuple[dict[str, str], ...] = (
 # The demo change ticket: the existing issue a ticket-first team would already have. The evidence
 # receiver lands the court's analysis on it as comments, each starting with the marker below — the
 # only comments the between-takes reset is allowed to delete.
-_ISSUE_TITLE = "Change request: move the launch rehearsal"
+_ISSUE_TITLE = "Change request: move the launch rehearsal to 2026-06-22"
 _ISSUE_BODY = (
-    "Requested: move the launch rehearsal.\n\n"
-    "This is the demo's change ticket: when the change is sent for approval, the Change Court "
-    "evidence receiver posts the cross-system analysis below as a comment."
+    "**Requested change:** move the `Launch Rehearsal` milestone to **2026-06-22**.\n\n"
+    "The 22nd looks free on the team calendar, so this should be a routine reschedule.\n\n"
+    "---\n"
+    "_This issue is the change ticket — the system of record. When the court analyzes the "
+    "change, its evidence receiver posts the cross-system impact analysis below as a comment, "
+    "so the ticket keeps the evidence it was missing._"
 )
 _EVIDENCE_MARKER = "### Change Court —"
 
@@ -155,9 +158,13 @@ def _apply_ticket(g: httpx.Client, repo: str) -> None:
         print(f"created ticket '{_ISSUE_TITLE}' (#{number})")
     else:
         number = int(str(issue["number"]))
-        if issue.get("state") != "open":
-            g.patch(f"/repos/{repo}/issues/{number}", json={"state": "open"}).raise_for_status()
-            print(f"reopened ticket '{_ISSUE_TITLE}' (#{number})")
+        # Keep the ticket's title, body, and state in sync with the seed — the demo ticket is
+        # reproducible, not hand-edited, so the between-takes reset restores its content too.
+        g.patch(
+            f"/repos/{repo}/issues/{number}",
+            json={"title": _ISSUE_TITLE, "body": _ISSUE_BODY, "state": "open"},
+        ).raise_for_status()
+        print(f"reset ticket '{_ISSUE_TITLE}' (#{number})")
         resp = g.get(f"/repos/{repo}/issues/{number}/comments", params={"per_page": "100"})
         resp.raise_for_status()
         stale = [c for c in resp.json() if str(c.get("body", "")).startswith(_EVIDENCE_MARKER)]
