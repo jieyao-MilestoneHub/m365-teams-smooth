@@ -8,6 +8,12 @@ on:
 permissions:
   contents: read
 
+# CI runs in the credential-free verification mode: every integration is mocked, so the app
+# (and its module-level ASGI instance) builds with no external secrets. Without this, importing
+# the app defaults GitHub to `real` mode and fails loud on the missing credentials.
+env:
+  FORCE_ALL_MOCK: "true"
+
 jobs:
   # Local pre-PR gate (`make check`) reproduced in CI: lint, type-check, tests.
   check:
