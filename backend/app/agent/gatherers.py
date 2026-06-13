@@ -17,7 +17,7 @@ from app.agent.policy_rules.packs import (
     VENDOR_ACCESS,
     WEEKLY_REPORT,
 )
-from app.domain import Change, EvidenceItem, ImpactEvidence
+from app.domain import Change, EvidenceItem, GroundedFact, ImpactEvidence
 from app.domain.errors import IntegrationError
 from app.ports.integration import ReadQuery
 from app.ports.knowledge import KnowledgePort
@@ -29,6 +29,21 @@ logger = logging.getLogger(__name__)
 def _as_day(value: str) -> date:
     """The calendar day of an ISO date or timestamp (live evidence may carry a full timestamp)."""
     return date.fromisoformat(value[:10])
+
+
+def _ground(knowledge: KnowledgePort, query: str, errors: list[str]) -> list[GroundedFact]:
+    """Best-effort grounding: a knowledge-provider failure costs the citations, not the trial.
+
+    Mirrors the impact node's guard so a gatherer never aborts on an unreachable knowledge base
+    (e.g. an expired credential or a transient outage) — the deterministic evidence still stands,
+    only its governance citations are absent.
+    """
+    try:
+        return knowledge.ground(query)
+    except Exception as exc:  # noqa: BLE001 — any provider failure becomes evidence-level
+        logger.warning("knowledge grounding unavailable: %s", exc)
+        errors.append(f"knowledge grounding unavailable: {exc}")
+        return []
 
 
 def _read(
@@ -109,7 +124,7 @@ def gather_launch(
                     ),
                     data={"event": clash, "title": clash.get("title")},
                     severity="high",
-                    grounded=knowledge.ground(LAUNCH_SLIP.grounding_query),
+                    grounded=_ground(knowledge, LAUNCH_SLIP.grounding_query, errors),
                 )
             )
             tags.append("schedule.target_date_conflict")
@@ -231,7 +246,7 @@ def _derive_contractual_breach(
                 severity="high",
                 # Ground on the launch phrase tuned to rank the change-management policy first
                 # (its "impact assessment" section covers contractual and downstream implications).
-                grounded=knowledge.ground(LAUNCH_SLIP.grounding_query),
+                grounded=_ground(knowledge, LAUNCH_SLIP.grounding_query, errors),
             )
         )
         tags.append("schedule.contractual_breach_risk")
@@ -282,7 +297,7 @@ def gather_sso_ga(
                 summary=f"Security review on {review_date} is after the promised {change.due_by}",
                 data=review,
                 severity="high",
-                grounded=knowledge.ground(CUSTOMER_PROMISE.grounding_query),
+                grounded=_ground(knowledge, CUSTOMER_PROMISE.grounding_query, errors),
             )
         )
         tags.append("security.review_after_due_date")
@@ -332,7 +347,7 @@ def gather_project_access(
                 summary=f"'{path}' holds customer data",
                 data=folder,
                 severity="high",
-                grounded=knowledge.ground(VENDOR_ACCESS.grounding_query),
+                grounded=_ground(knowledge, VENDOR_ACCESS.grounding_query, errors),
             )
         )
         tags.append("data.customer_data_present")
@@ -360,7 +375,7 @@ def gather_meeting_actions(
                 kind="meeting_notes",
                 summary=f"{len(notes)} spoken follow-up(s) in the standup discussion",
                 data={"notes": notes},
-                grounded=knowledge.ground(MEETING_ACTIONS.grounding_query),
+                grounded=_ground(knowledge, MEETING_ACTIONS.grounding_query, errors),
             )
         )
         tags.append("meeting.action_items_found")
@@ -397,7 +412,7 @@ def gather_weekly_report(
                 kind="closed_issues",
                 summary=f"{len(closed)} issue(s) closed recently",
                 data={"issues": closed},
-                grounded=knowledge.ground(WEEKLY_REPORT.grounding_query),
+                grounded=_ground(knowledge, WEEKLY_REPORT.grounding_query, errors),
             )
         )
         tags.append("report.activity_collected")
