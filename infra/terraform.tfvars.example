@@ -48,7 +48,15 @@ location        = "eastus"
 # create_bot_app = true to let Terraform register the bot's multi-tenant app, or supply one you
 # registered yourself. Without these the backend still serves the bot endpoint anonymously (local
 # Playground only) — Teams needs the registration to authenticate and deliver activities.
-# create_bot       = false
+#
+# REQUIRED to push the Change Court decision card to an approver in Teams: set create_bot = true.
+# With create_bot = false (the default) AND notify_mode empty there is NO push channel — a
+# sent-for-approval trial waits with the approver un-notified (they can still decide from their own
+# Copilot Chat via list_pending_approvals + decide/cast_verdict). After enabling the bot, repackage
+# the Teams app (`make package`, with BOT_APP_ID from the new registration) and re-upload it so the
+# bot is installed for the approver; the create-conversation path then reaches an approver who has
+# not messaged the bot (BOT_APP_TENANT_ID is wired automatically from entra_tenant_id).
+# create_bot       = true
 # create_bot_app   = true
 # bot_app_id       = ""              # only when create_bot_app = false (externally-registered bot app)
 # bot_app_password = ""              # only when create_bot_app = false (stored as a Container App secret)
