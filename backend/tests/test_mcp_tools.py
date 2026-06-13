@@ -70,6 +70,28 @@ async def test_all_court_tools_registered(mcp: Any) -> None:
     } <= names
 
 
+async def test_submit_without_run_mode_honors_dry_run_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The MCP submit_change must not force dry-run: omitting run_mode follows DRY_RUN_DEFAULT, so a
+    # live deployment (DRY_RUN_DEFAULT=false) executes real writes. (The bot already honors this.)
+    _impersonate(monkeypatch, REQUESTER)
+    live = build_court_service(
+        Settings(
+            force_all_mock=True,
+            db_url="sqlite:///:memory:",
+            dry_run_default=False,
+            approver_directory=ALL_ROLE_DIRECTORY,
+        )
+    )
+    summary = await _call(
+        build_mcp_server(live),
+        "submit_change",
+        {"raw_request": "promise Customer A SSO is GA by 2026-06-17"},
+    )
+    assert live._runner.state(summary["thread_id"]).get("run_mode") == "live"
+
+
 async def test_get_trial_unknown_surfaces_typed_error(mcp: Any) -> None:
     from mcp.server.fastmcp.exceptions import ToolError
 

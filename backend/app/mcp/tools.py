@@ -70,19 +70,21 @@ def register_tools(mcp: FastMCP, service: CourtService) -> None:
     @correlate
     @_translate_errors
     def submit_change(
-        raw_request: str, source: str = "mcp", run_mode: str = "dry_run"
+        raw_request: str, source: str = "mcp", run_mode: str = ""
     ) -> dict[str, object]:
         """Put a change on trial; returns the trial summary (status, risk, plan, verdicts).
 
-        ``run_mode`` is ``"dry_run"`` (predict effects, no side effects), ``"live"`` (apply), or
-        ``"analyze"`` — an impact check only: the trial returns its evidence, risk, plan, and
-        would-be approvers with status ``analyzed`` and never executes; use ``get_trial`` for the
-        full record (the approvers are under ``quorum.required_approvers``).
+        ``run_mode`` left empty applies the deployment default (``DRY_RUN_DEFAULT``): a live backend
+        executes real writes, otherwise effects are predicted. Pass ``"analyze"`` for an impact
+        check only (the trial records evidence/risk/plan with status ``analyzed`` and never
+        executes; use ``get_trial`` — approvers are under ``quorum.required_approvers``), or
+        ``"dry_run"``/``"live"`` to force a mode. (Forcing ``dry_run`` here would override a live
+        deployment, so omit it to act for real.)
         """
         summary = service.submit_change(
             raw_request,
             source=source,
-            run_mode=RunMode(run_mode),
+            run_mode=RunMode(run_mode) if run_mode else None,
             requester=_require_principal(),
         )
         return summary.model_dump(mode="json")
