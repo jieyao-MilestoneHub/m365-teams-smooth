@@ -26,6 +26,10 @@ from typing import Any
 import httpx
 
 _MARKER = "[seed:change-court-demo]"
+# The marker the live Outlook adapter stamps on events it CREATES during a trial's execution
+# (mirrors app/adapters/integrations/real_outlook.py:_CREATED_MARKER). A reset clears these too,
+# so an accepted plan's residue event never shifts the next take's safe-alternative date.
+_CREATED_MARKER = "[change-court]"
 _LOGIN = "https://login.microsoftonline.com"
 _GRAPH = "https://graph.microsoft.com/v1.0"
 _CALENDAR = Path(
@@ -73,15 +77,26 @@ def _token() -> str:
     return str(resp.json()["access_token"])
 
 
-def _seeded_events(g: httpx.Client, upn: str) -> list[dict[str, Any]]:
-    """The mailbox's events that carry the demo marker (the ones this seeder owns)."""
+def _events_with(g: httpx.Client, upn: str, *markers: str) -> list[dict[str, Any]]:
+    """The mailbox's events whose body carries any of the given markers."""
     resp = g.get(f"{_GRAPH}/users/{upn}/events?$select=id,subject,body&$top=200")
     resp.raise_for_status()
     return [
         e
         for e in resp.json().get("value", [])
-        if isinstance(e.get("body"), dict) and _MARKER in str(e["body"].get("content", ""))
+        if isinstance(e.get("body"), dict)
+        and any(m in str(e["body"].get("content", "")) for m in markers)
     ]
+
+
+def _seeded_events(g: httpx.Client, upn: str) -> list[dict[str, Any]]:
+    """The mailbox's seeded events (the ones this seeder owns) — for the presence check."""
+    return _events_with(g, upn, _MARKER)
+
+
+def _owned_events(g: httpx.Client, upn: str) -> list[dict[str, Any]]:
+    """Every demo-owned event: seeded events plus residue the court created during a take."""
+    return _events_with(g, upn, _MARKER, _CREATED_MARKER)
 
 
 def audit() -> dict[str, object]:
@@ -112,10 +127,10 @@ def apply() -> None:
     upn = os.environ["OUTLOOK_CALENDAR_UPN"]
     with httpx.Client(timeout=30, headers={"Authorization": f"Bearer {_token()}"}) as g:
         base = f"{_GRAPH}/users/{upn}/events"
-        stale = [e["id"] for e in _seeded_events(g, upn)]
+        stale = [e["id"] for e in _owned_events(g, upn)]
         for eid in stale:
             g.delete(f"{base}/{eid}").raise_for_status()
-        print(f"removed {len(stale)} previously-seeded event(s)")
+        print(f"removed {len(stale)} previously-seeded or court-created event(s)")
         for p in payloads:
             g.post(base, json=p).raise_for_status()
         print(f"created {len(payloads)} event(s) — calendar reseeded")
