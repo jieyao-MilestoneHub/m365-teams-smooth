@@ -27,6 +27,7 @@ Run:  ``cd backend && uv run python -m scripts.setup_demo``            # audit o
 from __future__ import annotations
 
 import argparse
+import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -73,6 +74,11 @@ def _print_table(rows: list[tuple[Resource, dict[str, object]]]) -> None:
 
 
 def main() -> None:
+    # The status table uses unicode glyphs; force UTF-8 so a legacy console never crashes it.
+    reconfigure = getattr(sys.stdout, "reconfigure", None)
+    if reconfigure is not None:
+        reconfigure(encoding="utf-8")
+
     parser = argparse.ArgumentParser(description="Audit (and optionally create) demo resources.")
     parser.add_argument("--apply", action="store_true", help="create the missing resources")
     parser.add_argument(

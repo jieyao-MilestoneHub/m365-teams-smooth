@@ -29,8 +29,9 @@ deployed instance.
 ## The ticket pre-flight (Act 1)
 
 1. `make setup-demo-apply` — creates the demo ticket if missing and prints its `EVIDENCE_ISSUE`
-   number; re-running it clears the ticket's prior evidence comments, so run it **between takes**
-   (every `make demo-ticket` adds 2–4 comments).
+   number. **Between takes** run `make setup-demo-reset`: it reseeds present resources (milestone
+   date back to its seeded state) and clears the ticket's prior evidence comments (every
+   `make demo-ticket` adds 2–4 comments).
 2. Start the receiver where the backend can reach it:
    `GITHUB_TOKEN=… GITHUB_REPO=… EVIDENCE_ISSUE=… uv run uvicorn scripts.evidence_receiver:app
    --port 8088` (from `backend/`), and set `EVIDENCE_WEBHOOK_URL=http://<receiver-host>:8088/evidence`
