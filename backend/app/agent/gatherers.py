@@ -68,6 +68,17 @@ def _read(
         raise
 
 
+# The downstream ripple of a launch move: collapsed into one reader-facing driver, not four.
+_RIPPLE_TAGS = frozenset(
+    {
+        "schedule.milestone_move",
+        "schedule.calendar_conflict",
+        "schedule.planner_shift",
+        "comms.pending_announcement",
+    }
+)
+
+
 def gather_launch(
     change: Change,
     registry: IntegrationRegistry,
@@ -155,8 +166,14 @@ def gather_launch(
         )
         tags.append("comms.pending_announcement")
 
-    _derive_contractual_breach(change, registry, knowledge, errors, items, tags)
-    return ImpactEvidence(items=items, tags=tags)
+    drivers: list[str] = []
+    _derive_contractual_breach(change, registry, knowledge, errors, items, tags, drivers)
+    if "schedule.target_date_conflict" in tags:
+        drivers.append("Requested date conflict")
+    # The milestone/calendar/planner/announcement ripple is one story to an approver, not four.
+    if _RIPPLE_TAGS.intersection(tags):
+        drivers.append("Downstream schedule updates")
+    return ImpactEvidence(items=items, tags=tags, drivers=drivers)
 
 
 def _derive_contractual_breach(
@@ -166,6 +183,7 @@ def _derive_contractual_breach(
     errors: list[str],
     items: list[EvidenceItem],
     tags: list[str],
+    drivers: list[str],
 ) -> None:
     """Cross-reference three systems to catch a breach no single one reveals.
 
@@ -174,17 +192,22 @@ def _derive_contractual_breach(
     milestone's buffer (GitHub). Each fact lives in a different system; only the *conjunction*
     (>=2 independent constraints) is a hard breach, so the derived unsafe tag fires only then — a
     human eyeballing one system would have approved it.
+
+    Each constraint that fires also contributes a short reader-facing ``driver`` (parallel to its
+    detailed ``reason``), so the comment can name the breach's parts without restating the prose.
     """
     target = change.due_by
     if not target:
         return
     reasons: list[str] = []
+    breach_drivers: list[str] = []
 
     contract = _read(registry, "crm", "crm.read_contract", errors, account="Customer A")
     sla = contract.get("launch_readiness_sla")
     if isinstance(sla, str) and target > sla:
         clause = contract.get("clause_id")
         reasons.append(f"past the launch-readiness SLA {sla} (contract clause {clause})")
+        breach_drivers.append("Contract cut-off breach")
 
     sp_data = _read(registry, "sharepoint", "sharepoint.read_change_calendar", errors)
     freezes = sp_data.get("freezes")
@@ -201,6 +224,7 @@ def _derive_contractual_breach(
         )
     if freeze is not None:
         reasons.append(f"inside the release freeze {freeze.get('start')}..{freeze.get('end')}")
+        breach_drivers.append("Release-freeze window")
 
     gh_data = _read(
         registry,
@@ -227,8 +251,10 @@ def _derive_contractual_breach(
                     f"compresses the '{dep.get('milestone')}' buffer below "
                     f"{buffer_days} days before go-live {due}"
                 )
+                breach_drivers.append("Customer go-live buffer")
 
     if len(reasons) >= 2:
+        drivers.extend(breach_drivers)
         items.append(
             EvidenceItem(
                 system="derived",

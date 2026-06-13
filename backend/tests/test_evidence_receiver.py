@@ -48,6 +48,13 @@ _PACKET: dict[str, object] = {
     },
     "impact": {
         "tags": ["schedule.milestone_move"],
+        # The gatherer's own grouping of its findings; the comment shows these as the risk drivers.
+        "drivers": [
+            "Contract cut-off breach",
+            "Release-freeze window",
+            "Customer go-live buffer",
+            "Downstream schedule updates",
+        ],
         "items": [
             {
                 "system": "crm",
@@ -92,10 +99,12 @@ def test_one_post_becomes_one_issue_comment(monkeypatch: pytest.MonkeyPatch) -> 
     body = str(request.content.decode())
     assert "Change Court — Approval requested" in body
     assert "move the launch rehearsal to 2026-06-22" in body
-    # Factors read as humanized drivers, with no machine labels and no inline weights.
+    # The "why" lines are the gatherer's reader-facing drivers, with no inline weights.
     assert "**Why this is high risk**" in body
-    assert "- Milestone move" in body
-    assert "- Contractual breach risk" in body
+    assert "- Contract cut-off breach" in body
+    assert "- Release-freeze window" in body
+    assert "- Customer go-live buffer" in body
+    assert "- Downstream schedule updates" in body
     assert "+40" not in body and "+50" not in body and "(+" not in body
     # The shared citations are deduped once and grouped under each policy, not repeated per factor.
     assert "**Policy basis**" in body
@@ -158,7 +167,8 @@ def test_analyzed_packet_renders_conditional_language(
     assert "Approvers required" not in markdown
     assert "**Decision:**" not in markdown
     assert "**Why this is high risk**" in markdown
-    assert "- Milestone move" in markdown
+    assert "- Contract cut-off breach" in markdown
+    assert "- Downstream schedule updates" in markdown
     assert "**Policy basis**" in markdown
     assert "Safer alternative" in markdown
     assert "_Analysis only — nothing executed._" in markdown
@@ -176,6 +186,27 @@ def test_analyzed_low_risk_renders_the_no_approver_conditional(
         }
     )
     assert "would need no approver — the requester's confirmation would execute it" in markdown
+
+
+def test_why_section_falls_back_to_factor_labels(monkeypatch: pytest.MonkeyPatch) -> None:
+    # When a gatherer authors no drivers, the "why" lines fall back to the humanized factor labels.
+    module = _load_app(monkeypatch)
+    markdown = module.render_markdown(
+        {
+            "event": "analyzed",
+            "change": {"raw_request": "grant the vendor access"},
+            "risk": {
+                "level": "high",
+                "requires_approval": True,
+                "factors": [
+                    {"label": "overbroad_scope", "weight": 40, "citations": []},
+                ],
+            },
+            "impact": {"tags": [], "items": []},
+        }
+    )
+    assert "**Why this is high risk**" in markdown
+    assert "- Overbroad scope" in markdown
 
 
 def test_decided_packet_renders_the_decision(monkeypatch: pytest.MonkeyPatch) -> None:

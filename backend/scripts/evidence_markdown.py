@@ -103,10 +103,17 @@ def render_markdown(packet: dict[str, object]) -> str:
         lines.append("")
         factors = risk.get("factors")
         factors = factors if isinstance(factors, list) else []
-        # The factor labels say *why* the risk landed where it did; the deterministic weights behind
-        # them are deliberately left to the run page so the comment reads as evidence, not a score.
-        drivers = [f"- {_humanize_factor(f.get('label'))}" for f in factors if isinstance(f, dict)]
-        _section(lines, f"Why this is {level} risk", drivers)
+        # Prefer the gatherer's reader-facing drivers (its own grouping of the findings); fall back
+        # to the factor labels. Either way the deterministic weights are left to the run page, so
+        # the comment reads as evidence, not a score.
+        impact = packet.get("impact")
+        authored = impact.get("drivers") if isinstance(impact, dict) else None
+        why = (
+            [f"- {driver}" for driver in authored]
+            if authored
+            else [f"- {_humanize_factor(f.get('label'))}" for f in factors if isinstance(f, dict)]
+        )
+        _section(lines, f"Why this is {level} risk", why)
         _section(lines, "Policy basis", _policy_basis(factors))
 
     impact = packet.get("impact")
@@ -160,7 +167,7 @@ def render_markdown(packet: dict[str, object]) -> str:
 
     run_url = packet.get("run_url")
     if run_url:
-        lines.append(f"[View the full pipeline run]({run_url})")
+        lines.append(f"[View full scoring and audit]({run_url})")
         lines.append("")
 
     return "\n".join(lines).rstrip() + "\n"
