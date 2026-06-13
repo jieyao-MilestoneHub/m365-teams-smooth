@@ -57,6 +57,8 @@ def test_launch_gatherer_tags_all_ripple_effects() -> None:
     }
     # A free-on-the-calendar date that breaches nothing: no derived contractual-breach tag.
     assert "schedule.contractual_breach_risk" not in evidence.tags
+    # The four ripple effects collapse into a single reader-facing driver, no breach drivers.
+    assert evidence.drivers == ["Downstream schedule updates"]
 
 
 def test_launch_gatherer_derives_contractual_breach_across_systems() -> None:
@@ -75,6 +77,13 @@ def test_launch_gatherer_derives_contractual_breach_across_systems() -> None:
     reasons = cf.data["reasons"]
     assert isinstance(reasons, list) and len(reasons) >= 2  # the conjunction, not one system
     assert cf.grounded  # cited against the change-management policy
+    # The breach's parts surface as ordered reader-facing drivers, then the downstream ripple.
+    assert evidence.drivers == [
+        "Contract cut-off breach",
+        "Release-freeze window",
+        "Customer go-live buffer",
+        "Downstream schedule updates",
+    ]
 
 
 def test_sso_ga_gatherer_flags_review_after_due_date() -> None:

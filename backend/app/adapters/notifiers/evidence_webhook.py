@@ -149,6 +149,7 @@ class EvidenceWebhookNotifier(ApprovalNotifier):
         if trial.impact is not None:
             packet["impact"] = {
                 "tags": trial.impact.tags,
+                "drivers": trial.impact.drivers,
                 "items": [
                     {
                         "system": item.system,

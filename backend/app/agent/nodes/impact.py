@@ -37,6 +37,9 @@ def _merge(into: ImpactEvidence, other: ImpactEvidence) -> None:
     for tag in other.tags:
         if tag not in into.tags:
             into.tags.append(tag)
+    for driver in other.drivers:
+        if driver not in into.drivers:
+            into.drivers.append(driver)
 
 
 class ImpactNode:
