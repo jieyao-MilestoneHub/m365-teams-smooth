@@ -34,10 +34,19 @@ reachable over public HTTPS and the declarative agent available in the tenant's 
 
 ## Before each take — reset the demo data
 
-Run from the repo root in Git Bash:
+Run from the repo root in **Git Bash** (the `.env`-loading syntax is POSIX):
 
 ```bash
 cd backend && set -a && . ./.env && set +a && PYTHONUTF8=1 uv run python -m scripts.setup_demo --apply --force
+```
+
+In **PowerShell** that Bash line fails (`set -a` is parsed as `Set-Variable`); from `backend/`, load
+`.env` into the session first:
+
+```powershell
+cd backend
+Get-Content .env | Where-Object { $_ -match '^\s*[A-Za-z_][A-Za-z0-9_]*=' } | ForEach-Object { $n,$v = $_ -split '=',2; [Environment]::SetEnvironmentVariable($n.Trim(), $v.Trim()) }
+$env:PYTHONUTF8 = '1'; uv run python -m scripts.setup_demo --apply --force
 ```
 
 Confirm the setup table shows every demo resource present: the GitHub milestone, ticket #440, the
