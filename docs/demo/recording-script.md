@@ -40,11 +40,12 @@ reachable over public HTTPS and the declarative agent available in the tenant's 
   which authenticates to Foundry IQ and Azure OpenAI with its managed identity — the governance
   citations appear without any local sign-in. (A local `az login` is only needed when running the
   demo scripts against the real services from a workstation.)
-- **Which systems run live.** The deployed backend reads GitHub live; Outlook and SharePoint read
-  from fixtures that mirror the seeded real data, so the evidence and narration are identical. To
-  read the live Outlook calendar and SharePoint freeze calendar in Copilot too, set the backend's
-  `INTEGRATION_MODE` to `github:real,outlook:real,sharepoint:real` (with the `GRAPH_*` credentials)
-  and redeploy. CRM and Planner are controlled fixtures for reproducible evidence.
+- **Which systems run live.** The deployed backend reads and writes GitHub, Outlook, SharePoint,
+  and Teams live, with `DRY_RUN_DEFAULT=false` — so an accepted plan performs real writes (the
+  milestone actually moves, the calendar event is actually created). Confirm the deployment's
+  `INTEGRATION_MODE` and `DRY_RUN_DEFAULT` on the Container App before recording. CRM and Planner
+  are controlled fixtures for reproducible evidence. Because execution writes for real, re-run
+  `make setup-demo-reset` between takes to restore the seeded read-side.
 - **Reset between takes.** `make setup-demo-reset` restores the GitHub milestone and ticket, the
   seeded Outlook calendar, and the SharePoint freeze calendar, and clears the ticket's prior
   evidence comments.
