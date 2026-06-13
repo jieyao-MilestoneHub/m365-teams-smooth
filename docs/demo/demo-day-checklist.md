@@ -21,26 +21,29 @@ deployed instance.
 2. **Each participant sends the bot one direct message** so its conversation reference is captured
    (once per identity — references persist across deploys; a brand-new database starts empty).
 3. Run one throwaway trial end to end: submit → the Change Court card renders → send for approval
-   → the approver's proactive card and activity toast arrive → verdict → DRY_RUN execution → the
-   audit record and the signed run-page link both open.
+   → the approver's proactive card and activity toast arrive → verdict → execution (real writes —
+   `DRY_RUN_DEFAULT=false` on the live backend) → the audit record and the signed run-page link
+   both open. Reset afterward (below).
 4. Tail the logs while doing it: `az containerapp logs show -n changecourt -g changecourt-rg
    --follow` — `notify.sent`, `proactive.create`, and `llm.call` lines confirm each leg.
 
-## The ticket pre-flight (Act 1)
+## The ticket pre-flight (Scenes 1–2)
 
-1. `make setup-demo-apply` — creates the demo ticket if missing and prints its `EVIDENCE_ISSUE`
-   number. **Between takes** run `make setup-demo-reset`: it reseeds present resources (milestone
-   date back to its seeded state) and clears the ticket's prior evidence comments (every
-   `make demo-ticket` adds 2–4 comments).
-2. Start the receiver where the backend can reach it:
-   `GITHUB_TOKEN=… GITHUB_REPO=… EVIDENCE_ISSUE=… uv run uvicorn scripts.evidence_receiver:app
-   --port 8088` (from `backend/`), and set `EVIDENCE_WEBHOOK_URL=http://<receiver-host>:8088/evidence`
-   on the backend.
-3. One throwaway `EVIDENCE_WEBHOOK_URL=… make demo-ticket`; confirm the issue gains the
-   **"Impact analysis — nothing executed"** comments (would-be approvers on the breach, none on
-   the routine request) before the window.
+1. **Reset the demo data before each take** (from `backend/`, env loaded):
+   ```bash
+   set -a && . ./.env && set +a && uv run python -m scripts.setup_demo --apply --force
+   ```
+   (equivalent: `make setup-demo-reset`). It restores the GitHub milestone and ticket #440, the
+   seeded Outlook calendar (including any event a prior take's execution created), and the
+   SharePoint freeze calendar, and clears #440's prior evidence comments. Confirm the audit table
+   shows every resource present.
+2. The evidence receiver is **already deployed** alongside the backend (an internal Container App
+   targeting issue #440), so an analysis-only run from Copilot posts the
+   **"Impact analysis — nothing executed"** comment to #440 automatically — no local receiver to
+   start. (For the credential-free *local* demo instead, run a local receiver and the ticket demo
+   driver — see [README.md](./README.md).)
 
-## The two-user separation-of-duties walk (Act 2)
+## The two-user separation-of-duties walk (Scene 3)
 
 Prerequisites: `APPROVER_DIRECTORY` maps the quorum roles (`eng_lead`, `comms`, `account_owner`,
 …) to the **approver's Entra object id** (the directory keys on oid, not UPN), and the requester
@@ -53,8 +56,9 @@ signs in as a different, low-privilege account.
    verdict options live only on the approver's card.
 3. **Approver** pulls their pending approvals, opens the Change Court card (proactive bot chat or
    the activity-feed toast), and decides — approving the safe alternative.
-4. The run resumes from its durable checkpoint and executes (honoring `DRY_RUN`); both parties see
-   the outcome card.
+4. The run resumes from its durable checkpoint and executes — real writes on the live backend
+   (`DRY_RUN_DEFAULT=false`), with a link to each updated resource; both parties see the outcome
+   card.
 5. Close on the **append-only audit record** (evidence, approvers, verdict, before/after, rollback
    hints) and the read-only run page on a second screen.
 
