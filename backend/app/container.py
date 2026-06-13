@@ -419,6 +419,7 @@ def build_court_service(
         run_events=run_events,
         run_link_secret=settings.run_link_secret,
         public_base_url=settings.public_base_url,
+        ticket_url=settings.evidence_ticket_url,
         dry_run_default=settings.dry_run_default,
         max_request_chars=settings.max_request_chars,
     )

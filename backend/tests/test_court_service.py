@@ -156,6 +156,32 @@ def test_run_url_is_none_when_run_page_disabled() -> None:
     cast = service.cast_verdict(summary.thread_id, VerdictType.APPROVE, principal=APPROVER)
     assert cast.run_url is None
 
+
+def test_ticket_url_surfaces_when_configured() -> None:
+    # The change ticket / system of record link is surfaced on the summary and the cast result so
+    # a surface (the Copilot agent) can link straight to it; None when unset.
+    ticket = "https://github.com/owner/name/issues/440"
+    service = build_court_service(
+        Settings(
+            force_all_mock=True,
+            db_url="sqlite:///:memory:",
+            dry_run_default=True,
+            approver_directory=ALL_ROLE_DIRECTORY,
+            evidence_ticket_url=ticket,
+        ),
+        gatherers={"launch": _gatherer},
+        packs=[_PACK],
+    )
+    summary = service.submit_change(_REQ, requester=REQUESTER)
+    assert summary.ticket_url == ticket
+
+    cast = service.cast_verdict(summary.thread_id, VerdictType.APPROVE, principal=APPROVER)
+    assert cast.ticket_url == ticket
+
+    # Unset -> None.
+    plain = build_court_service(_settings(), gatherers={"launch": _gatherer}, packs=[_PACK])
+    assert plain.submit_change(_REQ, requester=REQUESTER).ticket_url is None
+
 # --- analysis-only mode: the impact check that never executes ---
 
 

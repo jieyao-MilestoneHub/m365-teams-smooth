@@ -86,6 +86,7 @@ class CourtService:
         run_events: RunEventReader | None = None,
         run_link_secret: str = "",
         public_base_url: str = "",
+        ticket_url: str = "",
         dry_run_default: bool = True,
         max_request_chars: int = 1000,
         id_factory: Callable[[], str] = lambda: uuid4().hex,
@@ -100,6 +101,7 @@ class CourtService:
         self._run_events = run_events
         self._run_link_secret = run_link_secret
         self._public_base_url = public_base_url
+        self._ticket_url = ticket_url
         self._dry_run_default = dry_run_default
         self._max_request_chars = max_request_chars
         self._id = id_factory
@@ -247,6 +249,7 @@ class CourtService:
                 audit_id=audit_id,
                 idempotent=True,
                 run_url=self.run_link(thread_id),
+                ticket_url=self._ticket_url or None,
             )
 
         verdict = Verdict(
@@ -289,6 +292,7 @@ class CourtService:
             execution_status=str(state.get("status", "")),
             audit_id=audit_id if isinstance(audit_id, str) else None,
             run_url=self.run_link(thread_id),
+            ticket_url=self._ticket_url or None,
         )
 
     def _reject_if_analysis_only(self, thread_id: str) -> None:
@@ -801,4 +805,5 @@ class CourtService:
                 and any(e.decision is ApprovalDecision.ACK for e in self._events(thread_id))
             ),
             run_url=self.run_link(thread_id),
+            ticket_url=self._ticket_url or None,
         )
