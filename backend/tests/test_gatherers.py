@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from app.adapters.integrations.mock_github import MockGitHubAdapter
 from app.adapters.integrations.mock_outlook import MockOutlookAdapter
 from app.adapters.integrations.mock_planner import MockPlannerAdapter
@@ -118,8 +120,12 @@ class _FailingGitHubAdapter(MockGitHubAdapter):
         raise IntegrationError("github: upstream unavailable")
 
 
-def test_launch_gatherer_degrades_when_one_read_fails() -> None:
-    """A failing read is recorded and skipped; the other sources still produce evidence."""
+def test_launch_gatherer_raises_when_a_real_read_fails() -> None:
+    """A failing evidence read must fail the trial loudly, not silently drop a risk tag.
+
+    A dropped read could withhold ``schedule.milestone_move`` and quietly under-assess risk, so a
+    configured read that raises ``IntegrationError`` propagates rather than degrading.
+    """
     adapters: list[IntegrationAdapter] = [
         _FailingGitHubAdapter(),
         MockOutlookAdapter(),
@@ -127,20 +133,11 @@ def test_launch_gatherer_degrades_when_one_read_fails() -> None:
         MockTeamsAdapter(),
     ]
     registry = ConfigIntegrationRegistry(adapters)
-    errors: list[str] = []
 
-    evidence = gather_launch(
-        Change(change_id="c1", raw_request="slip", subject="launch", due_by="2026-06-17"),
-        registry,
-        LocalCorpusKnowledgeProvider(),
-        errors,
-    )
-
-    # The GitHub read failed, so its tag is absent — but the run did not crash.
-    assert "schedule.milestone_move" not in evidence.tags
-    # The remaining systems still gathered evidence.
-    assert "schedule.calendar_conflict" in evidence.tags
-    assert "schedule.planner_shift" in evidence.tags
-    assert "comms.pending_announcement" in evidence.tags
-    # The failure is recorded for the audit trail.
-    assert any("github.read_milestone" in e for e in errors)
+    with pytest.raises(IntegrationError):
+        gather_launch(
+            Change(change_id="c1", raw_request="slip", subject="launch", due_by="2026-06-17"),
+            registry,
+            LocalCorpusKnowledgeProvider(),
+            [],
+        )

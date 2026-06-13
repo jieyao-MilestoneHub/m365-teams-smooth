@@ -6,7 +6,7 @@ import logging
 
 from app.config import Settings
 from app.domain import Capability
-from app.observability import metrics
+from app.domain.errors import ConfigurationError
 from app.ports.integration import IntegrationAdapter
 from app.ports.registry import IntegrationRegistry
 
@@ -35,26 +35,26 @@ def select_adapters(
 ) -> list[IntegrationAdapter]:
     """Choose one adapter per system from ``{system: {mode: adapter}}`` using config.
 
-    ``FORCE_ALL_MOCK`` (or an unknown/missing mode) falls back to the system's ``"mock"`` adapter.
-    A new integration is added by registering its real and mock candidates — no edits here.
+    The requested mode (``FORCE_ALL_MOCK`` → ``"mock"``, else per ``INTEGRATION_MODE``, default
+    ``"mock"``) must have a registered adapter. If a non-mock mode was requested but its adapter is
+    absent (e.g. ``github:real`` with no ``GITHUB_TOKEN``), we **raise rather than silently serve
+    the mock as if it were real** — a configured real capability that cannot be served is a
+    fail-fast misconfiguration, never a degradation. A new integration is added by registering its
+    real and mock candidates — no edits here.
     """
     modes = settings.integration_modes()
     chosen: list[IntegrationAdapter] = []
     for system, by_mode in candidates.items():
         requested = "mock" if settings.force_all_mock else modes.get(system, "mock")
         adapter = by_mode.get(requested)
-        selected_mode = requested
         if adapter is None:
-            adapter = by_mode.get("mock")
-            selected_mode = "mock"
-            if requested != "mock":
-                logger.warning(
-                    "adapter.fallback", extra={"system": system, "requested": requested}
-                )
-                metrics.increment("adapter.fallback")
-        if adapter is not None:
-            logger.info("adapter.selected", extra={"system": system, "mode": selected_mode})
-            chosen.append(adapter)
+            raise ConfigurationError(
+                f"integration '{system}' requested mode '{requested}' but no such adapter is "
+                f"registered (missing credentials?) — refusing to serve a different mode as if it "
+                f"were '{requested}'. Set FORCE_ALL_MOCK or provide the real credentials."
+            )
+        logger.info("adapter.selected", extra={"system": system, "mode": requested})
+        chosen.append(adapter)
     return chosen
 
 
