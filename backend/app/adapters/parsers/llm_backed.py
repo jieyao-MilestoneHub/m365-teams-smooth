@@ -115,7 +115,7 @@ class LlmRequestParser(RequestParser):
             metrics.increment("parser.llm_fallback")
             return self._fallback.parse(raw, change_id=change_id)
 
-        return Change(
+        change = Change(
             change_id=change_id,
             raw_request=raw,
             subject=result.subject,
@@ -127,6 +127,34 @@ class LlmRequestParser(RequestParser):
                 for a in result.actions
             ],
         )
+        # For a KNOWN subject, a parse whose actions would all be rejected by intake's guard (an
+        # unregistered capability or missing required params) reaches the pipeline as a BLOCKED
+        # trial — yet the deterministic parser produces well-formed actions for exactly these
+        # subjects. Fall back rather than block, so the LLM omitting an action's params never
+        # refuses a valid change. A NOVEL subject's parse is kept as-is (a classification, not a
+        # failure): the ungoverned floor governs it and intake drops any unusable action.
+        if (
+            change.subject in _KNOWN_SUBJECTS
+            and change.requested_actions
+            and not self._has_valid_action(change.requested_actions)
+        ):
+            logger.warning("parser.llm_fallback", extra={"reason": "known_subject_actions_invalid"})
+            metrics.increment("parser.llm_fallback")
+            return self._fallback.parse(raw, change_id=change_id)
+        return change
+
+    def _has_valid_action(self, actions: list[RequestedAction]) -> bool:
+        """True when at least one proposed action passes the registry's capability validation."""
+        for action in actions:
+            adapter = self._registry.get(action.system)
+            if adapter is None:
+                continue
+            try:
+                adapter.validate(action)
+                return True
+            except Exception:  # noqa: BLE001 — any validation failure means this action is unusable
+                continue
+        return False
 
     def _prompt(self) -> str:
         """The stable instruction block (catalog, subjects, shape) — a cacheable prefix."""
