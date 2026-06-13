@@ -257,7 +257,14 @@ class CourtBot(ActivityHandler):  # type: ignore[misc]  # SDK base is untyped (A
         data = dict(action.get("data") or {})  # the channel merges card Input values in here
         verb = str(action.get("verb") or data.get("tool") or "")
         actor = _principal(turn_context.activity.from_property)
-        card = self.respond(text=None, value={**data, "tool": verb}, actor=actor)
+        if self._already_handled(turn_context.activity.id) and data.get("thread_id"):
+            # Teams re-delivers invokes; re-render the trial read-only instead of running the tool
+            # again — a duplicate send_for_approval/decide would double-fire and flicker the card.
+            # (An invoke always carries text=None, so it never opens a new trial; every
+            # side-effecting verb carries a thread_id, so _on_open re-renders the right one.)
+            card = self._on_open(data)
+        else:
+            card = self.respond(text=None, value={**data, "tool": verb}, actor=actor)
         return AdaptiveCardInvokeResponse(
             status_code=200, type=_CARD_CONTENT_TYPE, value=card
         )

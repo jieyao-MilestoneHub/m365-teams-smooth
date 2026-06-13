@@ -317,6 +317,7 @@ const STAGES = [
   { id: "audit",   role: "clerk" },
 ];
 let events = [], view = null, lastSeq = 0, delay = 1500, failures = 0, stopped = false;
+let lastRenderSig = "";  // skip the full re-render when a poll brings nothing new (no flicker while parked)
 let openCites = new Set();  // inner "policy basis" details the user has expanded, preserved across re-renders
 // Client-clock anchors for nodes observed running (node_started without node_finished).
 // Anchoring on first observation instead of the event's server timestamp sidesteps
@@ -692,7 +693,16 @@ async function poll() {
     for (const e of view.events) if (e.seq > lastSeq) events.push(e);
     events.sort((a, b) => a.seq - b.seq);
     lastSeq = Math.max(lastSeq, view.last_seq || 0);
-    render();
+    // Re-render only when something meaningful moved; otherwise the 1.5s poll would rebuild the
+    // whole DOM every tick (visible flicker/scroll-jump) while a trial sits awaiting a decision.
+    const sig = JSON.stringify([
+      lastSeq, view.summary.status, view.summary.requires_approval,
+      (view.trial && view.trial.results ? view.trial.results.length : 0),
+      (view.trial && view.trial.verifications ? view.trial.verifications.length : 0),
+      (view.approvals ? view.approvals.length : 0),
+      (view.trial && view.trial.verdict ? view.trial.verdict.type : null),
+    ]);
+    if (sig !== lastRenderSig) { lastRenderSig = sig; render(); }
     if (TERMINAL.includes(status())) {
       stopped = true;
       document.getElementById("conn").textContent = "run concluded";

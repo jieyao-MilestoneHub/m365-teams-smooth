@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
 from botbuilder.core import TurnContext
 from botbuilder.schema import (
     Activity,
@@ -55,11 +56,11 @@ class _FakeAdapter:
         return []
 
 
-def _turn_context(sender: ChannelAccount) -> TurnContext:
+def _turn_context(sender: ChannelAccount, activity_id: str = "act-1") -> TurnContext:
     activity = Activity(
         type="invoke",
         name="adaptiveCard/action",
-        id="act-1",
+        id=activity_id,
         from_property=sender,
         recipient=ChannelAccount(id="bot"),
         conversation=ConversationAccount(id="conv-1"),
@@ -111,7 +112,7 @@ async def test_invoke_routes_through_service_gates_and_refreshes_in_place() -> N
     # With the "any" policy a single sign-off completes the quorum: the first approver (eng_lead)
     # approves and the terminal result card replaces the approval card in place.
     response = await bot.on_adaptive_card_invoke(
-        _turn_context(APPROVER),
+        _turn_context(APPROVER, "act-2"),  # a distinct turn → its own activity id
         _invoke("decide", {"thread_id": summary.thread_id, "approve": True}),
     )
     assert response.status_code == 200
@@ -138,6 +139,43 @@ def test_bot_submit_honors_dry_run_default_for_live_execution() -> None:
         assert isinstance(actions, list)
         thread_id = str(actions[0]["data"]["thread_id"])
         assert service._runner.state(thread_id).get("run_mode") == expected
+
+
+async def test_redelivered_invoke_does_not_double_execute(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Teams can re-deliver the same invoke activity (same id). The second delivery must re-render
+    # the card read-only, not run send_for_approval again — a double-fire flickers the card and
+    # re-appends the SEND.
+    service = _service(approver_directory="eng_lead:user-app,comms:user-app2")
+    bot = CourtBot(service)
+    requester = Principal(oid="user-req", upn="requester@example.com", display_name="req")
+    summary = service.submit_change(
+        "slip the launch from 2026-06-10 to 2026-06-17",
+        source="playground",
+        run_mode=RunMode.DRY_RUN,
+        requester=requester,
+    )
+
+    calls = 0
+    original = service.send_for_approval
+
+    def counting(*args: Any, **kwargs: Any) -> Any:
+        nonlocal calls
+        calls += 1
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(service, "send_for_approval", counting)
+
+    invoke = _invoke("send_for_approval", {"thread_id": summary.thread_id, "note": "ship it"})
+    first = await bot.on_adaptive_card_invoke(_turn_context(REQUESTER), invoke)
+    second = await bot.on_adaptive_card_invoke(_turn_context(REQUESTER), invoke)
+
+    assert calls == 1  # the re-delivery did not run the tool again
+    # Both deliveries return the approval-phase card; the second is a read-only re-render.
+    for resp in (first, second):
+        assert resp.status_code == 200
+        assert [a["verb"] for a in resp.value["actions"]] == ["decide", "decide"]
 
 
 async def test_invoke_error_renders_guidance_card_not_crash() -> None:
