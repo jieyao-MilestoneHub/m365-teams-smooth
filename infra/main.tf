@@ -390,6 +390,16 @@ resource "azurerm_container_app" "this" {
           value = "MultiTenant"
         }
       }
+      # The org tenant the approvers sign in to. Required for the proactive sender to CREATE a 1:1
+      # conversation for an approver who has not yet messaged the bot (without it the create path is
+      # unaddressable and the card is dropped). Same tenant the users sign in to for OAuth.
+      dynamic "env" {
+        for_each = local.bot_app_id == "" ? [] : [1]
+        content {
+          name  = "BOT_APP_TENANT_ID"
+          value = var.entra_tenant_id
+        }
+      }
     }
   }
 
