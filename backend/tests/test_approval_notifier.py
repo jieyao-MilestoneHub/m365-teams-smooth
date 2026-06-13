@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import logging
+
 import httpx
+import pytest
 
 from app.adapters.integrations.graph import GraphClient
 from app.adapters.notifiers import FakeNotifier, TeamsActivityNotifier
@@ -77,6 +80,30 @@ def test_send_for_approval_notifies_the_approvers() -> None:
     assert event["approver_upns"] == ["joel@agentleague.onmicrosoft.com"]  # delivery: real UPN
     assert event["note"] == "one more week"
     assert event["requester_upn"] == REQUESTER.display_name  # text label: the display name
+
+
+def test_send_for_approval_warns_when_the_only_approver_is_the_requester(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    # Same-identity trap: the directory's only approver for the convened role is the requester,
+    # so self-approval filtering leaves zero recipients. The send must warn with the reason, not
+    # silently strand the trial in AWAITING_APPROVAL.
+    notifier = FakeNotifier()
+    settings = Settings(
+        force_all_mock=True,
+        db_url="sqlite:///:memory:",
+        dry_run_default=True,
+        approver_directory=f"eng_lead:{REQUESTER.upn}",
+    )
+    service = build_court_service(
+        settings, gatherers={"launch": _gatherer}, packs=[_PACK], notifier=notifier
+    )
+    s = service.submit_change(_REQ, requester=REQUESTER)
+    with caplog.at_level(logging.WARNING):
+        service.send_for_approval(s.thread_id, actor=REQUESTER, note="ready")
+    assert notifier.requested == []  # no one distinct to notify
+    warning = next(r for r in caplog.records if r.getMessage() == "notify.no_recipients")
+    assert "only to the requester" in getattr(warning, "reason", "")
 
 
 def test_decide_notifies_the_requester_with_the_outcome() -> None:

@@ -78,9 +78,14 @@ class ProactiveSender:
                 return
             try:
                 await self._deliver(job)
-            except Exception:
+            except Exception as exc:
                 logger.warning(
-                    "proactive.failed", extra={"thread_id": job.thread_id}
+                    "proactive.failed",
+                    extra={
+                        "thread_id": job.thread_id,
+                        "identity": job.recipient_oid,
+                        "reason": str(exc)[:200],
+                    },
                 )
 
     async def stop(self) -> None:
@@ -116,9 +121,23 @@ class ProactiveSender:
         dropped — the activity-feed toast remains the floor.
         """
         if not (job.recipient_oid and self._bot_app_id and self._tenant_id and self._service_url):
-            logger.info(
+            missing = [
+                name
+                for name, value in (
+                    ("recipient_oid", job.recipient_oid),
+                    ("bot_app_id", self._bot_app_id),
+                    ("bot_app_tenant_id", self._tenant_id),
+                    ("bot_service_url", self._service_url),
+                )
+                if not value
+            ]
+            logger.warning(
                 "proactive.unaddressable",
-                extra={"thread_id": job.thread_id, "identity": job.recipient_oid},
+                extra={
+                    "thread_id": job.thread_id,
+                    "identity": job.recipient_oid,
+                    "reason": f"cannot create a conversation — missing: {', '.join(missing)}",
+                },
             )
             return
         parameters = ConversationParameters(

@@ -531,12 +531,42 @@ class CourtService:
         note: str,
         required: list[ApproverRole],
     ) -> None:
-        """Best-effort push to everyone who can decide; never fails the send itself."""
+        """Best-effort push to everyone who can decide; never fails the send itself.
+
+        Delivery is best-effort, but *having no one to deliver to* is a configuration dead-end —
+        the trial sits in AWAITING_APPROVAL with no one able to decide. Both no-recipient paths
+        therefore warn loudly with the reason instead of returning silently.
+        """
         if self._notifier is None or self._directory is None:
+            logger.warning(
+                "notify.skipped",
+                extra={
+                    "thread_id": thread_id,
+                    "event": "approval_requested",
+                    "reason": "no approval notifier or approver directory is configured",
+                },
+            )
+            metrics.increment("notify.skipped")
             return
         own_keys = {actor.oid.strip().lower(), actor.upn.strip().lower()} - {""}
-        approvers = sorted(self._directory.identities_for(required) - own_keys)
+        resolved = self._directory.identities_for(required)
+        approvers = sorted(resolved - own_keys)
         if not approvers:
+            reason = (
+                "the required roles resolve only to the requester — configure a distinct approver"
+                if resolved
+                else "no identity is mapped for the required roles in APPROVER_DIRECTORY"
+            )
+            logger.warning(
+                "notify.no_recipients",
+                extra={
+                    "thread_id": thread_id,
+                    "event": "approval_requested",
+                    "roles": [role.value for role in required],
+                    "reason": reason,
+                },
+            )
+            metrics.increment("notify.no_recipients")
             return
         try:
             self._notifier.approval_requested(
