@@ -1,8 +1,8 @@
 # Demo-day checklist
 
 Operational guardrails for walking the live deployment through the headline — the **ticket
-demo** (analysis-only evidence packet onto the ticket, then the escalation with its two-user
-approval flow) — without self-inflicted surprises. The credential-free local path
+demo** (analysis-only evidence packet onto the ticket, then the escalation with its approval
+flow) — without self-inflicted surprises. The credential-free local path
 (`make demo-ticket`, `make demo`, the Playground bot) needs none of this — this page is for the
 deployed instance.
 
@@ -43,7 +43,7 @@ deployed instance.
    start. (For the credential-free *local* demo instead, run a local receiver and the ticket demo
    driver — see [README.md](./README.md).)
 
-## The two-user separation-of-duties walk (Scene 3)
+## The separation-of-duties escalation (Scene 3)
 
 Prerequisites: `APPROVER_DIRECTORY` maps the quorum roles (`eng_lead`, `comms`, `account_owner`,
 …) to the **approver's Entra object id** (the directory keys on oid, not UPN), and the requester
