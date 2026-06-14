@@ -5,6 +5,8 @@
 **Cross-system impact evidence before a change executes — and a human approval gate that only
 fires when the evidence demands it.**
 
+**▶ [Watch the demo](https://youtu.be/2Y5D-BUJPuE)** — the Informed Approval scenario, end to end.
+
 Cross-system changes happen in chat faster than anyone can keep them consistent — "move the rehearsal
 a week out", "post the weekly status report". Each touches GitHub, calendars, the task planner, and
 Teams, and each is easy to half-do: one system updated, three left stale. The usual fix — route
@@ -33,8 +35,15 @@ Every request runs through one inspectable pipeline —
 `intake → impact → options → policy+quorum → [verdict] → execute → verify → audit` — the courtroom
 names are the pipeline's roles (the Prosecutor gathers impact, the Defender drafts the plan or the
 safer alternative, the Clerk keeps the audit), not an extra layer of bureaucracy. Built on LangGraph
-behind a Microsoft 365 declarative agent; each integration is pluggable, real or mock, per system.
-See the [architecture diagrams](docs/architecture/index.html) for how it's built.
+behind a **Microsoft 365 Copilot Chat / Teams declarative agent** — MCP tools over OAuth 2.0, with
+**Azure AI Foundry** (Azure OpenAI) for agentic reasoning and **Foundry IQ** (Azure AI Search) for
+knowledge grounding with citations; each integration is pluggable, real or mock, per system.
+
+![Azure / Microsoft 365 architecture — Copilot Chat and Teams in front, the FastAPI backend on Azure
+Container Apps, and Azure AI Foundry, Microsoft Graph, and GitHub behind it](docs/architecture/azure-m365.png)
+
+See the [interactive architecture diagrams](docs/architecture/index.html) (deployment, layers, data
+flow, sequence) for how it's built.
 
 ## When does it ask a human?
 
