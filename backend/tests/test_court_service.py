@@ -252,7 +252,7 @@ def test_analysis_only_fires_the_analyzed_notification() -> None:
         {
             "thread_id": summary.thread_id,
             "title": _REQ[:80],
-            "requester_upn": REQUESTER.upn,
+            "requester_upn": REQUESTER.key(),  # oid — delivery key (see court_service notifier fix)
         }
     ]
 

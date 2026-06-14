@@ -114,7 +114,8 @@ def test_decide_notifies_the_requester_with_the_outcome() -> None:
     service.decide(s.thread_id, actor=APPROVER, approve=True)
     assert len(notifier.decisions) == 1
     event = notifier.decisions[0]
-    assert event["requester_upn"] == REQUESTER.upn
+    assert event["requester_upn"] == REQUESTER.key()  # oid: the bot store + Teams
+    # create_conversation both key on it (a UPN here misses the store / is rejected as invalid)
     assert event["approved"] is True
     assert event["decider_upn"] == APPROVER.display_name
 
@@ -153,7 +154,8 @@ def test_cast_verdict_notifies_the_requester() -> None:
     assert result.execution_status == "done"
     assert len(notifier.decisions) == 1
     event = notifier.decisions[0]
-    assert event["requester_upn"] == REQUESTER.upn
+    assert event["requester_upn"] == REQUESTER.key()  # oid: the bot store + Teams
+    # create_conversation both key on it (a UPN here misses the store / is rejected as invalid)
     assert event["approved"] is True
     assert event["decider_upn"] == APPROVER.display_name
 

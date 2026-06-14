@@ -604,7 +604,7 @@ class CourtService:
             self._notifier.analyzed(
                 thread_id=thread_id,
                 title=raw_request[:80],
-                requester_upn=requester.upn or requester.key(),
+                requester_upn=requester.key(),  # oid — see _notify_decided
             )
             logger.info(
                 "notify.sent",
@@ -655,7 +655,9 @@ class CourtService:
             self._notifier.decided(
                 thread_id=thread_id,
                 title=trial.change.raw_request[:80],
-                requester_upn=requester.upn or requester.key(),  # delivery target — keep the UPN
+                requester_upn=requester.key(),  # delivery target — the oid (bot store + Teams
+                # create_conversation both key on it; a UPN here misses the store and is rejected
+                # by the channel as an invalid user identity)
                 approved=approved,
                 decider_upn=self._display(actor),  # text label only
                 note=combined,
