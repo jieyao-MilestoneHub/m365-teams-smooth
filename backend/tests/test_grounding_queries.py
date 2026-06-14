@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 from app.agent.gatherers import GATHERERS
-from app.agent.policy_rules.models import MatchRules, RiskBands, RulePack
+from app.agent.policy_rules.models import MatchRules, RulePack
 from app.agent.policy_rules.packs import default_packs
 from app.agent.policy_rules.vocabulary import grounding_queries
-
-_BANDS = RiskBands(low=0, medium=30, high=60)
 
 
 def test_every_registered_gatherer_subject_has_a_grounding_phrase() -> None:
@@ -30,7 +28,6 @@ def _pack(pack_id: str, subjects: list[str], query: str) -> RulePack:
     return RulePack(
         id=pack_id,
         match=MatchRules(),
-        risk_bands=_BANDS,
         subjects=subjects,
         grounding_query=query,
     )

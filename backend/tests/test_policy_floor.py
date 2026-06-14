@@ -37,7 +37,6 @@ def test_ungoverned_fallback_convenes_the_manager_quorum() -> None:
     assert result["status"] == ChangeStatus.AWAITING_VERDICT.value
     risk = RiskResult.model_validate(result["risk"])
     assert risk.level is RiskLevel.MEDIUM
-    assert risk.score == 30
     assert risk.requires_approval is True
     assert [f.id for f in risk.factors] == ["ungoverned_change"]
     quorum = Quorum.model_validate(result["quorum"])

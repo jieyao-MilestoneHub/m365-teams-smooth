@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **AI Change Court** — cross-system impact evidence before a change executes, with an
 **exception-based approval gate** in Microsoft Teams. Every request gets the same automatic
 analysis: parse it, gather cross-system **impact evidence**, generate a feasible plan (or a **safe
-alternative** when the request is unsafe), and score risk deterministically. Routine, low-risk
+alternative** when the request is unsafe), and classify risk deterministically. Routine, low-risk
 changes auto-proceed on the requester's own confirmation — zero approvers added; a **quorum** of
 named roles convenes only when the evidence shows real risk, decides from the evidence chain
 (**verdict**), then the court executes and keeps an **append-only audit trail**. The

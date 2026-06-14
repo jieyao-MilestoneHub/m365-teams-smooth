@@ -133,13 +133,12 @@ class EvidenceWebhookNotifier(ApprovalNotifier):
         if trial.risk is not None:
             packet["risk"] = {
                 "level": trial.risk.level.value,
-                "score": trial.risk.score,
                 "requires_approval": trial.risk.requires_approval,
                 "factors": [
                     {
                         "id": factor.id,
                         "label": factor.label,
-                        "weight": factor.weight,
+                        "severity": factor.severity.value,
                         "evidence_tag": factor.evidence_tag,
                         "citations": factor.grounded_citations,
                     }

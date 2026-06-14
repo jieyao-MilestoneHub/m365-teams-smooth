@@ -9,14 +9,13 @@ from app.agent.policy_rules.models import (
     ApproverRule,
     MatchRules,
     QuorumRules,
-    RiskBands,
     RiskFactorRule,
     RulePack,
     VerdictOptionRules,
 )
 from app.config import Settings
 from app.container import build_court_service
-from app.domain import Change, ChangeStatus, ImpactEvidence, VerdictType
+from app.domain import Change, ChangeStatus, ImpactEvidence, RiskLevel, VerdictType
 from app.domain.enums import ApproverRole
 from app.domain.errors import (
     InvalidRequestError,
@@ -35,8 +34,9 @@ STRANGER = Principal(oid="x-1", upn="stranger@agentleague.onmicrosoft.com")
 _PACK = RulePack(
     id="launch_slip",
     match=MatchRules(any_action_capability=["github.update_milestone_due"]),
-    risk_factors=[RiskFactorRule(id="m", when_tag="schedule.milestone_move", weight=80)],
-    risk_bands=RiskBands(low=0, medium=30, high=60),
+    risk_factors=[
+        RiskFactorRule(id="m", when_tag="schedule.milestone_move", severity=RiskLevel.MEDIUM)
+    ],
     quorum=QuorumRules(
         approvers=[ApproverRule(role=ApproverRole.ENG_LEAD, when_tag="schedule.milestone_move")],
         policy="all",
@@ -183,8 +183,9 @@ def test_authorized_approver_approves_and_executes() -> None:
 _TWO_ROLE_PACK = RulePack(
     id="launch_slip",
     match=MatchRules(any_action_capability=["github.update_milestone_due"]),
-    risk_factors=[RiskFactorRule(id="m", when_tag="schedule.milestone_move", weight=80)],
-    risk_bands=RiskBands(low=0, medium=30, high=60),
+    risk_factors=[
+        RiskFactorRule(id="m", when_tag="schedule.milestone_move", severity=RiskLevel.MEDIUM)
+    ],
     quorum=QuorumRules(
         approvers=[
             ApproverRule(role=ApproverRole.ENG_LEAD, when_tag="schedule.milestone_move"),

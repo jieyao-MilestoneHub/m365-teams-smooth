@@ -6,10 +6,10 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from app.domain import ApproverRole, VerdictType
+from app.domain import ApproverRole, RiskLevel, VerdictType
 
 # Injected into the fired-tag set when no pack governs a change, so the UNGOVERNED fallback
-# pack's factor and quorum rules fire data-driven (the policy node adds no scoring semantics).
+# pack's factor and quorum rules fire data-driven (the policy node adds no semantics of its own).
 UNGOVERNED_TAG = "governance.ungoverned"
 
 
@@ -21,20 +21,17 @@ class MatchRules(BaseModel):
 
 
 class RiskFactorRule(BaseModel):
-    """An additive risk contribution keyed on an evidence tag."""
+    """A risk factor keyed on an evidence tag, declaring the severity it contributes.
+
+    The trial's level is the highest ``severity`` among the fired factors (no summing, no
+    thresholds). A factor that ``marks_unsafe`` should be declared ``high`` — being unsafe is the
+    gravest qualitative outcome.
+    """
 
     id: str
     when_tag: str
-    weight: int
+    severity: RiskLevel
     marks_unsafe: bool = False
-
-
-class RiskBands(BaseModel):
-    """Score thresholds that band the total into a RiskLevel."""
-
-    low: int = 0
-    medium: int
-    high: int
 
 
 class ApproverRule(BaseModel):
@@ -65,7 +62,6 @@ class RulePack(BaseModel):
     id: str
     match: MatchRules = Field(default_factory=MatchRules)
     risk_factors: list[RiskFactorRule] = Field(default_factory=list)
-    risk_bands: RiskBands
     quorum: QuorumRules = Field(default_factory=QuorumRules)
     verdict_options: VerdictOptionRules = Field(default_factory=VerdictOptionRules)
     # The parser subjects this pack specializes (informational + the grounding key); empty for

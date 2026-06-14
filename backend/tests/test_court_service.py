@@ -9,14 +9,21 @@ from app.agent.policy_rules.models import (
     ApproverRule,
     MatchRules,
     QuorumRules,
-    RiskBands,
     RiskFactorRule,
     RulePack,
     VerdictOptionRules,
 )
 from app.config import Settings
 from app.container import build_court_service
-from app.domain import ApproverRole, Change, ChangeStatus, ImpactEvidence, RunMode, VerdictType
+from app.domain import (
+    ApproverRole,
+    Change,
+    ChangeStatus,
+    ImpactEvidence,
+    RiskLevel,
+    RunMode,
+    VerdictType,
+)
 from app.domain.errors import InvalidRequestError, UnauthorizedApproverError
 from app.domain.principal import Principal
 from app.ports.knowledge import KnowledgePort
@@ -31,9 +38,10 @@ _PACK = RulePack(
     id="launch_slip",
     match=MatchRules(any_action_capability=["github.update_milestone_due"]),
     risk_factors=[
-        RiskFactorRule(id="milestone_move", when_tag="schedule.milestone_move", weight=80)
+        RiskFactorRule(
+            id="milestone_move", when_tag="schedule.milestone_move", severity=RiskLevel.MEDIUM
+        )
     ],
-    risk_bands=RiskBands(low=0, medium=30, high=60),
     quorum=QuorumRules(
         approvers=[ApproverRule(role=ApproverRole.ENG_LEAD, when_tag="schedule.milestone_move")]
     ),

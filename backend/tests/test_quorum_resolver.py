@@ -6,7 +6,6 @@ from app.agent.nodes.policy import RulePackQuorumResolver
 from app.agent.policy_rules.models import (
     ApproverRule,
     QuorumRules,
-    RiskBands,
     RulePack,
     VerdictOptionRules,
 )
@@ -14,7 +13,6 @@ from app.domain import ApproverRole, RiskLevel, VerdictType
 
 _PACK = RulePack(
     id="customer_promise",
-    risk_bands=RiskBands(low=0, medium=30, high=60),
     quorum=QuorumRules(
         approvers=[
             ApproverRule(

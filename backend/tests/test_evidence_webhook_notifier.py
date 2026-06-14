@@ -14,7 +14,6 @@ from app.agent.policy_rules.models import (
     ApproverRule,
     MatchRules,
     QuorumRules,
-    RiskBands,
     RiskFactorRule,
     RulePack,
     VerdictOptionRules,
@@ -74,13 +73,12 @@ def _trial() -> TrialRecord:
         ),
         risk=RiskResult(
             level=RiskLevel.HIGH,
-            score=80,
             requires_approval=True,
             factors=[
                 RiskFactor(
                     id="m",
                     label="milestone move",
-                    weight=80,
+                    severity=RiskLevel.HIGH,
                     evidence_tag="schedule.milestone_move",
                     grounded_citations=["GOV-1"],
                 )
@@ -235,8 +233,9 @@ def test_channel_is_off_when_no_url_is_configured() -> None:
 _PACK = RulePack(
     id="launch_slip",
     match=MatchRules(any_action_capability=["github.update_milestone_due"]),
-    risk_factors=[RiskFactorRule(id="m", when_tag="schedule.milestone_move", weight=80)],
-    risk_bands=RiskBands(low=0, medium=30, high=60),
+    risk_factors=[
+        RiskFactorRule(id="m", when_tag="schedule.milestone_move", severity=RiskLevel.MEDIUM)
+    ],
     quorum=QuorumRules(
         approvers=[ApproverRule(role=ApproverRole.ENG_LEAD, when_tag="schedule.milestone_move")],
         policy="all",

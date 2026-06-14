@@ -57,12 +57,15 @@ def test_accepting_the_alternative_date_executes() -> None:
     assert cast.execution_status == ChangeStatus.DONE.value
 
 
-def test_launch_slip_produces_high_risk_court_held_for_review() -> None:
+def test_launch_slip_produces_medium_risk_court_held_for_review() -> None:
     service = _service()
     summary = service.submit_change(_REQUEST, requester=REQUESTER)
 
     assert summary.status == ChangeStatus.AWAITING_REQUESTER_REVIEW.value
-    assert summary.risk_level == RiskLevel.HIGH.value
+    # A clean, coordinated reschedule: the milestone move is medium-severity and nothing fired
+    # higher — approval is still required, but it is not the gravest (high) band, which is
+    # reserved for unsafe outcomes (a date conflict or a latent breach).
+    assert summary.risk_level == RiskLevel.MEDIUM.value
     assert summary.requires_approval is True
     assert summary.unsafe is False  # feasible, not unsafe
     assert summary.plan_kind == PlanKind.FEASIBLE.value

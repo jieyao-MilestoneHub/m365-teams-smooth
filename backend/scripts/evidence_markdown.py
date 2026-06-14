@@ -104,8 +104,8 @@ def render_markdown(packet: dict[str, object]) -> str:
         factors = risk.get("factors")
         factors = factors if isinstance(factors, list) else []
         # Prefer the gatherer's reader-facing drivers (its own grouping of the findings); fall back
-        # to the factor labels. Either way the deterministic weights are left to the run page, so
-        # the comment reads as evidence, not a score.
+        # to the factor labels. Either way the per-factor severities are left to the run page, so
+        # the comment reads as evidence, not a classification table.
         impact = packet.get("impact")
         authored = impact.get("drivers") if isinstance(impact, dict) else None
         why = (
@@ -167,7 +167,7 @@ def render_markdown(packet: dict[str, object]) -> str:
 
     run_url = packet.get("run_url")
     if run_url:
-        lines.append(f"[View full scoring and audit]({run_url})")
+        lines.append(f"[View full risk assessment and audit]({run_url})")
         lines.append("")
 
     return "\n".join(lines).rstrip() + "\n"

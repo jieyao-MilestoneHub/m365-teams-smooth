@@ -29,8 +29,8 @@ class ImpactEvidence(BaseModel):
 
     ``drivers`` are short, reader-facing phrases summarizing *why* the change is risky — a
     gatherer's own grouping of its findings (e.g. three contract constraints surfaced as one
-    breach, four ripple effects as one "downstream updates"). They are presentation only: scoring,
-    banding, and quorum derive from ``tags`` alone. Empty when a gatherer authors none, and a
+    breach, four ripple effects as one "downstream updates"). They are presentation only: the risk
+    level and quorum derive from ``tags`` alone. Empty when a gatherer authors none, and a
     surface falls back to the risk factors.
     """
 

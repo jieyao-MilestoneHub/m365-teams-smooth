@@ -88,9 +88,10 @@ rewrite (see below).
   - `options` (Defender) — produce a feasible `ExecutionPlan`; when the request is unsafe, produce a
     **safe alternative** (e.g. private preview instead of GA; least-privilege + expiry instead of
     broad access).
-  - `policy` (one node covering policy + quorum) — deterministic risk scoring →
-    `requires_approval`; derive the **required approvers** (quorum) from impact tags and the
-    available **verdict options**. Rules are data, not code.
+  - `policy` (one node covering policy + quorum) — deterministic risk classification (the level is
+    the most severe fired factor, not a summed score — ADR-0017) → `requires_approval`; derive the
+    **required approvers** (quorum) from impact tags and the available **verdict options**. Rules
+    are data, not code.
   - `execute` (Executor) — registry → adapter per step; honors `run_mode` (DRY_RUN returns predicted
     effects, no side effects).
   - `verify` — check the live writes against the reviewed plan (agentic when an LLM is configured);

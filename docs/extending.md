@@ -22,15 +22,14 @@ packs:
       any_tag: ["dns.production_zone"]
     subjects: ["dns-change"]                 # the parser subjects this pack specializes
     grounding_query: "DNS change production zone rollback window"
-    risk_factors:                            # additive, tag-keyed scoring
+    risk_factors:                            # tag-keyed severities (the level is the highest fired)
       - id: production_zone
         when_tag: dns.production_zone
-        weight: 40
+        severity: high
         marks_unsafe: true                   # fired -> deterministic refusal authority
       - id: long_ttl
         when_tag: dns.long_ttl
-        weight: 20
-    risk_bands: { low: 0, medium: 30, high: 60 }
+        severity: low
     quorum:                                  # evidence-named approvers
       approvers:
         - { role: eng_lead, when_tag: dns.production_zone }
@@ -44,7 +43,7 @@ One pack entry extends the whole pipeline, because every policy-adjacent derivat
 loaded packs (`backend/app/agent/policy_rules/vocabulary.py`):
 
 - the **tag vocabulary** the agentic gatherer may flag from (`dns.production_zone`,
-  `dns.long_ttl` become legal, additive-only signals);
+  `dns.long_ttl` become legal severity-carrying signals);
 - the **unsafe-tag set** that pins the generic planner's refusal stance;
 - the **grounding mapping** the impact node uses for knowledge retrieval on your subject.
 

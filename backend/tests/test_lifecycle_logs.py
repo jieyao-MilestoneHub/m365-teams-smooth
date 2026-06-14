@@ -15,7 +15,6 @@ from app.agent.policy_rules.models import (
     ApproverRule,
     MatchRules,
     QuorumRules,
-    RiskBands,
     RiskFactorRule,
     RulePack,
     VerdictOptionRules,
@@ -31,6 +30,7 @@ from app.domain import (
     ExecutionStep,
     ImpactEvidence,
     PlanKind,
+    RiskLevel,
     RunMode,
     Verdict,
     VerdictType,
@@ -46,9 +46,10 @@ _PACK = RulePack(
     id="launch_slip",
     match=MatchRules(any_action_capability=["github.update_milestone_due"]),
     risk_factors=[
-        RiskFactorRule(id="milestone_move", when_tag="schedule.milestone_move", weight=80)
+        RiskFactorRule(
+            id="milestone_move", when_tag="schedule.milestone_move", severity=RiskLevel.MEDIUM
+        )
     ],
-    risk_bands=RiskBands(low=0, medium=30, high=60),
     # A required role lets an authorized approver cast the verdict (and re-cast it for the
     # duplicate path) — the log events under test.
     quorum=QuorumRules(
