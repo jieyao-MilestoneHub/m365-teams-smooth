@@ -28,9 +28,8 @@ packs:
     risk_factors:
       - id: production_zone
         when_tag: dns.production_zone
-        weight: 40
+        severity: high
         marks_unsafe: true
-    risk_bands: { low: 0, medium: 30, high: 60 }
     quorum:
       approvers:
         - { role: eng_lead, when_tag: dns.production_zone }
@@ -78,7 +77,11 @@ def test_wrong_shape_is_a_clear_error(tmp_path: Path) -> None:
 
 def test_invalid_entry_names_its_index_and_id(tmp_path: Path) -> None:
     file = tmp_path / "packs.yaml"
-    file.write_text("packs:\n  - id: broken\n")  # missing required risk_bands
+    # An invalid severity enum fails RulePack validation, naming the entry's index and id.
+    file.write_text(
+        "packs:\n  - id: broken\n    risk_factors:\n"
+        "      - id: f\n        when_tag: x\n        severity: not-a-level\n"
+    )
     with pytest.raises(PolicyPackError, match=r"index 0 \(id=broken\)"):
         load_packs(file)
 

@@ -25,7 +25,6 @@ from app.agent.policy_rules.models import (
     ApproverRule,
     MatchRules,
     QuorumRules,
-    RiskBands,
     RiskFactorRule,
     RulePack,
     VerdictOptionRules,
@@ -33,7 +32,7 @@ from app.agent.policy_rules.models import (
 from app.agent.policy_rules.vocabulary import tag_vocabulary
 from app.config import Settings
 from app.container import build_court_service
-from app.domain import ApproverRole, VerdictType
+from app.domain import ApproverRole, RiskLevel, VerdictType
 from app.ports.llm import LLMProvider
 from app.services.court_service import CourtService
 from tests.conftest import ALL_ROLE_DIRECTORY, APPROVER, REQUESTER, build_mock_registry
@@ -171,8 +170,7 @@ _FLAG_TAG = "security.review_after_due_date"  # reuse a registered tag name for 
 _TAG_PACK = RulePack(
     id="llm_flag",
     match=MatchRules(any_action_capability=["github.update_milestone_due"]),
-    risk_factors=[RiskFactorRule(id="flagged", when_tag=_FLAG_TAG, weight=40)],
-    risk_bands=RiskBands(low=0, medium=30, high=60),
+    risk_factors=[RiskFactorRule(id="flagged", when_tag=_FLAG_TAG, severity=RiskLevel.MEDIUM)],
     quorum=QuorumRules(
         approvers=[ApproverRule(role=ApproverRole.SECURITY_LEAD, when_tag=_FLAG_TAG)]
     ),
@@ -212,7 +210,7 @@ def _tag_service(db_path: str, llm: LLMProvider) -> CourtService:
 def test_llm_flagged_tag_convenes_the_packs_approver(tmp_path: Path) -> None:
     service = _tag_service(str(tmp_path / "tags.db"), _ScriptedLLM([_gather_reply([_FLAG_TAG])]))
     summary = service.submit_change(_REQ, requester=REQUESTER)
-    assert summary.requires_approval is True  # weight 40 -> MEDIUM, from the LLM's tag
+    assert summary.requires_approval is True  # MEDIUM severity, from the LLM's tag
 
     sent = service.send_for_approval(summary.thread_id, actor=REQUESTER, note="please review")
     assert sent.status == "awaiting_approval"

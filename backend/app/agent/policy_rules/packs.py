@@ -12,14 +12,11 @@ from app.agent.policy_rules.models import (
     ApproverRule,
     MatchRules,
     QuorumRules,
-    RiskBands,
     RiskFactorRule,
     RulePack,
     VerdictOptionRules,
 )
-from app.domain import ApproverRole, VerdictType
-
-_STANDARD_BANDS = RiskBands(low=0, medium=30, high=60)
+from app.domain import ApproverRole, RiskLevel, VerdictType
 
 # Each pack's grounding_query is tuned so the knowledge base ranks the intended governance policy
 # above its adversarial near-misses — validated by backend/scripts/eval_retrieval.py. Grounding is
@@ -34,14 +31,24 @@ LAUNCH_SLIP = RulePack(
         any_tag=["schedule.milestone_move", "schedule.contractual_breach_risk"],
     ),
     risk_factors=[
-        RiskFactorRule(id="milestone_move", when_tag="schedule.milestone_move", weight=40),
-        RiskFactorRule(id="calendar_conflict", when_tag="schedule.calendar_conflict", weight=20),
-        RiskFactorRule(id="planner_shift", when_tag="schedule.planner_shift", weight=10),
-        RiskFactorRule(id="pending_announcement", when_tag="comms.pending_announcement", weight=10),
+        RiskFactorRule(
+            id="milestone_move", when_tag="schedule.milestone_move", severity=RiskLevel.MEDIUM
+        ),
+        RiskFactorRule(
+            id="calendar_conflict", when_tag="schedule.calendar_conflict", severity=RiskLevel.LOW
+        ),
+        RiskFactorRule(
+            id="planner_shift", when_tag="schedule.planner_shift", severity=RiskLevel.LOW
+        ),
+        RiskFactorRule(
+            id="pending_announcement",
+            when_tag="comms.pending_announcement",
+            severity=RiskLevel.LOW,
+        ),
         RiskFactorRule(
             id="target_date_conflict",
             when_tag="schedule.target_date_conflict",
-            weight=30,
+            severity=RiskLevel.HIGH,
             marks_unsafe=True,
         ),
         # A latent contractual/freeze/dependency breach the cross-system check derived: graver than
@@ -49,11 +56,10 @@ LAUNCH_SLIP = RulePack(
         RiskFactorRule(
             id="contractual_breach_risk",
             when_tag="schedule.contractual_breach_risk",
-            weight=50,
+            severity=RiskLevel.HIGH,
             marks_unsafe=True,
         ),
     ],
-    risk_bands=_STANDARD_BANDS,
     quorum=QuorumRules(
         approvers=[
             ApproverRule(role=ApproverRole.ENG_LEAD, when_tag="schedule.milestone_move"),
@@ -100,16 +106,19 @@ CUSTOMER_PROMISE = RulePack(
         ],
     ),
     risk_factors=[
-        RiskFactorRule(id="blocking_issues", when_tag="github.blocking_issues_open", weight=30),
-        RiskFactorRule(id="renewal_at_risk", when_tag="crm.renewal_at_risk", weight=20),
+        RiskFactorRule(
+            id="blocking_issues", when_tag="github.blocking_issues_open", severity=RiskLevel.MEDIUM
+        ),
+        RiskFactorRule(
+            id="renewal_at_risk", when_tag="crm.renewal_at_risk", severity=RiskLevel.LOW
+        ),
         RiskFactorRule(
             id="review_after_due_date",
             when_tag="security.review_after_due_date",
-            weight=50,
+            severity=RiskLevel.HIGH,
             marks_unsafe=True,
         ),
     ],
-    risk_bands=_STANDARD_BANDS,
     quorum=QuorumRules(
         approvers=[
             ApproverRule(
@@ -137,16 +146,19 @@ VENDOR_ACCESS = RulePack(
         any_tag=["access.overbroad_scope", "access.ambiguous_duration"],
     ),
     risk_factors=[
-        RiskFactorRule(id="ambiguous_duration", when_tag="access.ambiguous_duration", weight=20),
+        RiskFactorRule(
+            id="ambiguous_duration", when_tag="access.ambiguous_duration", severity=RiskLevel.LOW
+        ),
         RiskFactorRule(
             id="overbroad_scope",
             when_tag="access.overbroad_scope",
-            weight=40,
+            severity=RiskLevel.HIGH,
             marks_unsafe=True,
         ),
-        RiskFactorRule(id="customer_data", when_tag="data.customer_data_present", weight=30),
+        RiskFactorRule(
+            id="customer_data", when_tag="data.customer_data_present", severity=RiskLevel.MEDIUM
+        ),
     ],
-    risk_bands=_STANDARD_BANDS,
     quorum=QuorumRules(
         approvers=[
             ApproverRule(role=ApproverRole.MANAGER, when_tag="access.overbroad_scope"),
@@ -173,9 +185,12 @@ MEETING_ACTIONS = RulePack(
         any_tag=["meeting.action_items_found"],
     ),
     risk_factors=[
-        RiskFactorRule(id="action_items_found", when_tag="meeting.action_items_found", weight=10),
+        RiskFactorRule(
+            id="action_items_found",
+            when_tag="meeting.action_items_found",
+            severity=RiskLevel.LOW,
+        ),
     ],
-    risk_bands=_STANDARD_BANDS,
     # Internal task tracking carries the requester's own authority: low risk, no approver —
     # the requester's confirmation at the review gate is what executes it.
     quorum=QuorumRules(approvers=[]),
@@ -194,9 +209,10 @@ WEEKLY_REPORT = RulePack(
         any_tag=["report.activity_collected"],
     ),
     risk_factors=[
-        RiskFactorRule(id="activity_collected", when_tag="report.activity_collected", weight=5),
+        RiskFactorRule(
+            id="activity_collected", when_tag="report.activity_collected", severity=RiskLevel.LOW
+        ),
     ],
-    risk_bands=_STANDARD_BANDS,
     # Posting an internal status summary is the requester's own authority: low risk, no approver.
     quorum=QuorumRules(approvers=[]),
     verdict_options=VerdictOptionRules(
@@ -206,15 +222,16 @@ WEEKLY_REPORT = RulePack(
 
 
 # The policy floor: engaged only as the injected fallback when NO pack governs a change. The
-# sentinel tag fires its factor (30 -> MEDIUM, approval required) and convenes the manager —
+# sentinel tag fires its factor (medium severity, approval required) and convenes the manager —
 # "unknown" means "ask a human", never "free pass". It never matches by itself.
 UNGOVERNED = RulePack(
     id="ungoverned",
     match=MatchRules(),
     risk_factors=[
-        RiskFactorRule(id="ungoverned_change", when_tag=UNGOVERNED_TAG, weight=30),
+        RiskFactorRule(
+            id="ungoverned_change", when_tag=UNGOVERNED_TAG, severity=RiskLevel.MEDIUM
+        ),
     ],
-    risk_bands=_STANDARD_BANDS,
     quorum=QuorumRules(
         approvers=[ApproverRule(role=ApproverRole.MANAGER, when_tag=UNGOVERNED_TAG)],
     ),

@@ -16,11 +16,23 @@ class RunMode(StrEnum):
 
 
 class RiskLevel(StrEnum):
-    """Banded risk output of policy scoring."""
+    """Qualitative risk severity. A factor declares one; a trial's level is the highest that fired.
+
+    Ordered low < medium < high via :attr:`rank` — the string values are not ordinally comparable,
+    so policy takes the maximum by rank rather than relying on enum/string ordering.
+    """
 
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
+
+    @property
+    def rank(self) -> int:
+        """Ordinal severity (low=0, medium=1, high=2), for taking the most severe fired factor."""
+        return _RISK_RANK[self]
+
+
+_RISK_RANK = {RiskLevel.LOW: 0, RiskLevel.MEDIUM: 1, RiskLevel.HIGH: 2}
 
 
 class ChangeStatus(StrEnum):

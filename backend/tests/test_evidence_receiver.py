@@ -17,7 +17,6 @@ _PACKET: dict[str, object] = {
     "change": {"raw_request": "move the launch rehearsal to 2026-06-22"},
     "risk": {
         "level": "high",
-        "score": 90,
         "requires_approval": True,
         # Mirrors production: the policy node stamps the same trial-wide citation list onto every
         # fired factor, so the renderer must dedupe and group them rather than repeat per line.
@@ -25,7 +24,7 @@ _PACKET: dict[str, object] = {
             {
                 "id": "m",
                 "label": "milestone_move",
-                "weight": 40,
+                "severity": "medium",
                 "evidence_tag": "schedule.milestone_move",
                 "citations": [
                     "Release & Change Management Policy — Schedule changes are controlled changes",
@@ -36,7 +35,7 @@ _PACKET: dict[str, object] = {
             {
                 "id": "c",
                 "label": "contractual_breach_risk",
-                "weight": 50,
+                "severity": "high",
                 "evidence_tag": "schedule.contractual_breach_risk",
                 "citations": [
                     "Release & Change Management Policy — Schedule changes are controlled changes",
@@ -199,7 +198,7 @@ def test_why_section_falls_back_to_factor_labels(monkeypatch: pytest.MonkeyPatch
                 "level": "high",
                 "requires_approval": True,
                 "factors": [
-                    {"label": "overbroad_scope", "weight": 40, "citations": []},
+                    {"label": "overbroad_scope", "severity": "high", "citations": []},
                 ],
             },
             "impact": {"tags": [], "items": []},

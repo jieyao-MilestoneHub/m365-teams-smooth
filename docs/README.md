@@ -11,7 +11,7 @@ Setup and deployment are derivable from the codebase plus the official Microsoft
 | **Understand the design** | [architecture/index.html](architecture/index.html) — four offline diagrams (layers · data flow · sequence · Azure/M365) |
 | **See the demo & reproduce it** | [demo/README.md](demo/README.md) — the Informed Approval scenario, credential-free |
 | **Extend it (new scenario or integration)** | [extending.md](extending.md) — pack files, adapters, what never changes |
-| **Know who must approve, and when** | [approval-policy.md](approval-policy.md) — risk bands, rule packs as data, what auto-approves |
+| **Know who must approve, and when** | [approval-policy.md](approval-policy.md) — risk levels, rule packs as data, what auto-approves |
 | **Know *why* a choice was made** | [adr/](adr/) — Architecture Decision Records, one file per decision |
 | **Get the project running** | [../README.md](../README.md) — quick start, configuration, repo layout |
 | **Contribute** | [../CONTRIBUTING.md](../CONTRIBUTING.md) |

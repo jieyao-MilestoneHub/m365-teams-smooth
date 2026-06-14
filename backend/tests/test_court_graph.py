@@ -21,7 +21,6 @@ from app.agent.nodes.policy import PolicyNode
 from app.agent.nodes.verify import VerifyNode
 from app.agent.policy_rules.models import (
     MatchRules,
-    RiskBands,
     RiskFactorRule,
     RulePack,
     VerdictOptionRules,
@@ -31,6 +30,7 @@ from app.domain import (
     Change,
     ChangeStatus,
     ImpactEvidence,
+    RiskLevel,
     RunMode,
     Verdict,
     VerdictType,
@@ -46,9 +46,10 @@ _PACK = RulePack(
     id="launch_slip",
     match=MatchRules(any_action_capability=["github.update_milestone_due"]),
     risk_factors=[
-        RiskFactorRule(id="milestone_move", when_tag="schedule.milestone_move", weight=80)
+        RiskFactorRule(
+            id="milestone_move", when_tag="schedule.milestone_move", severity=RiskLevel.MEDIUM
+        )
     ],
-    risk_bands=RiskBands(low=0, medium=30, high=60),
     verdict_options=VerdictOptionRules(default=[VerdictType.APPROVE, VerdictType.REJECT]),
 )
 

@@ -30,7 +30,9 @@ GOLDEN: dict[str, dict[str, object]] = {
     "launch_slip": {
         "request": "slip the launch from 2026-06-10 to 2026-06-17",
         "status": "awaiting_requester_review",
-        "risk_level": "high",
+        # A clean coordinated reschedule: medium (the milestone move), not high — high is reserved
+        # for unsafe outcomes. Approval is still required and the same quorum convenes.
+        "risk_level": "medium",
         "unsafe": False,
         "plan_kind": "feasible",
         "verdict_options": {"approve", "approve_internal_only", "request_revision", "reject"},

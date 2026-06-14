@@ -1,11 +1,10 @@
-"""The policy node scores risk deterministically, flags unsafe, and selects verdict options."""
+"""The policy node classifies risk deterministically, flags unsafe, and selects verdict options."""
 
 from __future__ import annotations
 
 from app.agent.nodes.policy import PolicyNode, evaluate_risk
 from app.agent.policy_rules.models import (
     MatchRules,
-    RiskBands,
     RiskFactorRule,
     RulePack,
     VerdictOptionRules,
@@ -33,16 +32,21 @@ _PACK = RulePack(
         ]
     ),
     risk_factors=[
-        RiskFactorRule(id="blocking", when_tag="github.blocking_issues_open", weight=30),
-        RiskFactorRule(id="renewal", when_tag="crm.renewal_at_risk", weight=20),
+        RiskFactorRule(
+            id="blocking",
+            when_tag="github.blocking_issues_open",
+            severity=RiskLevel.MEDIUM,
+        ),
+        RiskFactorRule(
+            id="renewal", when_tag="crm.renewal_at_risk", severity=RiskLevel.LOW
+        ),
         RiskFactorRule(
             id="review_after",
             when_tag="security.review_after_due_date",
-            weight=50,
+            severity=RiskLevel.HIGH,
             marks_unsafe=True,
         ),
     ],
-    risk_bands=RiskBands(low=0, medium=30, high=60),
     verdict_options=VerdictOptionRules(
         default=[VerdictType.APPROVE, VerdictType.REJECT],
         when_unsafe=[VerdictType.ACCEPT_ALTERNATIVE, VerdictType.REJECT],
@@ -50,10 +54,9 @@ _PACK = RulePack(
 )
 
 
-def test_evaluate_risk_sums_fired_factors_and_flags_unsafe() -> None:
+def test_evaluate_risk_takes_max_severity_and_flags_unsafe() -> None:
     tags = ["github.blocking_issues_open", "crm.renewal_at_risk", "security.review_after_due_date"]
     risk, unsafe = evaluate_risk(_PACK, tags)
-    assert risk.score == 100
     assert risk.level is RiskLevel.HIGH
     assert risk.requires_approval is True
     assert unsafe is True
@@ -122,7 +125,6 @@ def test_citations_are_advisory_only() -> None:
 
     bare_risk = RiskResult.model_validate(bare["risk"])
     grounded_risk = RiskResult.model_validate(grounded["risk"])
-    assert grounded_risk.score == bare_risk.score
     assert grounded_risk.level is bare_risk.level
     assert grounded["quorum"] == bare["quorum"]
     assert grounded["status"] == bare["status"]

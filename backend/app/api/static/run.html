@@ -477,7 +477,7 @@ function stageBody(id) {
   }
   if (id === "policy" && t.risk) {
     const rules = (t.risk.matched_rule_ids || []).join(", ");
-    const head = `<div class="row">Risk <b>${esc(String(t.risk.level).toUpperCase())}</b> — score <b>${esc(t.risk.score)}</b> is the sum of the fired factors below; each <b>+N</b> is that factor's weight added to the score. Bands: low &lt;30 · medium 30–59 (approval required) · high ≥60.${rules ? ` Rule pack: ${esc(rules)}.` : ""}</div>`;
+    const head = `<div class="row">Risk <b>${esc(String(t.risk.level).toUpperCase())}</b> is the most severe of the fired factors below — no scores summed, no thresholds. Each factor carries a severity; the level is the highest one, and medium or high requires approval.${rules ? ` Rule pack: ${esc(rules)}.` : ""}</div>`;
     return head +
       (t.risk.factors || []).map(f => {
         const c = f.grounded_citations || [];
@@ -486,7 +486,9 @@ function stageBody(id) {
           ? `<details class="cites" data-key="${key}" ${openCites.has(key) ? "open" : ""}><summary>policy basis (${c.length})</summary>` +
             c.map(x => `<span class="cite">${esc(x)}</span>`).join("") + `</details>`
           : "";
-        return `<div class="row">• ${esc(f.id || f.reason || JSON.stringify(f))}${f.weight ? ` <span class="sev-high">+${esc(f.weight)}</span> to the score` : ""}${basis}</div>`;
+        const sevCol = { high: "var(--red)", medium: "var(--amber)", low: "var(--green)" }[f.severity] || "var(--muted)";
+        const sev = f.severity ? ` <b style="color:${sevCol};text-transform:uppercase;font-size:11px;letter-spacing:.08em">${esc(f.severity)}</b>` : "";
+        return `<div class="row">• ${esc(f.id || f.reason || JSON.stringify(f))}${sev}${basis}</div>`;
       }).join("");
   }
   if (id === "verify") {
@@ -556,10 +558,10 @@ function renderBench() {
   const t = view && view.trial;
   const rb = document.getElementById("riskBody");
   if (t && t.risk) {
-    const lvl = t.risk.level, pct = Math.min(100, Number(t.risk.score) || 0);
+    const lvl = t.risk.level, pct = { low: 33, medium: 66, high: 100 }[lvl] || 0;
     const col = { high: "var(--red)", medium: "var(--amber)", low: "var(--green)" }[lvl] || "var(--blue)";
     rb.innerHTML = `<div class="risk-band"><span class="risk-tag ${esc(lvl)}">${esc(String(lvl).toUpperCase())}</span>
-      <span class="meter"><i style="width:${pct}%;background:${col}"></i></span><span style="color:var(--muted)">${pct}</span></div>`;
+      <span class="meter"><i style="width:${pct}%;background:${col}"></i></span></div>`;
   } else rb.innerHTML = `<span style="color:var(--faint)">pending assessment</span>`;
 
   const qb = document.getElementById("quorumBody");

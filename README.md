@@ -40,7 +40,7 @@ See the [architecture diagrams](docs/architecture/index.html) for how it's built
 
 Approval routing is data, not code. Each change subject has a **rule pack** — a built-in literal
 ([`backend/app/agent/policy_rules/packs.py`](backend/app/agent/policy_rules/packs.py)) or an entry
-in your own `POLICY_PACKS_PATH` file — mapping evidence tags to risk weights and approver roles:
+in your own `POLICY_PACKS_PATH` file — mapping evidence tags to severities and approver roles:
 
 - **Low risk → no approver.** The requester's own confirmation executes the change.
   Internal-authority subjects — meeting action items, the weekly status report — declare an empty
@@ -54,10 +54,12 @@ in your own `POLICY_PACKS_PATH` file — mapping evidence tags to risk weights a
   ([ADR-0014](docs/adr/0014-identity-required-approvals.md)); when a quorum is required, the
   requester cannot approve their own change, and approvals are an append-only event ledger
   ([ADR-0006](docs/adr/0006-approval-routing-separation-of-duties.md)).
-- **Risk scoring and quorum derivation are deterministic on purpose** — the same evidence always
-  asks the same people ([ADR-0009](docs/adr/0009-agentic-roles-and-governed-autonomy.md)).
+- **Risk classification and quorum derivation are deterministic on purpose** — the same evidence
+  always asks the same people ([ADR-0009](docs/adr/0009-agentic-roles-and-governed-autonomy.md)).
+  Risk is the most severe fired factor, not a summed score
+  ([ADR-0017](docs/adr/0017-severity-classification-over-additive-scoring.md)).
 
-The full model — risk bands, the shipped rule packs, what auto-approves and why — is in
+The full model — risk levels, the shipped rule packs, what auto-approves and why — is in
 [docs/approval-policy.md](docs/approval-policy.md).
 
 ## Where it fits your existing process

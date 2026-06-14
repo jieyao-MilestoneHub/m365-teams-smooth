@@ -1,9 +1,9 @@
-"""Policy+quorum node: deterministic risk scoring and quorum derivation from a rule pack.
+"""Policy+quorum node: deterministic risk assessment and quorum derivation from a rule pack.
 
-Risk is the additive sum of the factors whose tags fired, banded into a level; any ``marks_unsafe``
-factor flags the change. Quorum (approvers + verdict options) is produced by an injected resolver —
-the default derives verdict options only, while the tag-driven resolver also derives the required
-approvers.
+Risk is the highest severity among the factors whose tags fired (no summing, no thresholds); any
+``marks_unsafe`` factor flags the change. Quorum (approvers + verdict options) is produced by an
+injected resolver — the default derives verdict options only, while the tag-driven resolver also
+derives the required approvers.
 """
 
 from __future__ import annotations
@@ -34,36 +34,32 @@ def _grounding_citations(impact: ImpactEvidence, *, cap: int = 5) -> list[str]:
 
 
 def evaluate_risk(pack: RulePack, tags: list[str]) -> tuple[RiskResult, bool]:
-    """Score the fired factors into a RiskResult; also report whether the change is unsafe."""
-    score = 0
+    """Assess the fired factors into a RiskResult; also report whether the change is unsafe.
+
+    The level is the most severe fired factor (max by severity rank), not a sum — a qualitative
+    classification each factor is individually accountable for, with no thresholds to justify.
+    """
     factors: list[RiskFactor] = []
     matched: list[str] = []
     unsafe = False
+    level = RiskLevel.LOW
     for rule in pack.risk_factors:
         if rule.when_tag in tags:
-            score += rule.weight
             factors.append(
                 RiskFactor(
                     id=rule.id,
                     label=rule.id,
-                    weight=rule.weight,
+                    severity=rule.severity,
                     evidence_tag=rule.when_tag,
                 )
             )
             matched.append(rule.id)
             unsafe = unsafe or rule.marks_unsafe
+            if rule.severity.rank > level.rank:
+                level = rule.severity
 
-    bands = pack.risk_bands
-    level = (
-        RiskLevel.HIGH
-        if score >= bands.high
-        else RiskLevel.MEDIUM
-        if score >= bands.medium
-        else RiskLevel.LOW
-    )
     result = RiskResult(
         level=level,
-        score=score,
         factors=factors,
         requires_approval=level is not RiskLevel.LOW,
         matched_rule_ids=[pack.id, *matched],
@@ -161,7 +157,7 @@ class PolicyNode:
             pack = self._fallback_pack
             tags = [*tags, UNGOVERNED_TAG]
         if pack is None:
-            risk = RiskResult(level=RiskLevel.LOW, score=0, requires_approval=False)
+            risk = RiskResult(level=RiskLevel.LOW, requires_approval=False)
             quorum = Quorum()
         else:
             risk, unsafe = evaluate_risk(pack, tags)
@@ -169,7 +165,7 @@ class PolicyNode:
                 change.unsafe = True
             quorum = self._resolver.resolve(pack, tags, unsafe=unsafe, level=risk.level)
             # Attach the trial's governance citations to every fired factor — advisory context
-            # only; scoring, banding, and quorum above are already final.
+            # only; the level, the unsafe flag, and quorum above are already final.
             citations = _grounding_citations(impact)
             if citations:
                 for factor in risk.factors:
@@ -178,9 +174,9 @@ class PolicyNode:
         status = ChangeStatus.AWAITING_VERDICT if risk.requires_approval else ChangeStatus.EXECUTING
 
         approvers = ", ".join(a.role.value for a in quorum.required_approvers) or "none"
-        factors = ", ".join(f"{f.label} (+{f.weight})" for f in risk.factors) or "none"
+        factors = ", ".join(f"{f.label} ({f.severity.value})" for f in risk.factors) or "none"
         context = (
-            f"Risk scored {risk.score} → {risk.level.value} from factors: {factors}. "
+            f"Risk assessed {risk.level.value} (most severe fired factor) from factors: {factors}. "
             f"Approval {'required' if risk.requires_approval else 'not required'}; "
             f"approvers ({quorum.policy}): {approvers}. "
             f"{'Flagged unsafe.' if change.unsafe else ''}"
