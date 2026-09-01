@@ -17,7 +17,7 @@ dependencies = [
     "alembic>=1.13",
     # Knowledge grounding (Foundry IQ over Azure AI Search). Beta pin: the agentic-retrieval
     # KnowledgeBaseRetrievalClient lives in this preview. Only used when the real provider is configured.
-    "azure-search-documents==12.1.0b1",
+    "azure-search-documents==12.1.0b2",
     "azure-identity>=1.17",
     "openai>=1.40",
     # The bot surface (POST /api/messages): turn handling and Bot Framework auth. The aiohttp
